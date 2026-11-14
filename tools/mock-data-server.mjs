@@ -117,6 +117,16 @@ export function createMockDataServer(options = {}) {
     return bad ? reply(400, { code: 'PGRST204', message: `Could not find the '${bad}' column of '${table}' in the schema cache` }) : null;
   }
 
+  /**
+   * Como el trigger de la base real (migración 20261116000100_no_revive): un registro borrado no revive con una
+   * versión anterior (o igual) a su borrado; sigue borrado. Las categorías no llevan updated_at de la app: no se aplica.
+   */
+  function noRevive(table, old, next) {
+    if (table === 'categories' || !old?.deleted_at || next.deleted_at !== null) return next;
+    if (Date.parse(next.updated_at) <= Date.parse(old.deleted_at)) return { ...next, deleted_at: old.deleted_at };
+    return next;
+  }
+
   // ---------------------------------------------------------------- espacios
   function upsertWorkspaces(user, rows) {
     for (const row of rows) {
@@ -130,7 +140,7 @@ export function createMockDataServer(options = {}) {
     for (const row of rows) {
       const old = workspaces.get(row.id);
       if (old) {
-        Object.assign(old, row, { synced_at: now });
+        Object.assign(old, noRevive('workspaces', old, { ...old, ...row }), { synced_at: now });
         continue;
       }
       const owned = [...workspaces.values()].filter((w) => w.created_by === user.id && !w.deleted_at).length;
@@ -165,7 +175,7 @@ export function createMockDataServer(options = {}) {
     for (const row of rows) {
       const key = `${row.workspace_id}|${row.id}`;
       const old = tables[table].get(key);
-      tables[table].set(key, old ? { ...old, ...row, synced_at: now } : { deleted_at: null, ...row, synced_at: now });
+      tables[table].set(key, old ? { ...noRevive(table, old, { ...old, ...row }), synced_at: now } : { deleted_at: null, ...row, synced_at: now });
     }
     return reply(201, null);
   }

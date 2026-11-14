@@ -210,7 +210,11 @@ export async function pullAll({ cloud, local, outbox, cursors, merge = false }) 
     if (deletedAt !== null) {
       if (!mine) continue;
       if (merge) {
-        toPull.push(mine.id); // al juntar, lo de aquí se conserva y se vuelve a subir
+        // Al juntar, lo de aquí se conserva y se vuelve a subir. Se marca con la hora de AHORA (y siempre después del
+        // borrado): es una decisión tomada ahora, y la nube no deja revivir algo con una versión anterior a su borrado.
+        const keptAt = new Date(Math.max(Date.now(), (ms(deletedAt) ?? 0) + 1)).toISOString();
+        await local.updateWorkspace({ ...mine, updatedAt: keptAt });
+        toPull.push(mine.id);
         continue;
       }
       const keepHere = changedHere && (ms(mine.updatedAt) ?? 0) > (ms(deletedAt) ?? Infinity);

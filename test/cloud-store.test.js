@@ -348,3 +348,52 @@ describe('almacén de la nube: errores (nunca lanza; mensajes en español)', () 
     assert.ok(data.every((c) => c.apikey === 'k' && typeof c.token === 'string' && c.token.startsWith('access-')));
   });
 });
+
+describe('regla de la nube: lo borrado no revive con una versión más vieja (migración no_revive)', () => {
+  const later = (iso, ms) => new Date(Date.parse(iso) + ms).toISOString();
+
+  it('registros: una versión anterior al borrado sigue borrada; una posterior lo revive', async () => {
+    const { ana, mock } = await setup();
+    const ws = workspace('personal', 'Casa');
+    await ana.store.saveWorkspaces([ws]);
+    const data = companyData();
+    const move = { ...data.movements[0], updatedAt: N };
+    assert.equal((await ana.store.push(ws.id, { movements: [move] })).ok, true);
+    const deletedAt = later(N, 60_000);
+    assert.equal((await ana.store.push(ws.id, {}, { movementIds: [move.id] }, deletedAt)).ok, true);
+    // Una edición hecha ANTES del borrado (llega tarde): sigue borrado.
+    await ana.store.push(ws.id, { movements: [{ ...move, description: 'vieja', updatedAt: later(N, 30_000) }] });
+    assert.equal(mock.data.live('movements', ws.id).some((m) => m.id === move.id), false, 'una versión vieja no revive');
+    // Igual al borrado: tampoco.
+    await ana.store.push(ws.id, { movements: [{ ...move, updatedAt: deletedAt }] });
+    assert.equal(mock.data.live('movements', ws.id).some((m) => m.id === move.id), false);
+    // Una edición POSTERIOR al borrado: revive.
+    await ana.store.push(ws.id, { movements: [{ ...move, description: 'nueva', updatedAt: later(N, 90_000) }] });
+    const alive = mock.data.live('movements', ws.id).find((m) => m.id === move.id);
+    assert.equal(alive?.description, 'nueva');
+  });
+
+  it('espacios: igual que los registros', async () => {
+    const { ana } = await setup();
+    const ws = workspace('personal', 'Casa');
+    await ana.store.saveWorkspaces([ws]);
+    await ana.store.markWorkspacesDeleted([ws.id], later(N, 60_000));
+    await ana.store.saveWorkspaces([{ ...ws, updatedAt: later(N, 30_000) }]);
+    let list = await ana.store.listWorkspaces();
+    assert.notEqual(list.ok && list.workspaces.find((w) => w.workspace.id === ws.id)?.deletedAt, null, 'versión vieja: sigue borrado');
+    await ana.store.saveWorkspaces([{ ...ws, updatedAt: later(N, 90_000) }]);
+    list = await ana.store.listWorkspaces();
+    assert.equal(list.ok && list.workspaces.find((w) => w.workspace.id === ws.id)?.deletedAt, null, 'versión nueva: revive');
+  });
+
+  it('categorías: no llevan fecha de modificación en la app, así que siguen pudiendo volver (como antes)', async () => {
+    const { ana, mock } = await setup();
+    const ws = workspace('personal', 'Casa');
+    await ana.store.saveWorkspaces([ws]);
+    const cat = { id: randomUUID(), name: 'Mascotas', kind: 'expense', defaultClassification: 'variable', builtIn: false };
+    await ana.store.push(ws.id, { categories: [cat] });
+    await ana.store.push(ws.id, {}, { categoryIds: [cat.id] }, later(N, 60_000));
+    await ana.store.push(ws.id, { categories: [cat] });
+    assert.ok(mock.data.live('categories', ws.id).some((c) => c.id === cat.id));
+  });
+});

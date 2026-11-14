@@ -39,12 +39,31 @@ function idsByKind(data, onlyReal) {
 }
 
 /**
+ * Restaurar una copia con la sincronización activa es una decisión de AHORA: los registros reales restaurados se
+ * marcan con la hora actual (`updatedAt`). Si no, algo que se borró después de hacer la copia no podría volver: la
+ * nube no deja revivir un registro con una versión anterior a su borrado, y otro dispositivo lo volvería a borrar aquí.
+ * Las categorías no llevan `updatedAt` y los datos DEMO no viajan: no se tocan.
+ * @template {Record<string, any>} T @param {T} data @param {string} at @returns {T}
+ */
+export function stampRestored(data, at) {
+  /** @type {Record<string, any>} */
+  const out = { ...data };
+  for (const kind of CLOUD_KINDS) {
+    const list = data[kind.key];
+    if (!Array.isArray(list)) continue;
+    out[kind.key] = list.map((r) => (r && r.isDemo !== true && r.builtIn !== true && typeof r.updatedAt === 'string' ? { ...r, updatedAt: at } : r));
+  }
+  return /** @type {T} */ (out);
+}
+
+/**
  * @param {WorkspaceStore} inner
  * @param {Outbox} outbox
  * @param {() => boolean} isEnabled
+ * @param {() => string} [nowISO] reloj (para las pruebas)
  * @returns {WorkspaceStore}
  */
-export function withOutbox(inner, outbox, isEnabled) {
+export function withOutbox(inner, outbox, isEnabled, nowISO = () => new Date().toISOString()) {
   /** Anota sin dejar que un fallo de la bandeja impida guardar. @param {() => void} fn */
   const note = (fn) => {
     if (!isEnabled()) return;
@@ -93,11 +112,13 @@ export function withOutbox(inner, outbox, isEnabled) {
       },
       async replaceAll(data) {
         if (isEnabled()) {
+          const restored = stampRestored(data, nowISO());
           const before = await store.load().catch(() => null);
           note(() => {
-            noteReplace(ws, before, data);
+            noteReplace(ws, before, restored);
             outbox.markProfile();
           });
+          return store.replaceAll(restored);
         }
         return store.replaceAll(data);
       },
@@ -144,8 +165,11 @@ export function withOutbox(inner, outbox, isEnabled) {
       note(() => outbox.markProfile());
       return inner.saveProfile(profile);
     },
-    async replaceEverything(snapshot) {
+    async replaceEverything(original) {
+      let snapshot = original;
       if (isEnabled()) {
+        const at = nowISO();
+        snapshot = { ...original, workspaces: original.workspaces.map((w) => ({ workspace: { ...w.workspace, updatedAt: at }, data: stampRestored(w.data, at) })) };
         const before = await inner.loadEverything().catch(() => null);
         note(() => {
           const kept = new Set(snapshot.workspaces.map((w) => w.workspace.id));

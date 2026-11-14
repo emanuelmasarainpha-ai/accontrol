@@ -371,6 +371,27 @@ describe('dos dispositivos con la misma cuenta', () => {
     assert.deepEqual((await B.local.listWorkspaces()).map((w) => w.id), [ws.id], 'B conserva su espacio');
     assert.equal(mock.data.workspaces.get(ws.id).deleted_at, null, 'y en la nube vuelve a estar vivo');
     assert.ok(mock.data.live('movements', ws.id).some((m) => m.id === lunch.id));
+    // Y en la siguiente revisión normal NO se pierde (la nube no deja revivir con una versión vieja: se marcó con la hora de ahora).
+    await B.api.syncNow();
+    assert.deepEqual((await B.local.listWorkspaces()).map((w) => w.id), [ws.id], 'B sigue teniendo su espacio tras sincronizar');
+    assert.equal(mock.data.workspaces.get(ws.id).deleted_at, null);
+  });
+
+  it('restaurar una copia de seguridad recupera algo que se borró después de hacerla (también en los otros dispositivos)', async () => {
+    const { mock, ws, lunch, A, B } = await twoDevices();
+    const backup = await A.local.forWorkspace(ws.id).load(); // la copia, con el almuerzo
+    await A.store.forWorkspace(ws.id).deleteMany({ movementIds: [lunch.id] });
+    await A.api.syncNow();
+    await B.api.syncNow();
+    assert.equal((await B.local.forWorkspace(ws.id).load()).movements.some((m) => m.id === lunch.id), false, 'el borrado llegó a B');
+    // A restaura la copia: el almuerzo vuelve, en la nube y en B.
+    await A.store.forWorkspace(ws.id).replaceAll(backup);
+    await A.api.syncNow();
+    assert.ok(mock.data.live('movements', ws.id).some((m) => m.id === lunch.id), 'en la nube vuelve a estar vivo');
+    await B.api.syncNow();
+    assert.ok((await B.local.forWorkspace(ws.id).load()).movements.some((m) => m.id === lunch.id), 'B lo vuelve a tener');
+    await A.api.syncNow();
+    assert.ok((await A.local.forWorkspace(ws.id).load()).movements.some((m) => m.id === lunch.id), 'A no lo vuelve a perder');
   });
 
   it('sin internet, revisar la nube falla sin tocar nada de este dispositivo', async () => {

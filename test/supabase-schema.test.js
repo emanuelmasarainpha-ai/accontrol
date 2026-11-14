@@ -19,8 +19,8 @@ const allLower = all.toLowerCase();
 const tables = [...all.matchAll(/create table public\.(\w+)/gi)].map((m) => m[1]);
 
 describe('migraciones de Supabase: orden y contenido', () => {
-  it('hay cinco migraciones numeradas en orden y sin repetirse (la 5.ª, facturas de Freelancer, 0.14.5)', () => {
-    assert.equal(files.length, 5);
+  it('hay seis migraciones numeradas en orden y sin repetirse (5.ª facturas de Freelancer 0.14.5; 6.ª no revivir 0.15.1)', () => {
+    assert.equal(files.length, 6);
     const versions = files.map((name) => name.split('_')[0]);
     assert.deepEqual(versions, [...versions].sort());
     assert.equal(new Set(versions).size, versions.length);
@@ -124,3 +124,52 @@ describe('migración 0.14.5: facturas en Freelancer', () => {
     }
   });
 });
+
+/** El texto de una función, desde «function private.<nombre>()» hasta el primer «$$;», con espacios normalizados. */
+function functionText(text, fname) {
+  const lower = text.toLowerCase();
+  const start = lower.indexOf(`function private.${fname}()`);
+  if (start < 0) return '';
+  const end = lower.indexOf('$$;', start);
+  return text.slice(start, end + 3).replace(/\s+/g, ' ');
+}
+
+describe('migración no_revive (0.15.1): lo borrado no revive con una versión más vieja', () => {
+  const name = files.find((n) => n.includes('_no_revive'));
+  const body = name ? sql(name) : '';
+
+  it('existe y solo reemplaza las dos funciones de los triggers (no toca filas ni permisos)', () => {
+    assert.ok(name, 'falta la migración');
+    assert.equal(body.split('$$;').map((x) => x.trim()).filter(Boolean).length, 2);
+    const flat = body.toLowerCase().replace(/\s+/g, ' ');
+    assert.equal((flat.match(/create or replace function private\./g) ?? []).length, 2);
+    for (const word of ['drop ', 'delete from', 'truncate ', 'update public', 'alter table', 'grant ', 'revoke ', 'security definer']) {
+      assert.ok(!flat.includes(word), `no debería tener «${word.trim()}»`);
+    }
+  });
+
+  for (const guard of ['entity_guard', 'workspace_guard']) {
+    it(`${guard}: conserva deleted_at si llega una versión con updated_at <= deleted_at (search_path vacío)`, () => {
+      const f = functionText(body, guard);
+      assert.ok(f, `falta ${guard}`);
+      assert.ok(f.includes("set search_path = ''"));
+      assert.ok(f.includes('old.deleted_at is not null and new.deleted_at is null and new.updated_at <= old.deleted_at'));
+      assert.ok(f.includes('new.deleted_at := old.deleted_at;'));
+      assert.ok(f.includes('new.synced_at := now();'));
+    });
+  }
+
+  it('las categorías quedan fuera (la app no les pone updated_at)', () => {
+    assert.ok(functionText(body, 'entity_guard').includes("tg_table_name <> 'categories'"));
+    assert.ok(!functionText(body, 'workspace_guard').includes('categories'));
+  });
+
+  it('hay un archivo para deshacerla que deja las funciones exactamente como en la migración original', () => {
+    const undo = readFileSync(new URL('../supabase/rollback/20261116000100_no_revive_deshacer.sql', import.meta.url), 'utf8').replace(/--[^\n]*/g, '');
+    for (const guard of ['entity_guard', 'workspace_guard']) {
+      assert.ok(functionText(undo, guard), guard);
+      assert.equal(functionText(undo, guard), functionText(sql(files[0]), guard), guard);
+    }
+  });
+});
+
