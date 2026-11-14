@@ -107,10 +107,15 @@ export function createSyncEngine(options) {
     // 1. Espacios. Los que cambiaron aquí se guardan (y reviven si estaban marcados como borrados). Los demás solo se
     //    CREAN si faltan en la nube, sin tocar los existentes: antes se guardaban todos con cada cambio y eso revivía,
     //    con una versión más vieja, un espacio que otro dispositivo borró entre la bajada y la subida de esta vuelta.
+    //    Solo los TUYOS (sin rol): uno compartido contigo ya existe en la nube y solo su dueño puede cambiarlo; intentarlo
+    //    haría que la nube rechace todo el envío una y otra vez (0.16.0).
     const wsEntries = entries.filter((e) => e.type === 'ws');
     const changedWs = new Set(wsEntries.map((e) => e.ws));
-    const toSave = workspaces.filter((w) => changedWs.has(w.id));
-    const toEnsure = workspaces.filter((w) => !changedWs.has(w.id));
+    const owned = workspaces.filter((w) => !w.role);
+    const toSave = owned.filter((w) => changedWs.has(w.id));
+    const toEnsure = owned.filter((w) => !changedWs.has(w.id));
+    /** Espacios donde solo puedes ver (Contador). */
+    const readOnly = new Set(workspaces.filter((w) => w.role === 'accountant').map((w) => w.id));
     if (toSave.length > 0) {
       const saved = await cloud.saveWorkspaces(toSave);
       if (!saved.ok) return saved;
@@ -128,6 +133,12 @@ export function createSyncEngine(options) {
     for (const [ws, group] of byWs) {
       if (!here.has(ws)) {
         outbox.settle(group); // el espacio ya no existe aquí: lo cubre el borrado del espacio
+        continue;
+      }
+      if (readOnly.has(ws)) {
+        // Contador: la nube no lo aceptaría. No se sube y se baja todo otra vez, para que aquí quede igual que la nube.
+        outbox.settle(group);
+        options.cursors?.remove(ws);
         continue;
       }
       const data = /** @type {any} */ (await local.forWorkspace(ws).load());
@@ -194,7 +205,8 @@ export function createSyncEngine(options) {
         if (options.cursors) {
           const pulled = await pullAll({ cloud, local, outbox, cursors: options.cursors });
           if (!pulled.ok) return pulled;
-          if (pulled.applied + pulled.conflicts + pulled.addedWorkspaces.length + pulled.removedWorkspaces.length > 0) {
+          const sharing = (pulled.sharedAdded?.length ?? 0) + (pulled.lostAccess?.length ?? 0) + (pulled.roleChanges?.length ?? 0);
+          if (pulled.applied + pulled.conflicts + pulled.addedWorkspaces.length + pulled.removedWorkspaces.length + sharing > 0) {
             try {
               options.onPulled?.(pulled);
             } catch (error) {

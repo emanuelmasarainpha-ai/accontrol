@@ -182,10 +182,12 @@ export function createSyncController(options) {
         // 2. Subir todo lo de aquí (ya junto) y comprobar.
         const snapshot = await local.loadEverything();
         const here = new Set(snapshot.workspaces.map((w) => w.workspace.id));
-        const saved = await cloud.saveWorkspaces(snapshot.workspaces.map((w) => w.workspace));
+        // Solo se suben los espacios TUYOS; en los compartidos contigo, los datos solo si puedes escribir (no Contador).
+        const saved = await cloud.saveWorkspaces(snapshot.workspaces.filter((w) => !w.workspace.role).map((w) => w.workspace));
         if (!saved.ok) return fail(saved.error.message);
+        const writable = snapshot.workspaces.filter((w) => w.workspace.role !== 'accountant');
         let records = 0;
-        for (const { workspace, data } of snapshot.workspaces) {
+        for (const { workspace, data } of writable) {
           const pushed = await cloud.push(workspace.id, /** @type {any} */ (data));
           if (!pushed.ok) return fail(pushed.error.message);
           records += pushed.sent;
@@ -199,7 +201,7 @@ export function createSyncController(options) {
         const p = await cloud.saveProfile({ displayName: snapshot.profile.displayName, lastWorkspaceId });
         if (!p.ok) return fail(p.error.message);
         // Comprobación: la nube debe tener exactamente lo mismo que el dispositivo (sin DEMO).
-        for (const { workspace, data } of snapshot.workspaces) {
+        for (const { workspace, data } of writable) {
           const counted = await cloud.countLive(workspace.id);
           if (!counted.ok) return fail(counted.error.message);
           const expected = realCounts(data);
@@ -244,7 +246,8 @@ export function createSyncController(options) {
     async clearEverywhere() {
       const remote = await cloud.listWorkspaces();
       if (!remote.ok) return { ok: false, message: `${remote.error.message} No se borró nada.` };
-      const ids = remote.workspaces.filter((w) => w.deletedAt === null).map((w) => w.workspace.id);
+      // Solo los TUYOS: los compartidos contigo son de otra persona (para dejarlos está «Salir del espacio»).
+      const ids = remote.workspaces.filter((w) => w.deletedAt === null && !w.workspace.role).map((w) => w.workspace.id);
       if (ids.length > 0) {
         const done = await cloud.markWorkspacesDeleted(ids);
         if (!done.ok) return { ok: false, message: `${done.error.message} No se borró nada en este dispositivo.` };

@@ -248,9 +248,21 @@ export function remoteNotice(result) {
   if (result.removedWorkspaces.length > 0) {
     parts.push(`${result.removedWorkspaces.length === 1 ? 'Se quitó el espacio' : 'Se quitaron los espacios'} ${quoteList(result.removedWorkspaces)} de este dispositivo porque se borró en otro.`);
   }
+  const shared = result.sharedAdded ?? [];
+  if (shared.length > 0) {
+    parts.push(`${shared.length === 1 ? 'Ya tienes acceso al espacio compartido' : 'Ya tienes acceso a los espacios compartidos'} ${quoteList(shared)}.`);
+  }
+  const lost = result.lostAccess ?? [];
+  if (lost.length > 0) {
+    parts.push(`Ya no tienes acceso ${lost.length === 1 ? 'al espacio' : 'a los espacios'} ${quoteList(lost)} (te quitaron o su dueño lo borró): se quitó de este dispositivo.`);
+  }
+  for (const change of result.roleChanges ?? []) parts.push(`Tu rol en «${change.name}» ahora es ${ROLE_NAMES[change.role]}.`);
   if (result.conflicts > 0) parts.push(conflictText(result.conflicts));
   return parts.length > 0 ? parts.join(' ') : null;
 }
+
+/** Nombre de cada rol para mostrar (0.16.0). */
+export const ROLE_NAMES = { owner: 'Dueño', admin: 'Administrador', accountant: 'Contador' };
 
 /**
  * En un dispositivo SIN espacios y con la copia apagada: si la cuenta tiene espacios en la nube, ofrece traerlos

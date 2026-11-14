@@ -154,7 +154,9 @@ export function withOutbox(inner, outbox, isEnabled, nowISO = () => new Date().t
       return inner.updateWorkspace(workspace);
     },
     async deleteWorkspace(id) {
-      note(() => outbox.markWorkspaceDeleted(id));
+      // Un espacio compartido contigo (con rol) no se borra en la nube: es de otra persona (0.16.0).
+      const shared = isEnabled() ? (await inner.listWorkspaces().catch(() => [])).some((w) => w.id === id && w.role) : false;
+      if (!shared) note(() => outbox.markWorkspaceDeleted(id));
       return inner.deleteWorkspace(id);
     },
     async setDefaultWorkspace(id) {
@@ -173,7 +175,7 @@ export function withOutbox(inner, outbox, isEnabled, nowISO = () => new Date().t
         const before = await inner.loadEverything().catch(() => null);
         note(() => {
           const kept = new Set(snapshot.workspaces.map((w) => w.workspace.id));
-          for (const old of before?.workspaces ?? []) if (!kept.has(old.workspace.id)) outbox.markWorkspaceDeleted(old.workspace.id);
+          for (const old of before?.workspaces ?? []) if (!kept.has(old.workspace.id) && !old.workspace.role) outbox.markWorkspaceDeleted(old.workspace.id);
           for (const { workspace, data } of snapshot.workspaces) {
             const prev = before?.workspaces.find((w) => w.workspace.id === workspace.id)?.data ?? null;
             noteReplace(workspace.id, prev, data);
@@ -188,7 +190,7 @@ export function withOutbox(inner, outbox, isEnabled, nowISO = () => new Date().t
       if (isEnabled()) {
         const before = await inner.loadEverything().catch(() => null);
         note(() => {
-          for (const old of before?.workspaces ?? []) outbox.markWorkspaceDeleted(old.workspace.id);
+          for (const old of before?.workspaces ?? []) if (!old.workspace.role) outbox.markWorkspaceDeleted(old.workspace.id);
           outbox.markProfile();
         });
       }
