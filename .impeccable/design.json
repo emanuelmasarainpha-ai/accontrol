@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-12T00:00:00Z",
+  "title": "Design System: ACCONTROL",
+  "extensions": {
+    "colorMeta": {
+      "ink-900": { "role": "neutral", "displayName": "Tinta de grabado", "canonical": "#141a2a", "tonalRamp": ["#141a2a", "#1e2638", "#2a3449", "#37435c", "#4c5a78", "#7a86a3", "#a6b0c8", "#cbd2e1", "#e4e8f0", "#f1f3f7"] },
+      "paper": { "role": "neutral", "displayName": "Papel de seguridad", "canonical": "#eef1ec" },
+      "surface": { "role": "neutral", "displayName": "Hoja", "canonical": "#ffffff" },
+      "personal": { "role": "primary", "displayName": "Violeta Personal", "canonical": "#5b3a8c", "tonalRamp": ["#34204f", "#4a2d78", "#5b3a8c", "#eee8f6"] },
+      "freelancer": { "role": "primary", "displayName": "Naranja tostado Freelancer", "canonical": "#b85614", "tonalRamp": ["#5c2a0c", "#8f410f", "#b85614", "#fbebdd"] },
+      "entrepreneur": { "role": "primary", "displayName": "Verde azulado Emprendedor", "canonical": "#1f7f86", "tonalRamp": ["#0d3f43", "#17666c", "#1f7f86", "#dff0f0"] },
+      "company": { "role": "primary", "displayName": "Carmín Empresa", "canonical": "#b8283f", "tonalRamp": ["#5e1220", "#96203a", "#b8283f", "#f8e2e6"] },
+      "income": { "role": "secondary", "displayName": "Verde financiero", "canonical": "#168a55", "tonalRamp": ["#0e6a42", "#168a55", "#2fa56f", "#93d3b2", "#dcf2e6", "#eef9f3"] },
+      "alert": { "role": "tertiary", "displayName": "Rojo de alerta", "canonical": "#c73a3a", "tonalRamp": ["#a32727", "#c73a3a", "#fbe3e3", "#fef3f3"] },
+      "caution": { "role": "tertiary", "displayName": "Ámbar de precaución", "canonical": "#b87800", "tonalRamp": ["#8a5a00", "#b87800", "#fdefc9", "#fff8e6"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Valor del billete", "purpose": "La cifra protagonista de Inicio y las cifras de valor; numerales tabulares." },
+      "headline": { "displayName": "Título de pantalla", "purpose": "Un título por pantalla, en tinta." },
+      "title": { "displayName": "Título de panel", "purpose": "Encabezado de cada panel." },
+      "body": { "displayName": "Texto", "purpose": "Texto corrido, explicaciones y campos (16 px)." },
+      "label": { "displayName": "Nombre del valor", "purpose": "Etiqueta en mayúsculas del dato del billete (DISPONIBLE)." }
+    },
+    "shadows": [
+      { "name": "soft", "value": "0 1px 2px rgb(15 39 71 / 4%), 0 6px 20px rgb(15 39 71 / 6%)", "purpose": "Paneles y tarjetas sobre el papel." },
+      { "name": "raised", "value": "0 2px 6px rgb(15 39 71 / 8%), 0 14px 32px rgb(15 39 71 / 14%)", "purpose": "El billete y elementos destacados." },
+      { "name": "floating", "value": "0 12px 40px rgb(15 39 71 / 22%)", "purpose": "Diálogos, hojas y menús." }
+    ],
+    "motion": [
+      { "name": "dur-press", "value": "120ms", "purpose": "Respuesta al tocar." },
+      { "name": "dur-base", "value": "200ms", "purpose": "Cambios de estado." },
+      { "name": "dur-enter", "value": "280ms", "purpose": "Entradas de pantallas, tarjetas y hojas." },
+      { "name": "stagger", "value": "40ms", "purpose": "Separación en entradas escalonadas." },
+      { "name": "ease-out", "value": "cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Entradas y respuestas." },
+      { "name": "ease-in-out", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Cambios de estado de ida y vuelta." },
+      { "name": "ease-pop", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Indicadores pequeños; frenado marcado sin rebote." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "720px" },
+      { "name": "lg", "value": "900px" },
+      { "name": "xl", "value": "960px" },
+      { "name": "xxl", "value": "1100px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal, en el color de la denominación activa.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Registrar gasto</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 18px;border:1px solid transparent;border-radius:12px;font:600 1rem/1.2 Barlow,system-ui,sans-serif;transition:transform 120ms cubic-bezier(0.2,0.8,0.2,1);cursor:pointer}.ds-btn:active{transform:scale(0.97)}.ds-btn:focus-visible{outline:2px solid #4c5a78;outline-offset:2px}.ds-btn-primary{background:#5b3a8c;color:#fff;box-shadow:inset 0 1px 0 rgb(255 255 255/16%),0 1px 2px rgb(20 26 42/18%),0 6px 16px rgb(52 32 79/22%)}"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Acción secundaria: hoja blanca con filete.",
+      "html": "<button class=\"ds-btn-ghost\">Registrar ingreso</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;min-height:44px;padding:10px 18px;border:1px solid #c4cbd6;border-radius:12px;background:#fff;color:#4a2d78;font:600 1rem/1.2 Barlow,system-ui,sans-serif;box-shadow:0 1px 2px rgb(15 39 71/5%);transition:transform 120ms cubic-bezier(0.2,0.8,0.2,1);cursor:pointer}.ds-btn-ghost:active{transform:scale(0.97)}.ds-btn-ghost:focus-visible{outline:2px solid #4c5a78;outline-offset:2px}"
+    },
+    {
+      "name": "Botón de peligro",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Acciones que borran o no tienen vuelta atrás.",
+      "html": "<button class=\"ds-btn-danger\">Borrar movimiento</button>",
+      "css": ".ds-btn-danger{display:inline-flex;align-items:center;min-height:44px;padding:10px 18px;border:0;border-radius:12px;background:#c73a3a;color:#fff;font:600 1rem/1.2 Barlow,system-ui,sans-serif;cursor:pointer}.ds-btn-danger:focus-visible{outline:2px solid #4c5a78;outline-offset:2px}"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de texto o monto; 16 px para que el teléfono no haga zoom.",
+      "html": "<input class=\"ds-input\" placeholder=\"Monto (RD$)\">",
+      "css": ".ds-input{width:100%;min-height:44px;padding:10px 12px;background:#fff;border:1px solid #c4cbd6;border-radius:12px;font:400 1rem Barlow,system-ui,sans-serif;color:#141b29}.ds-input:hover{border-color:#98a2b3}.ds-input:focus-visible{outline:2px solid #4c5a78;outline-offset:0;border-color:#4c5a78}"
+    },
+    {
+      "name": "Etiqueta",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Píldora informativa; el sello DEMO usa el mismo molde.",
+      "html": "<span class=\"ds-chip\">DEMO</span>",
+      "css": ".ds-chip{display:inline-block;padding:2px 10px;border-radius:999px;background:#edf0f5;color:#525d70;font:600 0.75rem Barlow,system-ui,sans-serif;white-space:nowrap}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Hoja blanca sobre el papel de seguridad.",
+      "html": "<section class=\"ds-panel\"><h3 class=\"ds-panel-title\">El mes en cifras</h3><p>Ingresos, gastos y ahorro de este mes.</p></section>",
+      "css": ".ds-panel{padding:16px;background:#fff;border:1px solid #e6ebf2;border-radius:20px;box-shadow:0 1px 2px rgb(15 39 71/4%),0 6px 20px rgb(15 39 71/6%);font:400 1rem/1.5 Barlow,system-ui,sans-serif;color:#141b29}.ds-panel-title{margin:0 0 12px;font:700 1.1875rem 'Barlow Semi Condensed',Barlow,sans-serif;color:#1e2638}"
+    },
+    {
+      "name": "El billete",
+      "kind": "custom",
+      "refersTo": "banknote",
+      "description": "Tarjeta de Disponible con doble filete del color del espacio y valor en numerales de billete.",
+      "html": "<section class=\"ds-note\"><span class=\"ds-note-label\">Disponible</span><strong class=\"ds-note-amount\"><span class=\"ds-note-sym\">RD$</span>48,250<span class=\"ds-note-cents\">.00</span></strong><span class=\"ds-note-micro\">ACCONTROL · ACCONTROL · ACCONTROL · ACCONTROL · ACCONTROL</span></section>",
+      "css": ".ds-note{position:relative;overflow:hidden;padding:24px 16px 36px;border-radius:24px;background:#fff;border:1px solid rgb(91 58 140/50%);box-shadow:inset 0 0 0 5px #fff,inset 0 0 0 6px rgb(91 58 140/26%),0 2px 6px rgb(15 39 71/8%),0 14px 32px rgb(15 39 71/14%);font-family:'Barlow Semi Condensed',Barlow,sans-serif}.ds-note-label{display:block;font-size:.8125rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#4a2d78}.ds-note-amount{display:block;margin-top:6px;font-size:3.5rem;font-weight:700;line-height:1;letter-spacing:-.01em;color:#4a2d78;font-variant-numeric:tabular-nums}.ds-note-sym{margin-right:.14em;font-size:.46em;font-weight:600;vertical-align:.62em}.ds-note-cents{font-size:.5em;font-weight:600}.ds-note-micro{position:absolute;left:14px;right:14px;bottom:9px;overflow:hidden;white-space:nowrap;font-size:7px;font-weight:600;letter-spacing:.2em;color:rgb(91 58 140/55%)}"
+    },
+    {
+      "name": "Barra del espacio",
+      "kind": "nav",
+      "refersTo": "nav-bar",
+      "description": "Barra superior (celular) o lateral (computadora) en el color profundo de la denominación.",
+      "html": "<header class=\"ds-topbar\"><strong>ACCONTROL</strong><span class=\"ds-topbar-space\">Personal</span></header>",
+      "css": ".ds-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;min-height:44px;background:#34204f;color:#fff;font:600 1rem Barlow,system-ui,sans-serif;letter-spacing:.06em}.ds-topbar-space{padding:4px 10px;border-radius:999px;background:rgb(255 255 255/14%);font-size:.8125rem;letter-spacing:0}"
+    }
+  ],
+  "narrative": {
+    "northStar": "El billete dominicano",
+    "overview": "Cada espacio de trabajo es una denominación. Igual que un billete se reconoce por su color antes de leer la cifra, la persona sabe en qué espacio está (Personal, Freelancer, Emprendedor o Empresa) por el color de la barra, y lee su «Disponible» impreso como el valor de un billete: numerales condensados grandes, doble filete fino, una roseta de guilloché trazada con curvas matemáticas y una línea de microtexto como borde de seguridad. El número se ve emitido con cuidado; por eso se cree.\n\nEs una herramienta de uso diario (modo Operate): densidad media, lectura rápida en un Android modesto y en computadora. La expresión vive en pocos lugares precisos (la barra, el billete de Inicio, los títulos condensados, los estados vacíos con roseta) y el resto es papel claro y hojas blancas tranquilas. Rechaza la tarjeta azul de fintech sobre fondo gris, el panel pastel con aspecto de juego y el banco genérico.\n\nLos colores de denominación están ajustados: cada uno tiene una versión de relleno con texto blanco que pasa AA, una profunda para barras, una suave para fondos y una «tinta» para texto sobre papel.",
+    "keyCharacteristics": [
+      "Color por denominación, inyectado con `body[data-kind]` en cuatro variables (`--kind`, `--kind-deep`, `--kind-soft`, `--kind-ink`).",
+      "Papel de seguridad gris verdoso frío (no crema) con hojas blancas encima.",
+      "Barlow para el texto, Barlow Semi Condensed para cifras de valor y títulos; numerales tabulares.",
+      "Guilloché real (hipotrocoides SVG generados en `src/ui/guilloche.js`), siempre tenue y enmascarado lejos del texto.",
+      "Movimiento corto (120–280 ms), solo `transform` y `opacity`, sin rebote; instantáneo con «reducir movimiento»."
+    ],
+    "rules": [
+      { "name": "La Regla de Una Denominación", "body": "El color del espacio activo es el único acento de marca en pantalla. Cambiar de espacio cambia el color; nunca se mezclan.", "section": "colors" },
+      { "name": "La Regla del Rojo Reservado", "body": "El rojo significa alerta o negativo, nada más. Los gastos son tinta, no rojo, para que el rojo conserve su peso.", "section": "colors" },
+      { "name": "La Regla del Color con Palabras", "body": "Ningún estado se comunica solo con color: siempre hay texto o ícono al lado.", "section": "colors" },
+      { "name": "La Regla del Numeral de Valor", "body": "Toda cifra de dinero protagonista usa Barlow Semi Condensed con numerales tabulares; el texto corrido nunca.", "section": "typography" },
+      { "name": "La Regla del Papel Plano", "body": "El fondo nunca lleva sombra ni degradado; la profundidad la dan las hojas encima.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do colorear con `--kind`, `--kind-deep`, `--kind-soft` y `--kind-ink`, nunca con el hex de una denominación concreta.",
+      "Do animar solo `transform` y `opacity`, con `--dur-press` (120 ms), `--dur-base` (200 ms) o `--dur-enter` (280 ms) y las curvas `--ease-out`, `--ease-in-out` o `--ease-pop`.",
+      "Do mantener la roseta y el microtexto tenues y lejos del texto que se lee.",
+      "Do marcar todo dato de demostración con el sello DEMO.",
+      "Do poner los estilos en los archivos CSS (la CSP prohíbe estilos en línea) y lo dinámico por CSSOM."
+    ],
+    "donts": [
+      "Don't usar rojo para gastos ni para decorar.",
+      "Don't usar curvas con rebote ni animaciones de más de 300 ms.",
+      "Don't poner degradados ni sombras en el papel de fondo.",
+      "Don't añadir bordes laterales gruesos de color como acento de tarjetas.",
+      "Don't cargar letras ni librerías de servicios externos."
+    ]
+  }
+}

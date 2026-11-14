@@ -1,0 +1,20 @@
+{
+  "name": "accontrol",
+  "version": "0.14.6",
+  "description": "ACCONTROL 2.0 - plataforma de finanzas personales (Etapa 4: prototipo local con deudas, presupuesto, exportación, patrimonio neto y calculadoras, PWA)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test",
+    "typecheck": "tsc -p jsconfig.json",
+    "precache": "node tools/make-precache.mjs",
+    "build": "node tools/build.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,223 @@
+/* =============================================================================
+   MOVIMIENTO DE TODA LA APP (0.14.3)
+   Reglas: solo transform y opacity; duraciones de tokens.css (120–300 ms); todo dentro de
+   @media (prefers-reduced-motion: no-preference) — quien pide menos movimiento ve cambios instantáneos.
+   Las entradas se ven solo al LLEGAR a una pantalla ([data-enter], lo pone app.js), nunca al guardar un dato.
+   ============================================================================= */
+
+/* ---- Dibujo de los estados vacíos: fragmento de guilloché y medallón (estático) ---------- */
+.empty__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 120px;
+}
+.empty__rosette {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--kind);
+  opacity: 0.4;
+  -webkit-mask-image: radial-gradient(circle, #000 38%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 38%, transparent 70%);
+}
+.empty__glyph {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--kind-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kind) 45%, transparent), inset 0 0 0 4px var(--surface), inset 0 0 0 5px color-mix(in srgb, var(--kind) 22%, transparent);
+}
+
+/* ---- Celebración (ui/celebrate.js) ------------------------------------------------------ */
+.celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  pointer-events: none;
+  overflow: hidden;
+}
+.celebrate__piece {
+  position: absolute;
+  top: var(--y, 40%);
+  left: var(--x, 50%);
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--green-500);
+  opacity: 0;
+}
+.celebrate__piece--navy {
+  background: var(--navy-500);
+}
+.celebrate__piece--gold {
+  background: #e3b341;
+}
+.celebrate__piece--round {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ---- 1. Llegar a una pantalla: un solo momento (la pantalla entera), no un efecto por bloque.
+          Inicio tiene su entrada escalonada propia en views.css. */
+  .view[data-enter]:not([data-screen='inicio']) {
+    animation: enter-up var(--dur-enter) var(--ease-out) backwards;
+  }
+
+  /* ---- 2. Listas: las primeras filas entran escalonadas (24 ms entre filas, como mucho 10). ---- */
+  .view[data-enter] .rows > li:nth-child(-n + 10),
+  .view[data-enter] .goal-list > :nth-child(-n + 10),
+  .view[data-enter] .debt:nth-of-type(-n + 10) {
+    animation: rise-in var(--dur-enter) var(--ease-out) backwards;
+    animation-delay: 60ms;
+  }
+  .view[data-enter] .rows > li:nth-child(2), .view[data-enter] .goal-list > :nth-child(2), .view[data-enter] .debt:nth-of-type(2) { animation-delay: 84ms; }
+  .view[data-enter] .rows > li:nth-child(3), .view[data-enter] .goal-list > :nth-child(3), .view[data-enter] .debt:nth-of-type(3) { animation-delay: 108ms; }
+  .view[data-enter] .rows > li:nth-child(4), .view[data-enter] .goal-list > :nth-child(4), .view[data-enter] .debt:nth-of-type(4) { animation-delay: 132ms; }
+  .view[data-enter] .rows > li:nth-child(5), .view[data-enter] .goal-list > :nth-child(5), .view[data-enter] .debt:nth-of-type(5) { animation-delay: 156ms; }
+  .view[data-enter] .rows > li:nth-child(6), .view[data-enter] .goal-list > :nth-child(6), .view[data-enter] .debt:nth-of-type(6) { animation-delay: 180ms; }
+  .view[data-enter] .rows > li:nth-child(7), .view[data-enter] .goal-list > :nth-child(7), .view[data-enter] .debt:nth-of-type(7) { animation-delay: 204ms; }
+  .view[data-enter] .rows > li:nth-child(8), .view[data-enter] .goal-list > :nth-child(8), .view[data-enter] .debt:nth-of-type(8) { animation-delay: 228ms; }
+  .view[data-enter] .rows > li:nth-child(9), .view[data-enter] .goal-list > :nth-child(9), .view[data-enter] .debt:nth-of-type(9) { animation-delay: 252ms; }
+  .view[data-enter] .rows > li:nth-child(10), .view[data-enter] .goal-list > :nth-child(10), .view[data-enter] .debt:nth-of-type(10) { animation-delay: 276ms; }
+
+  /* ---- 3. Barras de progreso: el relleno aparece de izquierda a derecha al llegar a la pantalla.
+          (Chrome no anima la parte interna de <progress>: se anima una «cortina» encima, components.css.) */
+  .view[data-enter] .progress-wrap::after {
+    animation: uncover var(--dur-enter) var(--ease-out) 80ms backwards;
+  }
+
+  /* ---- Firma del mundo: la roseta de guilloché de «el billete» gira un poco y aparece al llegar a Inicio,
+          mientras el valor cuenta hasta su cifra exacta (ui/countUp.js). Va a su opacidad tenue de siempre. */
+  .view[data-enter] .hero__rosette {
+    animation: rosette-in var(--dur-enter) var(--ease-out) 40ms backwards;
+  }
+
+  /* ---- 4. Estado vacío: el dibujo aparece con un rebote mínimo. ---------------------------- */
+  .view[data-enter] .empty__glyph {
+    animation: pop-in var(--dur-enter) var(--ease-pop) 100ms backwards;
+  }
+
+  /* ---- 5. Hojas y diálogos: salen con suavidad (la entrada está en components.css). -------- */
+  .sheet.is-closing {
+    animation: sheet-out var(--dur-base) var(--ease-in-out) forwards;
+  }
+  .sheet.is-closing::backdrop {
+    animation: fade-out var(--dur-base) var(--ease-in-out) forwards;
+  }
+
+  /* ---- 6. Avisos: entran subiendo y salen bajando. ---------------------------------------- */
+  .toast {
+    animation: toast-in var(--dur-enter) var(--ease-out);
+  }
+  .toast.is-leaving {
+    animation: toast-out var(--dur-base) var(--ease-in-out) forwards;
+  }
+
+  /* ---- 7. Celebración: una ráfaga corta. -------------------------------------------------- */
+  .celebrate__piece {
+    animation: burst var(--dur-enter) var(--ease-out) forwards;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  /* Durante el recorrido guiado no hay entradas: el resaltado mide los elementos y no deben moverse. */
+  body.is-touring .view[data-enter],
+  body.is-touring .view[data-enter] * {
+    animation: none;
+  }
+}
+
+/* Cuadros de las animaciones de este archivo (solo transform y opacity). */
+@keyframes rosette-in {
+  from {
+    opacity: 0;
+    transform: rotate(-24deg) scale(0.92);
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes uncover {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes sheet-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes burst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), var(--dy, 0px)) rotate(var(--rot, 0deg)) scale(1);
+  }
+}

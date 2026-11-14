@@ -1,0 +1,142 @@
+/* =============================================================================
+   GRÁFICOS (SVG propio)
+   Marcas finas, cuadrícula casi invisible, color que sigue a la entidad.
+   ============================================================================= */
+.chart-host {
+  width: 100%;
+  min-height: 24px;
+}
+
+.chart {
+  display: block;
+  overflow: visible;
+  font-family: var(--font);
+  touch-action: pan-y;
+}
+
+.chart text {
+  fill: var(--gray-600);
+  font-size: 11.5px;
+}
+
+.chart__grid {
+  stroke: var(--gray-200);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.chart__grid--base {
+  stroke: var(--gray-300);
+}
+
+.chart__axis {
+  fill: var(--gray-500);
+  font-variant-numeric: tabular-nums;
+}
+.chart__axis--x {
+  text-transform: capitalize;
+}
+
+/* Zonas sensibles al puntero / teclado */
+.band {
+  outline: none;
+}
+.band__bg {
+  fill: transparent;
+}
+.band:hover .band__bg,
+.band:focus-visible .band__bg {
+  fill: var(--navy-50);
+}
+.band:focus-visible .band__bg {
+  stroke: var(--focus);
+  stroke-width: 1.5;
+}
+
+/* Marcas */
+.mark {
+  fill: var(--gray-400);
+}
+.mark--income { fill: var(--income); }
+.mark--expense { fill: var(--expense); }
+.mark--saving { fill: var(--saving); }
+.mark--free { fill: var(--free); }
+.mark--primary { fill: var(--navy-700); }
+.mark--ord-1 { fill: var(--ord-1); }
+.mark--ord-2 { fill: var(--ord-2); }
+.mark--ord-3 { fill: var(--ord-3); }
+.mark--inc-1 { fill: var(--inc-1); }
+.mark--inc-2 { fill: var(--inc-2); }
+.mark--inc-3 { fill: var(--inc-3); }
+
+.seg {
+  outline: none;
+  stroke: transparent;
+  stroke-width: 0;
+}
+.seg:hover {
+  opacity: 0.85;
+}
+.seg:focus-visible {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+.chart__track {
+  fill: var(--gray-100);
+}
+
+/* Línea de evolución */
+.line {
+  fill: none;
+  stroke: var(--navy-700);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.area {
+  fill: var(--navy-100);
+  opacity: 0.7;
+}
+.dot {
+  fill: var(--navy-700);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.dot--hover,
+.crosshair {
+  opacity: 0;
+}
+.band:hover .dot--hover,
+.band:focus-visible .dot--hover,
+.band:hover .crosshair,
+.band:focus-visible .crosshair {
+  opacity: 1;
+}
+.crosshair {
+  stroke: var(--gray-300);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.chart .chart__end-label {
+  fill: var(--navy-800);
+  font-weight: 700;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barras horizontales */
+.chart .chart__row-label {
+  fill: var(--gray-800);
+  font-size: 13px;
+  font-weight: 500;
+}
+.chart .chart__row-value {
+  fill: var(--gray-800);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.chart .chart__row-percent {
+  fill: var(--gray-500);
+  font-weight: 400;
+}

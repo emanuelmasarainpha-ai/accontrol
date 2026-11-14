@@ -1,0 +1,280 @@
+/* =============================================================================
+   TOKENS DE DISEÑO — mundo «El billete dominicano» (0.14.3, elegido con la skill Impeccable)
+   Todos los colores y medidas viven aquí.
+
+   · Papel de seguridad gris verdoso frío y tinta de grabado azul-grafito.
+   · Cada tipo de espacio es una denominación con su color (Personal violeta, Freelancer
+     naranja tostado, Emprendedor verde azulado, Empresa carmín). El del espacio abierto
+     colorea la barra, los botones principales, lo seleccionado y «el billete» de Inicio.
+   · El rojo se usa SOLO para alertas y valores negativos. Ingresos = verde, gastos = tinta.
+   ============================================================================= */
+:root {
+  color-scheme: light;
+
+  /* Tinta de grabado (azul-grafito). Los nombres --navy-* son históricos: hoy son esta tinta. */
+  --navy-900: #141a2a;
+  --navy-800: #1e2638;
+  --navy-700: #2a3449;
+  --navy-600: #37435c;
+  --navy-500: #4c5a78;
+  --navy-400: #7a86a3;
+  --navy-300: #a6b0c8;
+  --navy-200: #cbd2e1;
+  --navy-100: #e4e8f0;
+  --navy-50: #f1f3f7;
+
+  /* Denominaciones: un color por tipo de espacio. base = rellenos con texto blanco (AA),
+     deep = barras, soft = fondos suaves, ink = texto sobre fondo claro. */
+  --personal: #5b3a8c;
+  --personal-deep: #34204f;
+  --personal-soft: #eee8f6;
+  --personal-ink: #4a2d78;
+  --freelancer: #b85614;
+  --freelancer-deep: #5c2a0c;
+  --freelancer-soft: #fbebdd;
+  --freelancer-ink: #8f410f;
+  --entrepreneur: #1f7f86;
+  --entrepreneur-deep: #0d3f43;
+  --entrepreneur-soft: #dff0f0;
+  --entrepreneur-ink: #17666c;
+  --company: #b8283f;
+  --company-deep: #5e1220;
+  --company-soft: #f8e2e6;
+  --company-ink: #96203a;
+
+  /* El espacio abierto (app.js pone body[data-kind]); sin espacio, Personal. */
+  --kind: var(--personal);
+  --kind-deep: var(--personal-deep);
+  --kind-soft: var(--personal-soft);
+  --kind-ink: var(--personal-ink);
+
+  /* Verde financiero */
+  --green-700: #0e6a42;
+  --green-600: #168a55;
+  --green-500: #2fa56f;
+  --green-100: #dcf2e6;
+  --green-50: #eef9f3;
+
+  /* Rojo: solo alertas */
+  --red-700: #a32727;
+  --red-600: #c73a3a;
+  --red-100: #fbe3e3;
+  --red-50: #fef3f3;
+
+  /* Ámbar: "precaución" (riesgo medio, cuota próxima). Siempre va con texto e ícono, nunca solo color. */
+  --warn-700: #8a5a00;
+  --warn-600: #b87800;
+  --warn-100: #fdefc9;
+  --warn-50: #fff8e6;
+
+  /* Grises */
+  --gray-50: #f5f7fa;
+  --gray-100: #edf0f5;
+  --gray-200: #dde2ea;
+  --gray-300: #c4cbd6;
+  --gray-400: #98a2b3;
+  --gray-500: #6b7587;
+  --gray-600: #525d70;
+  --gray-800: #263042;
+  --gray-900: #141b29;
+
+  /* Papeles: papel de seguridad (gris verdoso frío, no crema) y hojas blancas encima */
+  --paper: #eef1ec;
+  --bg: var(--paper);
+  --surface: #ffffff;
+  --text: var(--gray-900);
+  --text-muted: var(--gray-600);
+  --border: var(--gray-200);
+  --focus: var(--navy-500);
+
+  /* Color por entidad (gráficos, etiquetas) */
+  --income: var(--green-600);
+  --expense: var(--navy-500);
+  --saving: var(--navy-300);
+  --free: var(--green-600);
+  --alert: var(--red-600);
+
+  /* Rampas ordinales: de más oscuro a más claro (fijo → variable → discrecional/extraordinario) */
+  --ord-1: #2a3449;
+  --ord-2: #6b7896;
+  --ord-3: #b3bccf;
+  --inc-1: #0e6a42;
+  --inc-2: #2fa56f;
+  --inc-3: #93d3b2;
+
+  /* Tipografía: Barlow para el texto y Barlow Semi Condensed para los numerales «de valor» y los títulos,
+     como en un billete. Guardadas en la app (src/styles/fonts, licencia OFL); si no cargan, la del sistema. */
+  --font: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-value: 'Barlow Semi Condensed', 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-base: 1rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 1.875rem;
+
+  /* Espacios y formas */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --gutter: 16px;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgb(15 39 71 / 6%);
+  --shadow: 0 1px 3px rgb(15 39 71 / 8%), 0 4px 12px rgb(15 39 71 / 4%);
+  --shadow-lg: 0 12px 40px rgb(15 39 71 / 22%);
+
+  /* Superficies suaves (0.14.3): esquinas más redondas, bordes casi invisibles y sombras en dos capas */
+  --radius-xl: 20px;
+  --radius-hero: 24px;
+  --border-soft: #e6ebf2;
+  --shadow-soft: 0 1px 2px rgb(15 39 71 / 4%), 0 6px 20px rgb(15 39 71 / 6%);
+  --shadow-raised: 0 2px 6px rgb(15 39 71 / 8%), 0 14px 32px rgb(15 39 71 / 14%);
+  --shadow-brand: 0 12px 30px rgb(15 39 71 / 28%);
+  /* Fondos teñidos de apoyo (siguen el color de cada entidad: ingresos = verde, gastos = azul) */
+  --tint-income: var(--green-50);
+  --tint-expense: var(--navy-50);
+  --tint-neutral: var(--gray-50);
+
+  /* Movimiento: UN solo juego de duraciones y curvas para toda la app.
+     Solo se animan transform y opacity (fluido incluso en un celular modesto).
+     Con «reducir movimiento» activado, todo es instantáneo (ver base.css). */
+  --dur-press: 120ms;  /* respuesta al tocar */
+  --dur-base: 200ms;   /* cambios de estado: activo, encima, seleccionado */
+  --dur-enter: 280ms;  /* entradas: pantallas, tarjetas, hojas */
+  --stagger: 40ms;     /* separación entre elementos de una entrada escalonada */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);    /* frena al llegar: entradas y respuestas */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);   /* va y vuelve: cambios de estado */
+  --ease-pop: cubic-bezier(0.22, 1, 0.36, 1);    /* frenado exponencial marcado (sin rebote): indicadores pequeños */
+
+  /* Rellenos sólidos con texto blanco (avisos, burbujas de ayuda, botón de peligro, chips marcados).
+     NO se invierten en el modo oscuro: siguen siendo oscuros para que el texto blanco se lea. */
+  --solid-ink: #141a2a;
+  --solid-ink-2: #2a3449;
+  --solid-ok: #168a55;
+  --solid-danger: #c73a3a;
+  --solid-danger-2: #a32727;
+
+  --tabbar-h: 58px;
+  --sidebar-w: 248px;
+  --tap: 44px; /* tamaño mínimo cómodo para tocar con el dedo */
+}
+
+@media (min-width: 640px) {
+  :root {
+    --gutter: 24px;
+  }
+}
+
+/* =============================================================================
+   MODO OSCURO — «el billete de noche» (0.14.4). Lo activa ui/theme.js con <html data-theme="dark">
+   (se elige en el interruptor del sol y la luna; se recuerda en este dispositivo).
+   Mismo mundo: papel de seguridad, ahora nocturno; tinta clara; cada denominación con su color de noche.
+   Las escalas se invierten: los tonos -50/-100 (fondos) pasan a ser oscuros teñidos y los -600/-900 (texto),
+   claros. Los rellenos con texto blanco usan --solid-* (no se invierten). Contraste AA comprobado en
+   test/theme.test.js.
+   ============================================================================= */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --navy-900: #eef1f7;
+  --navy-800: #dde2ee;
+  --navy-700: #c6cee2;
+  --navy-600: #b0bad2;
+  --navy-500: #949fbb;
+  --navy-400: #6f7b98;
+  --navy-300: #4b5672;
+  --navy-200: #333d55;
+  --navy-100: #252d40;
+  --navy-50: #1b2233;
+
+  --personal: #6a46a8;
+  --personal-deep: #2c1a45;
+  --personal-soft: #2b2342;
+  --personal-ink: #cdbbf0;
+  --freelancer: #b05212;
+  --freelancer-deep: #4a220a;
+  --freelancer-soft: #35230f;
+  --freelancer-ink: #f3ab72;
+  --entrepreneur: #1b747a;
+  --entrepreneur-deep: #0b3437;
+  --entrepreneur-soft: #102e31;
+  --entrepreneur-ink: #79d3d9;
+  --company: #b8283f;
+  --company-deep: #4d0f1b;
+  --company-soft: #371920;
+  --company-ink: #f5979f;
+
+  --green-700: #74d8a7;
+  --green-600: #3cb97f;
+  --green-500: #2fa56f;
+  --green-100: #183a2a;
+  --green-50: #12271d;
+
+  --red-700: #f49a9a;
+  --red-600: #e46a6a;
+  --red-100: #46222a;
+  --red-50: #2b171b;
+
+  --warn-700: #f2c463;
+  --warn-600: #d9a12a;
+  --warn-100: #3f3115;
+  --warn-50: #2a2210;
+
+  --gray-50: #1a202c;
+  --gray-100: #222a38;
+  --gray-200: #2d3646;
+  --gray-300: #3d4759;
+  --gray-400: #5f6a80;
+  --gray-500: #8893a7;
+  --gray-600: #aab3c3;
+  --gray-800: #d6dbe4;
+  --gray-900: #eceff4;
+
+  --paper: #0e121a;
+  --surface: #161c28;
+  --border-soft: #262e3d;
+
+  --ord-1: #c6cee2;
+  --ord-2: #8591ae;
+  --ord-3: #4b5672;
+  --inc-1: #74d8a7;
+  --inc-2: #2fa56f;
+  --inc-3: #1f6b4a;
+
+  --solid-ink: #2d3750;
+  --solid-ink-2: #3a4664;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow: 0 1px 3px rgb(0 0 0 / 45%), 0 4px 12px rgb(0 0 0 / 30%);
+  --shadow-lg: 0 12px 40px rgb(0 0 0 / 55%);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 35%), 0 6px 20px rgb(0 0 0 / 25%);
+  --shadow-raised: 0 2px 6px rgb(0 0 0 / 40%), 0 14px 32px rgb(0 0 0 / 40%);
+  --shadow-brand: 0 12px 30px rgb(0 0 0 / 50%);
+}
+
+/* El color del espacio abierto (app.js pone body[data-kind]). */
+body[data-kind='freelancer'] {
+  --kind: var(--freelancer);
+  --kind-deep: var(--freelancer-deep);
+  --kind-soft: var(--freelancer-soft);
+  --kind-ink: var(--freelancer-ink);
+}
+body[data-kind='entrepreneur'] {
+  --kind: var(--entrepreneur);
+  --kind-deep: var(--entrepreneur-deep);
+  --kind-soft: var(--entrepreneur-soft);
+  --kind-ink: var(--entrepreneur-ink);
+}
+body[data-kind='company'] {
+  --kind: var(--company);
+  --kind-deep: var(--company-deep);
+  --kind-soft: var(--company-soft);
+  --kind-ink: var(--company-ink);
+}

@@ -1,0 +1,33 @@
+﻿[
+  {
+    "antipattern": "bounce-easing",
+    "name": "Bounce or elastic easing",
+    "description": "Bounce and elastic easing feel dated and tacky. Real objects decelerate smoothly — use exponential easing (ease-out-quart/quint/expo) instead.",
+    "severity": "advisory",
+    "category": "slop",
+    "file": "C:\\Users\\xenik\\OneDrive\\Desktop\\accontrol-cuentas-0.14.0\\accontrol\\src\\styles\\tokens.css",
+    "line": 154,
+    "snippet": "cubic-bezier(0.34, 1.4, 0.64, 1)",
+    "advisory": true
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\xenik\\OneDrive\\Desktop\\accontrol-cuentas-0.14.0\\accontrol\\src\\styles\\views.css",
+    "line": 1668,
+    "snippet": "border-left-width: 4px"
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\xenik\\OneDrive\\Desktop\\accontrol-cuentas-0.14.0\\accontrol\\src\\styles\\views.css",
+    "line": 2141,
+    "snippet": "border-left-width: 4px"
+  }
+]

@@ -1,0 +1,21 @@
+# Herramientas instaladas (se reinstalan con `npm install`)
+node_modules/
+
+# Carpeta que genera `npm run build` para publicar
+dist/
+
+# Copias viejas para publicar a mano (ya no hacen falta con Vercel)
+publicar-netlify/
+publicar-netlify.zip
+
+# Ajustes personales del editor y de Claude en este equipo
+.claude/settings.local.json
+.vercel/
+
+# Copias de seguridad de datos: NUNCA se suben (son tus finanzas)
+accontrol-respaldo*.json
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+desktop.ini

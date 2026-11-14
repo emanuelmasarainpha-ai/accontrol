@@ -1,0 +1,22 @@
+// @ts-check
+// =============================================================================
+// CONFIGURACIÓN DEL SERVIDOR DE CUENTAS Y DE LA BASE DE DATOS EN LA NUBE (Supabase)
+// -----------------------------------------------------------------------------
+// Estos dos valores son PÚBLICOS por diseño: cualquiera que abra la app los puede ver, igual que la
+// dirección de una página web. Lo que protege tus datos no es ocultarlos, sino las reglas de seguridad
+// de la base de datos (RLS): cada cuenta solo puede leer y escribir lo suyo.
+//
+//   ⚠ NUNCA pongas aquí la llave «secret» (la de rol de servicio): esa sí daría acceso a TODO. Hay una prueba
+//     automática (test/config.test.js) que falla si alguien lo hace por error.
+//
+// Para usar otro proyecto de Supabase cambia estos dos valores y la dirección permitida en `connect-src`
+// de la política de seguridad de index.html (otra prueba comprueba que coincidan).
+//
+// Si SUPABASE_URL queda vacío, la app funciona como en la versión 0.13.0: sin cuentas, todo en este dispositivo.
+// =============================================================================
+
+/** Dirección del proyecto ACCONTROL en Supabase. */
+export const SUPABASE_URL = 'https://vuzlguqrbwgvyduysfkh.supabase.co';
+
+/** Llave pública («publishable») del proyecto. */
+export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_j5eQoSOnCfDoaLC9jCDRrw_wh0fSq3i';

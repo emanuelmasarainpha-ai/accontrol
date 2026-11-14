@@ -1,0 +1,126 @@
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { describe, it } from 'node:test';
+
+import { DEFAULT_CATEGORIES } from '../src/domain/categories.js';
+
+// Estas pruebas leen los archivos SQL de supabase/migrations y comprueban reglas que NO deben romperse nunca.
+// No hablan con Supabase: las pruebas contra la base real (usuarios falsos, otra cuenta, sin sesión) se hicieron
+// aparte y están descritas en docs/BASE_DE_DATOS.md.
+
+const dir = new URL('../supabase/migrations/', import.meta.url);
+const files = readdirSync(dir).filter((name) => name.endsWith('.sql')).sort();
+
+/** SQL sin comentarios (-- hasta fin de línea), para no confundir una frase de ayuda con una instrucción. */
+const sql = (name) => readFileSync(new URL(name, dir), 'utf8').replace(/--[^\n]*/g, '');
+const all = files.map(sql).join('\n');
+const allLower = all.toLowerCase();
+
+const tables = [...all.matchAll(/create table public\.(\w+)/gi)].map((m) => m[1]);
+
+describe('migraciones de Supabase: orden y contenido', () => {
+  it('hay cinco migraciones numeradas en orden y sin repetirse (la 5.ª, facturas de Freelancer, 0.14.5)', () => {
+    assert.equal(files.length, 5);
+    const versions = files.map((name) => name.split('_')[0]);
+    assert.deepEqual(versions, [...versions].sort());
+    assert.equal(new Set(versions).size, versions.length);
+    for (const name of files) assert.match(name, /^\d{14}_[a-z_]+\.sql$/);
+  });
+
+  it('crea las 19 tablas esperadas', () => {
+    assert.equal(tables.length, 19);
+    assert.equal(new Set(tables).size, 19);
+    for (const expected of ['profiles', 'workspaces', 'workspace_members', 'builtin_categories', 'movements', 'goals', 'debts', 'invoices', 'invoice_payments']) {
+      assert.ok(tables.includes(expected), `falta la tabla ${expected}`);
+    }
+  });
+});
+
+describe('migraciones de Supabase: seguridad', () => {
+  it('TODAS las tablas tienen RLS activada', () => {
+    for (const table of tables) {
+      assert.match(allLower, new RegExp(`alter table public\\.${table}\\s+enable row level security`), `la tabla ${table} no activa RLS`);
+    }
+  });
+
+  it('nadie recibe permiso de borrar filas (los borrados son «blandos» o pasan por funciones controladas)', () => {
+    const grants = [...allLower.matchAll(/grant\s+([^;]*?)\s+on\s+[^;]*?\s+to\s+[^;]*;/g)].map((m) => m[0]);
+    assert.ok(grants.length > 0);
+    for (const grant of grants) {
+      assert.doesNotMatch(grant, /\bdelete\b/, `permiso de borrado: ${grant}`);
+      assert.doesNotMatch(grant, /\ball\b/, `permiso «all»: ${grant}`);
+      assert.doesNotMatch(grant, /\btruncate\b/, `permiso de vaciar: ${grant}`);
+    }
+  });
+
+  it('a «anon» (sin sesión) y a «public» no se les da nada: solo se les quita', () => {
+    const grants = [...allLower.matchAll(/grant\s[^;]*;/g)].map((m) => m[0]);
+    for (const grant of grants) {
+      assert.doesNotMatch(grant, /\bto\b[^;]*\b(anon|public|service_role)\b/, `permiso peligroso: ${grant}`);
+    }
+  });
+
+  it('toda función SECURITY DEFINER fija search_path vacío (evita que alguien la desvíe a otro esquema)', () => {
+    const definers = [...allLower.matchAll(/language \w+(?: stable)? security definer([^$]*)\$\$/g)];
+    assert.ok(definers.length >= 6, `solo se encontraron ${definers.length}`);
+    for (const [whole] of definers) assert.match(whole, /set search_path = ''/, whole);
+  });
+
+  it('las políticas usan (select auth.uid()) y la única «using (true)» es la lista pública de categorías de fábrica', () => {
+    // Fuera de (select auth.uid()), solo se permite como valor por defecto de una columna (default auth.uid()).
+    const loose = allLower.replace(/\(select auth\.uid\(\)\)/g, '').replace(/default auth\.uid\(\)/g, '');
+    assert.ok(!/\bauth\.uid\(\)/.test(loose), 'auth.uid() suelto en una política: usa (select auth.uid())');
+    const open = [...allLower.matchAll(/create policy (\w+)[^;]*(?:using|with check) \(true\)/g)].map((m) => m[1]);
+    assert.deepEqual(open, ['builtin_categories_select']);
+  });
+
+  it('el esquema private no se expone a anon ni a public', () => {
+    assert.match(allLower, /revoke all on schema private from public, anon, authenticated/);
+  });
+});
+
+describe('categorías de fábrica: la semilla de la base coincide con la app', () => {
+  const seed = readFileSync(new URL('20261111000400_seed_categories.sql', dir), 'utf8');
+  const rows = [...seed.matchAll(/\('([^']+)', '([^']+)', '(income|expense)', '(\w+)'\)/g)].map((m) => ({ id: m[1], name: m[2], kind: m[3], defaultClassification: m[4] }));
+
+  it('tiene las mismas 22 categorías (id, nombre, tipo y clasificación) que src/domain/categories.js', () => {
+    assert.equal(DEFAULT_CATEGORIES.length, 22);
+    assert.deepEqual(
+      rows,
+      DEFAULT_CATEGORIES.map(({ id, name, kind, defaultClassification }) => ({ id, name, kind, defaultClassification })),
+    );
+  });
+});
+
+describe('migración 0.14.5: facturas en Freelancer', () => {
+  const name = files.find((n) => n.endsWith('_freelance_invoices.sql'));
+  const text = name ? sql(name).toLowerCase() : '';
+  /** El SQL con los espacios juntados en uno (para buscar frases sin depender de saltos de línea). */
+  const flat = text.replace(/\s+/g, ' ');
+  const has = (/** @type {string} */ fragment) => assert.ok(flat.includes(fragment), `falta: ${fragment}`);
+
+  it('existe y va después de las cuatro de la 0.14.0', () => {
+    assert.ok(name, 'falta la migración');
+    assert.equal(files.indexOf(/** @type {string} */ (name)), 4);
+  });
+
+  it('añade client_id (puede ir vacío) con llave foránea COMPUESTA al cliente del mismo espacio', () => {
+    has('alter table public.invoices add column client_id uuid;');
+    has('foreign key (workspace_id, client_id) references public.clients (workspace_id, id) deferrable initially deferred');
+  });
+
+  it('comprueba los servicios de las líneas: del mismo espacio, del cliente, vivos y sin producto a la vez', () => {
+    has("create function private.check_invoice_lines() returns trigger language plpgsql set search_path = ''");
+    has('s.workspace_id = new.workspace_id');
+    has('s.client_id = new.client_id');
+    has('s.deleted_at is null');
+    has("line ? 'productid'");
+    has('create constraint trigger invoices_check_lines after insert or update of lines, client_id, workspace_id on public.invoices');
+  });
+
+  it('no borra ni cambia datos ni permisos (solo añade)', () => {
+    for (const word of ['drop ', 'delete ', 'truncate ', 'update public', 'grant ', 'revoke ', 'security definer']) {
+      assert.ok(!flat.includes(word), `no debería tener «${word.trim()}»`);
+    }
+  });
+});

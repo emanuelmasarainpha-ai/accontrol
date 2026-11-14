@@ -1,0 +1,2229 @@
+/* =============================================================================
+   COMPONENTES REUTILIZABLES
+   ============================================================================= */
+
+/* ---- Botones ---------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  /* Respuesta al tocar: se hunde un poco (solo transform; el color cambia al instante). */
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+.btn:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.97);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.5;
+}
+
+.btn--primary {
+  background: var(--kind);
+  color: #fff;
+  /* Profundidad: brillo arriba y sombra suave del color del espacio. */
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 1px 2px rgb(20 26 42 / 18%), 0 6px 16px color-mix(in srgb, var(--kind-deep) 22%, transparent);
+}
+
+.btn--ghost {
+  background: var(--surface);
+  border-color: var(--gray-300);
+  color: var(--kind-ink);
+  box-shadow: 0 1px 2px rgb(15 39 71 / 5%);
+}
+
+.btn--danger {
+  background: var(--solid-danger);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%), 0 1px 2px rgb(163 39 39 / 22%);
+}
+
+.btn--danger-ghost {
+  background: var(--surface);
+  border-color: var(--red-100);
+  color: var(--red-700);
+}
+
+.btn--light {
+  background: #fff;
+  color: var(--solid-ink);
+  box-shadow: 0 1px 2px rgb(15 39 71 / 18%), 0 6px 16px rgb(15 39 71 / 18%);
+}
+
+.btn--outline-light {
+  background: transparent;
+  border-color: rgb(255 255 255 / 55%);
+  color: #fff;
+}
+
+/* Efectos al pasar el ratón: solo donde hay ratón (en el celular quedarían «pegados» tras tocar). */
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover:not(:disabled) {
+    background: var(--kind-deep);
+  }
+  .btn--ghost:hover:not(:disabled) {
+    background: var(--kind-soft);
+    border-color: var(--kind);
+  }
+  .btn--danger:hover:not(:disabled) {
+    background: var(--solid-danger-2);
+  }
+  .btn--danger-ghost:hover:not(:disabled) {
+    background: var(--red-50);
+    border-color: var(--red-600);
+  }
+  .btn--light:hover:not(:disabled) {
+    background: var(--navy-50);
+  }
+  .btn--outline-light:hover:not(:disabled) {
+    background: rgb(255 255 255 / 12%);
+  }
+}
+
+.btn--small {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: var(--fs-sm);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--navy-700);
+  transition: transform var(--dur-press) var(--ease-out);
+}
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+}
+
+.link-btn {
+  padding: 8px 4px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--navy-600);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+.link-btn:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .icon-btn:hover:not(:disabled) {
+    background: var(--navy-50);
+  }
+  .link-btn:hover {
+    color: var(--navy-800);
+  }
+}
+
+/* ---- Paneles ---------------------------------------------------------------- */
+.panel {
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-soft);
+}
+
+@media (min-width: 640px) {
+  .panel {
+    padding: var(--space-5);
+  }
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.panel__title {
+  font-family: var(--font-value);
+  font-size: 1.1875rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--navy-800);
+}
+
+.panel > .panel__title {
+  margin-bottom: var(--space-3);
+}
+
+.panel__sub {
+  margin: -6px 0 var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.panel__foot {
+  margin-top: var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.panel p + p,
+.panel p + .actions,
+.panel ul + p {
+  margin-top: var(--space-3);
+}
+
+.panel--error {
+  border-color: var(--red-100);
+  background: var(--red-50);
+}
+.panel--error > * + * {
+  margin-top: var(--space-3);
+}
+
+.panel--danger {
+  border-color: var(--red-100);
+}
+.panel--danger .panel__title {
+  color: var(--red-700);
+}
+
+.panel--soon {
+  background: var(--navy-50);
+  border-color: var(--navy-100);
+}
+.panel--soon > * + * {
+  margin-top: var(--space-3);
+}
+
+.panel--welcome {
+  padding-bottom: var(--space-4);
+}
+
+/* ---- Cifras: dinero y KPIs ---------------------------------------------------- */
+.money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.money--income {
+  color: var(--green-700);
+}
+.money--alert {
+  color: var(--red-700);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-3);
+}
+
+@media (min-width: 760px) {
+  .kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .panel--summary .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 520px;
+  }
+}
+
+.kpi dt {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.kpi dd:not(.kpi__note) {
+  margin-top: 2px;
+  font-family: var(--font-value);
+  font-size: 1.3125rem;
+  font-weight: 700;
+  color: var(--navy-800);
+  overflow-wrap: anywhere;
+}
+.kpi__big {
+  font-variant-numeric: tabular-nums;
+}
+.kpi__note {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.delta--good {
+  color: var(--green-700);
+}
+.delta--bad {
+  color: var(--navy-700); /* un gasto que sube NO es "alerta roja": el rojo se reserva para alertas reales */
+}
+.delta--none {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ---- Etiquetas -------------------------------------------------------------- */
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.tag--income {
+  background: var(--green-100);
+  color: var(--green-700);
+}
+.tag--expense {
+  background: var(--navy-100);
+  color: var(--navy-700);
+}
+.tag--saving {
+  background: var(--gray-100);
+  color: var(--gray-800);
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.badge--demo {
+  background: var(--surface);
+  border: 1px dashed var(--navy-400);
+  color: var(--navy-600);
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--navy-50);
+  border: 1px dashed var(--navy-300);
+  border-radius: var(--radius);
+}
+.banner__text {
+  flex: 1 1 260px;
+  font-size: var(--fs-sm);
+  color: var(--navy-800);
+}
+
+/* ---- Estados vacíos --------------------------------------------------------- */
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-3);
+  text-align: center;
+}
+.empty__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--navy-100);
+  color: var(--navy-700);
+}
+.empty__title {
+  font-size: var(--fs-md);
+  color: var(--navy-800);
+}
+.empty__text {
+  max-width: 46ch;
+  color: var(--text-muted);
+}
+.empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.empty-line,
+.count-line {
+  padding: var(--space-3) 0;
+}
+.count-line {
+  padding-top: 0;
+  font-size: var(--fs-sm);
+}
+
+/* ---- Selector de mes ---------------------------------------------------------- */
+.month-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.month-selector__label {
+  min-width: 11ch;
+  text-align: center;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--navy-800);
+}
+
+/* ---- Formularios ---------------------------------------------------------------- */
+.stack > * + * {
+  margin-top: var(--space-4);
+}
+
+.field {
+  display: block;
+  min-width: 0;
+  margin-inline: 0; /* (no usar "margin: 0": anularía la separación de .stack) */
+  padding: 0;
+  border: 0;
+}
+.field > label,
+.field > legend,
+.field > .field__label,
+.welcome-name label {
+  display: block;
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  color: var(--gray-800);
+}
+.field-row {
+  display: grid;
+  gap: var(--space-4);
+}
+@media (min-width: 480px) {
+  .field-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.input,
+select.input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 1rem; /* 16px evita el zoom automático en iPhone */
+}
+@media (hover: hover) and (pointer: fine) {
+  .input:hover {
+    border-color: var(--gray-400);
+  }
+}
+.input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+  border-color: var(--navy-500);
+}
+.input[aria-invalid='true'] {
+  border-color: var(--red-600);
+  background: var(--red-50);
+}
+.input--area {
+  min-height: 84px;
+  resize: vertical;
+}
+.input--spaced {
+  margin-top: var(--space-2);
+}
+
+.input-money {
+  position: relative;
+}
+.input-money__symbol {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-weight: 600;
+  pointer-events: none;
+}
+.input--money {
+  padding-left: 46px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.hint {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  min-height: 1em;
+}
+.hint--warn {
+  color: var(--red-700);
+}
+.field__error {
+  margin-top: 6px;
+  color: var(--red-700);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.field__error--form {
+  padding: 10px 12px;
+  background: var(--red-50);
+  border: 1px solid var(--red-100);
+  border-radius: var(--radius-sm);
+}
+.static-value {
+  padding: 10px 12px;
+  background: var(--gray-50);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.inline-form .input {
+  flex: 1 1 200px;
+  width: auto;
+}
+.welcome-name {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.segmented__option {
+  position: relative;
+  flex: 1 1 0;
+}
+.segmented__option input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.segmented__option span {
+  display: grid;
+  place-items: center;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.segmented__option input:checked + span {
+  background: var(--solid-ink-2);
+  border-color: var(--solid-ink-2);
+  color: #fff;
+}
+.segmented__option input:focus-visible + span {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+.actions--start {
+  justify-content: flex-start;
+  margin-top: var(--space-3);
+}
+.actions--split {
+  justify-content: space-between;
+}
+.actions__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---- Barras de progreso ---------------------------------------------------------- */
+.progress {
+  display: block;
+  width: 100%;
+  height: 10px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--gray-100);
+  overflow: hidden;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.progress::-webkit-progress-bar {
+  background: var(--gray-100);
+}
+.progress::-webkit-progress-value {
+  background: var(--green-600);
+  border-radius: 5px;
+}
+.progress::-moz-progress-bar {
+  background: var(--green-600);
+  border-radius: 5px;
+}
+/* Contenedor de la barra: lleva una «cortina» del color del riel que, al llegar a la pantalla, se encoge hacia la
+   derecha y descubre el relleno (motion.css). Quieta, no tapa nada (escala 0). */
+.progress-wrap {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 5px;
+}
+.progress-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gray-100);
+  transform-origin: right center;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+/* ---- Leyendas y tablas gemelas ---------------------------------------------------- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px var(--space-4);
+  margin: 0 0 var(--space-3);
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend__value {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--gray-400);
+}
+.swatch--income { background: var(--income); }
+.swatch--expense { background: var(--expense); }
+.swatch--saving { background: var(--saving); }
+.swatch--free { background: var(--free); }
+.swatch--primary { background: var(--navy-700); }
+.swatch--ord-1 { background: var(--ord-1); }
+.swatch--ord-2 { background: var(--ord-2); }
+.swatch--ord-3 { background: var(--ord-3); }
+.swatch--inc-1 { background: var(--inc-1); }
+.swatch--inc-2 { background: var(--inc-2); }
+.swatch--inc-3 { background: var(--inc-3); }
+
+.table-view {
+  margin-top: var(--space-3);
+  font-size: var(--fs-sm);
+}
+.table-view summary {
+  display: inline-block;
+  padding: 6px 0;
+  color: var(--navy-600);
+  font-weight: 600;
+  cursor: pointer;
+}
+.table-view__scroll {
+  overflow-x: auto;
+  margin-top: var(--space-2);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.table th,
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+.table th[scope='col'] {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: var(--fs-xs);
+}
+.table th[scope='row'] {
+  font-weight: 500;
+  white-space: normal;
+}
+.table .num {
+  text-align: right;
+}
+
+/* ---- Listas de movimientos --------------------------------------------------------- */
+.rows {
+  margin: 0;
+  list-style: none;
+}
+.row-item + .row-item {
+  border-top: 1px solid var(--border);
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+button.row:active,
+a.row:active {
+  transform: scale(0.99);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    background: var(--gray-50);
+  }
+}
+.row__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.row__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.row__title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.row__side {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  flex: none;
+}
+.row__amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.row__amount--income {
+  color: var(--green-700);
+}
+.row__time {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.day + .day {
+  margin-top: var(--space-4);
+}
+.day__title {
+  margin: 0 0 4px;
+  padding: 0 6px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.plain-list {
+  margin: var(--space-3) 0;
+  padding-left: 1.2em;
+}
+.plain-list li + li {
+  margin-top: var(--space-2);
+}
+
+/* ---- Hojas emergentes (formularios y confirmaciones) --------------------------------- */
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 92dvh;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.sheet::backdrop {
+  background: rgb(15 39 71 / 48%);
+}
+.sheet__panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 92dvh;
+}
+.sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.sheet__title {
+  font-size: var(--fs-lg);
+  color: var(--navy-800);
+}
+.sheet__body {
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5) calc(var(--space-5) + env(safe-area-inset-bottom));
+}
+.confirm__message {
+  color: var(--gray-800);
+}
+.choices {
+  display: grid;
+  gap: var(--space-2);
+}
+.choice {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  height: auto;
+  min-height: 48px;
+  padding-block: var(--space-3);
+  text-align: left;
+  white-space: normal;
+}
+.choice__label {
+  font-weight: 600;
+}
+.choice__note {
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+@media (min-width: 640px) {
+  .sheet {
+    margin: auto;
+    border-radius: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet[open] {
+    animation: sheet-in var(--dur-enter) var(--ease-out);
+  }
+  .sheet[open]::backdrop {
+    animation: fade-in var(--dur-enter) var(--ease-out);
+  }
+  @keyframes sheet-in {
+    from { transform: translateY(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+.menu {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  list-style: none;
+}
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 64px;
+  padding: 10px var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+}
+@media (hover: hover) and (pointer: fine) {
+  .menu__item:hover:not(:disabled) {
+    background: var(--navy-50);
+    border-color: var(--navy-300);
+  }
+}
+.menu__item:disabled {
+  opacity: 0.55;
+}
+.menu__item strong {
+  display: block;
+}
+.menu__item small {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.menu__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+.menu__icon--income { background: var(--green-100); color: var(--green-700); }
+.menu__icon--expense { background: var(--navy-100); color: var(--navy-700); }
+.menu__icon--saving { background: var(--gray-100); color: var(--navy-700); }
+.menu__icon--debt { background: var(--navy-50); color: var(--navy-800); }
+
+/* ---- Avisos emergentes y globo de gráficos -------------------------------------------- */
+.toasts {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-h) + 84px + env(safe-area-inset-bottom));
+  z-index: 200;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--gutter);
+  pointer-events: none;
+}
+.toast {
+  max-width: 480px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--solid-ink);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.toast--error {
+  background: var(--solid-danger-2);
+}
+.toast--info {
+  background: var(--solid-ink-2);
+}
+@media (min-width: 900px) {
+  .toasts {
+    bottom: var(--space-5);
+  }
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 300;
+  min-width: 140px;
+  max-width: 260px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--solid-ink);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  font-size: var(--fs-sm);
+  pointer-events: none;
+}
+.tooltip__title {
+  margin-bottom: 4px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tooltip__value {
+  font-variant-numeric: tabular-nums;
+}
+.tooltip__label {
+  color: rgb(255 255 255 / 72%);
+}
+.tooltip .swatch {
+  box-shadow: 0 0 0 1.5px rgb(255 255 255 / 70%);
+}
+
+/* ---- Pestañas dentro de una pantalla (Finanzas: Movimientos | Deudas | Patrimonio) ---------- */
+.subtabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: 4px;
+  background: var(--gray-100);
+  border-radius: var(--radius);
+  width: fit-content;
+  max-width: 100%;
+  /* Con varias pestañas (Empresa llega a 7) en una pantalla angosta, se desliza hacia los lados en vez de apretarse. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: relative;
+}
+.subtabs::-webkit-scrollbar {
+  display: none;
+}
+.subtab {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  color: var(--gray-600);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+/* Pestaña activa: una «tarjeta» blanca que aparece con un rebote mínimo. */
+.subtab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 39 71 / 8%), 0 4px 10px rgb(15 39 71 / 8%);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-pop);
+}
+.subtab[aria-current='page'] {
+  color: var(--kind-ink);
+}
+.subtab[aria-current='page']::before {
+  opacity: 1;
+  transform: none;
+}
+.subtab:active {
+  transform: scale(0.96);
+}
+@media (hover: hover) and (pointer: fine) {
+  .subtab:hover {
+    color: var(--navy-800);
+  }
+}
+.subtab:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+/* En pantallas angostas (320–400 px) las pestañas se reparten el ancho; si no caben, se desliza. */
+@media (max-width: 26rem) {
+  .subtabs {
+    width: 100%;
+  }
+  .subtab {
+    flex: 1 0 auto;
+    min-width: 0;
+    justify-content: center;
+    padding: 0 var(--space-2);
+    font-size: var(--fs-sm);
+  }
+}
+
+/* ---- Riesgo y estados de una deuda (siempre con texto: el color nunca va solo) --------------- */
+.risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.risk__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.risk__score {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+.risk--low {
+  background: var(--green-100);
+  color: var(--green-700);
+}
+.risk--medium {
+  background: var(--warn-100);
+  color: var(--warn-700);
+}
+.risk--high {
+  background: var(--red-100);
+  color: var(--red-700);
+}
+.chip--good {
+  background: var(--green-50);
+  color: var(--green-700);
+}
+.chip--warn {
+  background: var(--warn-100);
+  color: var(--warn-700);
+}
+.chip--alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--red-100);
+  color: var(--red-700);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  color: var(--navy-600);
+  font-weight: 600;
+  text-decoration: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .back-link:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Vista previa de lo que implica una deuda mientras se llena el formulario */
+.debt-preview {
+  padding: var(--space-3) var(--space-4);
+  background: var(--navy-50);
+  border: 1px solid var(--navy-100);
+  border-radius: var(--radius);
+  color: var(--navy-800);
+  font-size: var(--fs-sm);
+}
+.debt-preview p + p {
+  margin-top: 4px;
+}
+.debt-preview__note {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+/* ---- Botones de exportar ----------------------------------------------------------------------- */
+.export {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.export .btn {
+  gap: 6px;
+}
+
+/* ---- Patrimonio neto ------------------------------------------------------------------
+   Sección de papel con filete fino y la cifra en tinta a la mitad del tamaño del billete: en Inicio, el único
+   número grande y de color es «Disponible» (revisión final de Impeccable, 0.14.3). */
+.nw-hero {
+  padding: var(--space-4);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+.nw-hero__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.nw-hero__label {
+  font-family: var(--font-value);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--navy-600);
+}
+.nw-hero__link {
+  color: var(--kind-ink);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.nw-hero__amount {
+  margin-top: 4px;
+  font-family: var(--font-value);
+  font-size: clamp(1.625rem, 6vw, 2.125rem);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--navy-800);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.nw-hero--negative .nw-hero__amount {
+  color: var(--red-700);
+}
+.nw-hero__caption {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.nw-hero__deltas {
+  display: grid;
+  gap: 4px;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+.nw-hero__delta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+.nw-hero__delta--up .nw-hero__change {
+  color: var(--green-700);
+}
+.nw-hero__delta--none {
+  color: var(--text-muted);
+}
+.nw-hero__change {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.nw-hero__since {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+@media (min-width: 640px) {
+  .nw-hero {
+    padding: var(--space-5);
+  }
+}
+/* En el celular el botón + se posa abajo a la derecha: la explicación y las variaciones le dejan libre esa esquina,
+   para que ninguna cifra quede tapada en la primera pantalla (revisión final de Impeccable). */
+@media (max-width: 899px) {
+  .nw-hero__caption,
+  .nw-hero__deltas {
+    padding-right: 64px;
+  }
+}
+
+/* ---- Selector de período (Mensual | Trimestral | Anual) ------------------------------------- */
+.period-switch {
+  display: flex;
+  gap: var(--space-1);
+  padding: 4px;
+  margin-bottom: var(--space-3);
+  background: var(--gray-100);
+  border-radius: var(--radius);
+  width: fit-content;
+  max-width: 100%;
+}
+.period-switch__btn {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gray-600);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .period-switch__btn:hover {
+    color: var(--navy-800);
+  }
+}
+.period-switch__btn[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--navy-800);
+  box-shadow: var(--shadow-sm);
+}
+.period-switch__btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (max-width: 26rem) {
+  .period-switch {
+    width: 100%;
+  }
+  .period-switch__btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 var(--space-2);
+    font-size: var(--fs-sm);
+  }
+}
+
+/* ---- Ritmo actual de una meta ---------------------------------------------------------------- */
+.pace {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--navy-50);
+  border: 1px solid transparent;
+  font-size: var(--fs-sm);
+}
+.pace--good {
+  background: var(--green-50);
+  border-color: var(--green-100);
+}
+.pace--warn {
+  background: var(--warn-50);
+  border-color: var(--warn-100);
+}
+.pace--alert {
+  background: var(--red-50);
+  border-color: var(--red-100);
+}
+.feas__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pace p {
+  margin: 0;
+}
+.pace__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px var(--space-3);
+}
+.pace__title {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.pace__figure {
+  font-variant-numeric: tabular-nums;
+}
+.pace__foot {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+
+/* =============================================================================
+   ESPACIOS DE TRABAJO (selector del menú, lista, elegir modalidad)
+   ============================================================================= */
+.ws-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ws-switch[hidden] {
+  display: none;
+}
+.ws-switch__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.ws-switch__text {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.2;
+}
+.ws-switch__name {
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-switch__kind {
+  font-size: var(--fs-xs);
+  opacity: 0.75;
+}
+.ws-switch__chev {
+  flex: none;
+  opacity: 0.7;
+}
+
+/* En el menú lateral (fondo azul marino) */
+.ws-switch--side {
+  background: rgb(255 255 255 / 8%);
+  border-color: rgb(255 255 255 / 14%);
+  color: #fff;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ws-switch--side:hover {
+    background: rgb(255 255 255 / 14%);
+  }
+}
+.ws-switch--side .ws-switch__icon {
+  background: rgb(255 255 255 / 14%);
+}
+
+/* En la barra superior del celular */
+.ws-switch--top {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 58%;
+  margin-left: auto;
+  padding: 4px 8px;
+  border-color: rgb(255 255 255 / 22%);
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+.ws-switch--top .ws-switch__icon {
+  width: 28px;
+  height: 28px;
+  background: var(--navy-100);
+  color: var(--navy-700);
+}
+
+.ws-list,
+.ws-manage {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ws-option:hover {
+    background: var(--navy-50);
+    border-color: var(--navy-200);
+  }
+}
+.ws-option[aria-current='true'] {
+  border-color: var(--navy-500);
+  background: var(--navy-50);
+  box-shadow: inset 3px 0 0 var(--navy-500);
+}
+.ws-option__icon,
+.kind-choice__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--navy-100);
+  color: var(--navy-700);
+}
+.ws-option__text,
+.ws-manage__text {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-option__name {
+  color: var(--navy-800);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ws-option__meta {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.ws-option__check {
+  flex: none;
+  color: var(--green-600);
+}
+
+.ws-manage {
+  gap: var(--space-3);
+}
+.ws-manage__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.ws-manage__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  grid-column: 2;
+}
+.ws-manage__chips:empty {
+  display: none;
+}
+.ws-manage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  grid-column: 1 / -1;
+}
+@media (min-width: 760px) {
+  .ws-manage__item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .ws-manage__chips {
+    grid-column: auto;
+  }
+}
+
+/* Elegir la modalidad dentro de una hoja (crear otro espacio) */
+.kind-choices {
+  display: grid;
+  gap: var(--space-2);
+}
+.kind-choice {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+.kind-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.kind-choice__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.kind-choice__body small {
+  display: block;
+  color: var(--text-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .kind-choice:hover .kind-choice__body {
+    border-color: var(--navy-300);
+  }
+}
+.kind-choice input:checked + .kind-choice__body {
+  border-color: var(--navy-500);
+  background: var(--navy-50);
+  box-shadow: inset 3px 0 0 var(--navy-500);
+}
+.kind-choice input:focus-visible + .kind-choice__body {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- Recorrido guiado (ui/tour.js) ---------------------------------------------------
+   El <dialog> ocupa toda la pantalla y es transparente: el oscurecido es la sombra gigante del
+   recuadro «spot», que queda encima del elemento resaltado. Las posiciones las pone tour.js. */
+.tour {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+.tour::backdrop {
+  background: transparent;
+}
+.tour__spot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 200vmax rgb(15 39 71 / 66%);
+  outline: 3px solid #fff;
+  outline-offset: 0;
+  pointer-events: none;
+}
+/* Sin resaltado visible (el elemento desapareció, o la bienvenida de Chele): todo oscuro igual.
+   (!important porque base.css esconde todo [hidden] con !important.) */
+.tour__spot[hidden] {
+  display: block !important;
+  width: 0;
+  height: 0;
+  outline: 0;
+}
+.tour__card {
+  position: fixed;
+  top: 0;
+  left: 0;
+  transform: translate(var(--space-4), var(--space-4));
+  width: min(360px, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+.tour__card:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.tour__progress {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.tour__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-lg);
+  color: var(--navy-800);
+}
+.tour__text {
+  margin: 0 0 var(--space-4);
+  color: var(--gray-800);
+}
+.tour__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.tour__nav {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.tour__nav .btn {
+  min-height: var(--tap);
+}
+.tour__skip {
+  min-height: var(--tap);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tour__spot,
+  .tour__card {
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+}
+/* Modo de alto contraste de Windows: las sombras no se ven, el borde sí. */
+@media (forced-colors: active) {
+  .tour__spot {
+    outline: 3px solid Highlight;
+  }
+  .tour__card {
+    border: 2px solid CanvasText;
+  }
+}
+/* Lo que el guía todavía no ha «dicho»: invisible, pero ocupa su lugar (el globo no cambia de tamaño). */
+.tour__rest {
+  opacity: 0;
+}
+
+/* ---- Chele, el guía del recorrido (0.14.4, ui/guide.js) ---------------------------------
+   Chele y su globo van juntos, fuera del elemento resaltado (las posiciones las pone tour.js). En el celular
+   Chele es más pequeño y el globo se estrecha para que quepan los dos de lado. El dibujo es decorativo. */
+/* --guide-w: ancho de Chele; --guide-gap: aire entre Chele y su globo (que la mano al saludar no llegue al
+   globo). tour.js lee --guide-gap para colocarlos. */
+.tour--guided {
+  --guide-w: 68px;
+  --guide-gap: 12px;
+}
+@media (min-width: 640px) {
+  .tour--guided {
+    --guide-w: 92px;
+    --guide-gap: 24px;
+  }
+}
+.tour--guided .tour__card {
+  width: min(340px, calc(100vw - 2 * var(--space-4) - var(--guide-w) - var(--guide-gap)));
+  border-radius: var(--radius-xl);
+}
+/* Cuando Chele tiene que apartarse (con él no cabía sin tapar), el globo usa todo el ancho: queda más bajo. */
+.tour--guided.is-solo .tour__card {
+  width: min(360px, calc(100vw - 2 * var(--space-4)));
+}
+.tour--guided .tour__progress {
+  color: var(--kind-ink);
+}
+.tour__tail {
+  position: absolute;
+  top: -8px;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px 0 0;
+  background: var(--surface);
+  pointer-events: none;
+}
+.tour__card[data-tail='bottom'] .tour__tail {
+  top: auto;
+  bottom: -8px;
+  border-radius: 0 0 3px;
+}
+.tour__card:not([data-tail='top']):not([data-tail='bottom']) .tour__tail {
+  display: none;
+}
+.tour__guide {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--guide-w);
+  pointer-events: none;
+}
+.tour__guide.is-away {
+  opacity: 0;
+}
+.tour__guide .chele {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 412 / 536;
+  overflow: visible;
+}
+/* Mira hacia lo que explica: el dibujo señala hacia su izquierda; si el elemento está a la derecha, se voltea. */
+.tour__guide[data-face='right'] .chele {
+  transform: scaleX(-1);
+}
+/* Chele viste el color de la denominación del espacio abierto (--kind): morado en Personal, naranja tostado en
+   Freelancer, verde azulado en Emprendedor y carmín en Empresa (antena, audífonos, corbata, pin, ojos y boca).
+   Los colores escritos en el dibujo son el respaldo morado si esto no cargara. */
+.chele .t-fill {
+  fill: var(--kind);
+}
+.chele .t-light-fill {
+  fill: color-mix(in srgb, var(--kind) 55%, #fff);
+}
+.chele .t-light {
+  stop-color: color-mix(in srgb, var(--kind) 55%, #fff);
+}
+.chele .t-mid {
+  stop-color: color-mix(in srgb, var(--kind) 85%, #fff);
+}
+.chele .t-deep {
+  stop-color: var(--kind-deep);
+}
+.chele .t-eye-hi {
+  stop-color: color-mix(in srgb, var(--kind) 8%, #fff);
+}
+.chele .t-eye {
+  stop-color: color-mix(in srgb, var(--kind) 40%, #fff);
+}
+.chele .t-stripe {
+  stroke: color-mix(in srgb, var(--kind) 30%, #fff);
+}
+.chele .t-line {
+  stroke: color-mix(in srgb, var(--kind) 20%, #fff);
+}
+/* Expresiones: saluda (wave), señala (point), contento (happy). */
+.chele-eyes-happy,
+.chele-mouth-big {
+  opacity: 0;
+}
+.chele[data-mood='happy'] .chele-eyes,
+.chele[data-mood='wave'] .chele-mouth,
+.chele[data-mood='happy'] .chele-mouth {
+  opacity: 0;
+}
+.chele[data-mood='happy'] .chele-eyes-happy,
+.chele[data-mood='wave'] .chele-mouth-big,
+.chele[data-mood='happy'] .chele-mouth-big {
+  opacity: 1;
+}
+/* El brazo libre gira desde el hombro (130,289 en el dibujo). */
+.chele-arm,
+.chele-wave {
+  transform-box: view-box;
+  transform-origin: 130px 289px;
+}
+.chele[data-mood='wave'] .chele-arm {
+  transform: rotate(150deg);
+}
+.chele[data-mood='happy'] .chele-arm {
+  transform: rotate(160deg);
+}
+.chele[data-mood='point'][data-dir='up'] .chele-arm {
+  transform: rotate(118deg);
+}
+.chele[data-mood='point'][data-dir='down'] .chele-arm {
+  transform: rotate(52deg);
+}
+.chele-eyes,
+.chele-shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Con movimiento permitido: se desliza de un paso a otro, flota, parpadea y saluda con la mano.
+   Con «reducir movimiento» nada de esto existe: expresión fija y texto completo. */
+@media (prefers-reduced-motion: no-preference) {
+  .tour__guide {
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .tour__guide.is-placed {
+    transition: transform var(--dur-enter) var(--ease-in-out), opacity var(--dur-base) var(--ease-out);
+  }
+  .tour__guide .chele {
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+  .chele-arm {
+    transition: transform var(--dur-enter) var(--ease-out);
+  }
+  .chele-eyes,
+  .chele-eyes-happy,
+  .chele-mouth,
+  .chele-mouth-big {
+    transition: opacity var(--dur-press) var(--ease-out);
+  }
+  .chele-bob {
+    animation: chele-bob 3200ms var(--ease-in-out) infinite;
+  }
+  .chele-shadow {
+    animation: chele-shadow 3200ms var(--ease-in-out) infinite;
+  }
+  .chele-eyes {
+    animation: chele-blink 4800ms linear infinite;
+  }
+  .chele[data-mood='wave'] .chele-wave {
+    animation: chele-wave 900ms var(--ease-in-out) 3;
+  }
+}
+@keyframes chele-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+@keyframes chele-shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.88);
+    opacity: 0.7;
+  }
+}
+@keyframes chele-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.12);
+  }
+}
+@keyframes chele-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-14deg);
+  }
+  70% {
+    transform: rotate(12deg);
+  }
+}
+
+/* ---- Interruptor (preferencias de Ajustes) --------------------------------------------
+   Es una casilla nativa (teclado y lector de pantalla funcionan solos) con otro aspecto. */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  cursor: pointer;
+}
+.switch-row__text {
+  display: grid;
+  gap: 2px;
+}
+.switch-row__text small {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.switch {
+  position: relative;
+  flex: none;
+  width: 48px;
+  height: 28px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--gray-500); /* 3:1 o más contra el panel blanco (control visible) */
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.switch:checked {
+  background: var(--green-600);
+}
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(15 39 71 / 30%);
+  transition: transform var(--dur-base) var(--ease-pop);
+}
+.switch:checked::before {
+  transform: translateX(20px);
+}
+.switch:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- Modo claro / oscuro: el sol y la luna (ui/theme.js; PNG sin fondo desde la 0.14.6) ----------
+   Botón de 44 px como mínimo. Al anochecer el sol gira, se encoge y se hunde mientras la luna entra girando y
+   saltan chispas; al amanecer, al revés. Solo transform y opacity; con «reducir movimiento» cambia de golpe. */
+.daynight {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.daynight__art {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 30px;
+}
+.daynight--lg .daynight__art {
+  width: 56px;
+  height: 56px;
+}
+.daynight:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.dn-sun,
+.dn-moon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  pointer-events: none;
+}
+/* De día: el sol arriba; la luna escondida arriba a la derecha, girada y pequeña. */
+.dn-moon {
+  opacity: 0;
+  transform: translate(45%, -55%) rotate(-70deg) scale(0.35);
+}
+/* De noche: la luna en su sitio; el sol hundido, girado y pequeño. */
+:root[data-theme='dark'] .dn-sun {
+  opacity: 0;
+  transform: translate(-30%, 60%) rotate(140deg) scale(0.35);
+}
+:root[data-theme='dark'] .dn-moon {
+  opacity: 1;
+  transform: none;
+}
+/* Chispas: cuatro destellos que saltan desde el centro al cambiar (dorados de día, plateados de noche). */
+.dn-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: #ffcf3f;
+  box-shadow: 0 0 4px #ffcf3f;
+  opacity: 0;
+  pointer-events: none;
+}
+:root[data-theme='dark'] .dn-spark {
+  background: #f1ebff;
+  box-shadow: 0 0 4px #cbbcff;
+}
+.daynight--lg .dn-spark {
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dn-sun,
+  .dn-moon {
+    transition: transform var(--dur-enter) var(--ease-out), opacity var(--dur-enter) var(--ease-out);
+  }
+  /* La que entra espera un instante a que la otra empiece a irse. */
+  :root[data-theme='dark'] .dn-moon,
+  :root:not([data-theme='dark']) .dn-sun {
+    transition-delay: var(--stagger);
+  }
+  .daynight:active .daynight__art {
+    transform: scale(0.88);
+  }
+  .daynight__art {
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+  .daynight.is-switching .dn-spark--1 {
+    animation: dn-spark-1 300ms var(--ease-out) 60ms;
+  }
+  .daynight.is-switching .dn-spark--2 {
+    animation: dn-spark-2 300ms var(--ease-out) 80ms;
+  }
+  .daynight.is-switching .dn-spark--3 {
+    animation: dn-spark-3 300ms var(--ease-out) 100ms;
+  }
+  .daynight.is-switching .dn-spark--4 {
+    animation: dn-spark-4 300ms var(--ease-out) 120ms;
+  }
+}
+@keyframes dn-spark-1 {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-150%, -260%) scale(1.2);
+  }
+}
+@keyframes dn-spark-2 {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(270%, -170%) scale(1);
+  }
+}
+@keyframes dn-spark-3 {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(240%, 220%) scale(0.9);
+  }
+}
+@keyframes dn-spark-4 {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-260%, 170%) scale(1.1);
+  }
+}
+/* Fila de Ajustes → Este dispositivo */
+.theme-row + .switch-row {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-soft);
+}
+.theme-row__state {
+  margin-left: var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ---- Mostrar / ocultar contraseña: el ojo (ui/passwordToggle.js, 0.14.6) -----------------
+   Oculta → ojo cerrado; visible → ojo abierto. Al cambiar, el párpado se mueve y una estela desenfocada del ojo
+   aparece y se va (efecto de desenfoque de movimiento). El desenfoque es fijo; solo se animan transform y opacity. */
+.eye-toggle {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--kind-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.eye-toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.eye-toggle .eye {
+  overflow: visible;
+}
+.eye__open,
+.eye__closed,
+.eye__trail {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Oculta (aria-pressed=false): ojo cerrado. */
+.eye__open {
+  opacity: 0;
+  transform: scaleY(0.2);
+}
+.eye__closed {
+  opacity: 1;
+}
+.eye__trail {
+  opacity: 0;
+  filter: blur(2.2px);
+}
+/* Visible: ojo abierto. */
+.eye-toggle[aria-pressed='true'] .eye__open {
+  opacity: 1;
+  transform: none;
+}
+.eye-toggle[aria-pressed='true'] .eye__closed {
+  opacity: 0;
+  transform: translateY(-3px) scaleY(0.4);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .eye__open,
+  .eye__closed {
+    transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out);
+  }
+  .eye-toggle:active .eye {
+    transform: scale(0.9);
+  }
+  .eye-toggle .eye {
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+  .eye-toggle.is-moving .eye__trail {
+    animation: eye-trail 280ms var(--ease-out);
+  }
+}
+@keyframes eye-trail {
+  0% {
+    opacity: 0;
+    transform: translateY(-3px) scaleY(0.55);
+  }
+  35% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(3px) scaleY(1.2);
+  }
+}
+@media (forced-colors: active) {
+  .eye-toggle {
+    border: 1px solid ButtonText;
+  }
+}

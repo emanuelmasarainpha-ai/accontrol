@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 412 536" class="chele" aria-hidden="true" focusable="false">
+  <!-- Chele, el guía del recorrido de ACCONTROL (0.14.4). Dibujo decorativo: el texto del paso lo lee el lector
+       de pantalla aparte. Las partes que se mueven llevan clase (ui/guide.js y components.css las animan solo con
+       transform y opacity); las que se mueven NO llevan atributo transform propio (lo tiene un grupo de dentro).
+       Sin <script>, sin style="…" (política de seguridad); los id llevan el prefijo chele- para no chocar. -->
+  <defs>
+    <linearGradient id="chele-visor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26304a"/><stop offset="1" stop-color="#121726"/></linearGradient>
+    <radialGradient id="chele-ball" cx="0.35" cy="0.35" r="0.7"><stop class="t-light" offset="0" stop-color="#9c7fd0"/><stop class="t-deep" offset="1" stop-color="#4a2d78"/></radialGradient>
+    <linearGradient id="chele-cup" x1="0" y1="0" x2="1" y2="1"><stop class="t-mid" offset="0" stop-color="#7b5bb3"/><stop class="t-deep" offset="1" stop-color="#3f2668"/></linearGradient>
+    <linearGradient id="chele-suit" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c3347"/><stop offset="1" stop-color="#11141d"/></linearGradient>
+    <linearGradient id="chele-shirt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e7f0"/></linearGradient>
+    <linearGradient id="chele-tie" x1="0" y1="0" x2="1" y2="1"><stop class="t-mid" offset="0" stop-color="#7a52b8"/><stop class="t-deep" offset="1" stop-color="#3f2668"/></linearGradient>
+    <linearGradient id="chele-wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f7cf6b"/><stop offset="0.6" stop-color="#f0b443"/><stop offset="1" stop-color="#d4962a"/></linearGradient>
+    <radialGradient id="chele-glove" cx="0.38" cy="0.32" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d5dce8"/></radialGradient>
+    <radialGradient id="chele-eye" cx="0.5" cy="0.45" r="0.6"><stop class="t-eye-hi" offset="0" stop-color="#f1ebff"/><stop class="t-eye" offset="1" stop-color="#b9a2ec"/></radialGradient>
+    <radialGradient id="chele-glow" cx="0.5" cy="0.5" r="0.5"><stop class="t-eye" offset="0" stop-color="#b9a2ec" stop-opacity="0.45"/><stop class="t-eye" offset="1" stop-color="#b9a2ec" stop-opacity="0"/></radialGradient>
+    <clipPath id="chele-head-clip"><rect x="118" y="106" width="264" height="198" rx="90"/></clipPath>
+    <clipPath id="chele-body-clip"><path d="M250 290 C334 290 356 378 349 432 C342 486 302 512 250 512 C198 512 158 486 151 432 C144 378 166 290 250 290 Z"/></clipPath>
+    <clipPath id="chele-tie-clip"><path d="M244 332 L256 332 L264 384 L250 400 L236 384 Z"/></clipPath>
+  </defs>
+
+  <!-- Todo el dibujo corrido para que el origen (0,0) quede arriba a la izquierda: los giros de components.css
+       usan esas coordenadas (el hombro del brazo libre está en 130,289). -->
+  <g transform="translate(-14 -40)">
+  <!-- Sombra en el suelo -->
+  <ellipse class="chele-shadow" cx="250" cy="560" rx="112" ry="12" fill="#141a2a" fill-opacity="0.16"/>
+
+  <g class="chele-bob">
+    <!-- Antena -->
+    <line x1="250" y1="108" x2="250" y2="70" stroke="#1e2638" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="250" cy="60" r="14" fill="url(#chele-ball)" stroke="#1e2638" stroke-width="4"/>
+    <circle cx="245" cy="55" r="4" fill="#ffffff" fill-opacity="0.85"/>
+
+    <!-- Brazo libre: saluda y señala (gira desde el hombro) -->
+    <g class="chele-arm">
+      <g class="chele-wave">
+        <g transform="translate(134 384) rotate(10)">
+          <ellipse cx="0" cy="0" rx="26" ry="56" fill="url(#chele-suit)" stroke="#0c0f17" stroke-width="4"/>
+          <path d="M-12 -40 Q-20 -6 -12 30" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="5" stroke-linecap="round"/>
+          <rect x="-18" y="38" width="36" height="12" rx="5" fill="url(#chele-shirt)" stroke="#0c0f17" stroke-width="3"/>
+          <circle cx="0" cy="62" r="17" fill="url(#chele-glove)" stroke="#1e2638" stroke-width="4"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- Cuerpo: traje negro -->
+    <path d="M250 290 C334 290 356 378 349 432 C342 486 302 512 250 512 C198 512 158 486 151 432 C144 378 166 290 250 290 Z" fill="url(#chele-suit)"/>
+    <g clip-path="url(#chele-body-clip)">
+      <ellipse cx="226" cy="370" rx="80" ry="90" fill="#ffffff" fill-opacity="0.05"/>
+      <ellipse cx="320" cy="480" rx="90" ry="60" fill="#000000" fill-opacity="0.18"/>
+      <path d="M204 290 L296 290 L250 404 Z" fill="url(#chele-shirt)"/>
+      <path d="M204 292 L250 404 L238 410 L196 340 L190 304 Z" fill="#1f2433" stroke="#0c0f17" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M296 292 L250 404 L262 410 L304 340 L310 304 Z" fill="#1f2433" stroke="#0c0f17" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M200 312 L238 398" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2" stroke-linecap="round"/>
+      <path d="M300 312 L262 398" stroke="#ffffff" stroke-opacity="0.1" stroke-width="2" stroke-linecap="round"/>
+      <path d="M250 410 L250 512" stroke="#0a0c12" stroke-width="2.5"/>
+      <circle cx="250" cy="432" r="5.5" fill="#3a4258" stroke="#0a0c12" stroke-width="2"/>
+      <circle cx="250" cy="462" r="5.5" fill="#3a4258" stroke="#0a0c12" stroke-width="2"/>
+      <path d="M286 384 L318 380" stroke="#0a0c12" stroke-width="3" stroke-linecap="round"/>
+      <path d="M292 384 L298 370 L304 378 L310 368 L314 381 Z" fill="#ffffff" stroke="#0c0f17" stroke-width="2" stroke-linejoin="round"/>
+    </g>
+    <path d="M250 290 C334 290 356 378 349 432 C342 486 302 512 250 512 C198 512 158 486 151 432 C144 378 166 290 250 290 Z" fill="none" stroke="#0c0f17" stroke-width="5"/>
+
+    <!-- Cuello, corbata y pin de la marca -->
+    <path d="M226 300 L250 330 L232 344 L214 312 Z" fill="url(#chele-shirt)" stroke="#1e2638" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M274 300 L250 330 L268 344 L286 312 Z" fill="url(#chele-shirt)" stroke="#1e2638" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M244 332 L256 332 L264 384 L250 400 L236 384 Z" fill="url(#chele-tie)" stroke="#1e1430" stroke-width="3" stroke-linejoin="round"/>
+    <g class="t-stripe" clip-path="url(#chele-tie-clip)" stroke="#c9b6ea" stroke-opacity="0.45" stroke-width="3">
+      <line x1="230" y1="340" x2="270" y2="364"/><line x1="230" y1="358" x2="270" y2="382"/><line x1="230" y1="376" x2="270" y2="400"/>
+    </g>
+    <path class="t-fill" d="M242 320 L258 320 L256 334 L244 334 Z" fill="#5b3a8c" stroke="#1e1430" stroke-width="3" stroke-linejoin="round"/>
+    <rect class="t-fill" x="200" y="342" width="22" height="22" rx="5" fill="#5b3a8c" stroke="#e7d9a8" stroke-width="2"/>
+    <path d="M206 359 L211 347 L216 359" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M208 355 H214" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+
+    <!-- Brazo con la regla -->
+    <g transform="translate(366 374) rotate(-24)">
+      <ellipse cx="0" cy="0" rx="26" ry="56" fill="url(#chele-suit)" stroke="#0c0f17" stroke-width="4"/>
+      <path d="M-12 -40 Q-20 -6 -12 30" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="5" stroke-linecap="round"/>
+      <rect x="-18" y="38" width="36" height="12" rx="5" fill="url(#chele-shirt)" stroke="#0c0f17" stroke-width="3"/>
+    </g>
+    <g transform="rotate(14 390 429)">
+      <rect x="377" y="300" width="26" height="210" rx="4" fill="url(#chele-wood)" stroke="#1e2638" stroke-width="4"/>
+      <g stroke="#3a2a10" stroke-width="2.2" stroke-linecap="round">
+        <line x1="377" y1="316" x2="391" y2="316"/><line x1="377" y1="326" x2="384" y2="326"/><line x1="377" y1="336" x2="384" y2="336"/>
+        <line x1="377" y1="346" x2="384" y2="346"/><line x1="377" y1="356" x2="391" y2="356"/><line x1="377" y1="366" x2="384" y2="366"/>
+        <line x1="377" y1="376" x2="384" y2="376"/><line x1="377" y1="386" x2="384" y2="386"/><line x1="377" y1="396" x2="391" y2="396"/>
+        <line x1="377" y1="406" x2="384" y2="406"/><line x1="377" y1="416" x2="384" y2="416"/><line x1="377" y1="426" x2="384" y2="426"/>
+        <line x1="377" y1="436" x2="391" y2="436"/><line x1="377" y1="446" x2="384" y2="446"/><line x1="377" y1="456" x2="384" y2="456"/>
+        <line x1="377" y1="466" x2="384" y2="466"/><line x1="377" y1="476" x2="391" y2="476"/><line x1="377" y1="486" x2="384" y2="486"/>
+        <line x1="377" y1="496" x2="384" y2="496"/>
+      </g>
+      <line x1="400" y1="306" x2="400" y2="504" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+    </g>
+    <circle cx="390" cy="429" r="17" fill="url(#chele-glove)" stroke="#1e2638" stroke-width="4"/>
+    <path d="M378 424 Q384 416 394 418" fill="none" stroke="#1e2638" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Cabeza -->
+    <rect x="118" y="106" width="264" height="198" rx="90" fill="#d7deea"/>
+    <g clip-path="url(#chele-head-clip)">
+      <ellipse cx="236" cy="188" rx="140" ry="102" fill="#f8fafd"/>
+      <ellipse cx="180" cy="128" rx="40" ry="10" fill="#ffffff" transform="rotate(-12 180 128)"/>
+    </g>
+    <rect x="118" y="106" width="264" height="198" rx="90" fill="none" stroke="#1e2638" stroke-width="5"/>
+    <rect x="146" y="144" width="208" height="130" rx="58" fill="url(#chele-visor)" stroke="#1e2638" stroke-width="3"/>
+    <path d="M176 160 Q214 150 254 154" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Ojos: abiertos (parpadean) y contentos (^ ^) -->
+    <circle cx="214" cy="204" r="28" fill="url(#chele-glow)"/>
+    <circle cx="286" cy="204" r="28" fill="url(#chele-glow)"/>
+    <g class="chele-eyes">
+      <ellipse cx="214" cy="204" rx="13" ry="16" fill="url(#chele-eye)"/>
+      <ellipse cx="286" cy="204" rx="13" ry="16" fill="url(#chele-eye)"/>
+      <circle cx="218" cy="198" r="4" fill="#ffffff"/>
+      <circle cx="290" cy="198" r="4" fill="#ffffff"/>
+    </g>
+    <g class="chele-eyes-happy t-line" fill="none" stroke="#e6dcff" stroke-width="5" stroke-linecap="round">
+      <path d="M201 210 Q214 192 227 210"/>
+      <path d="M273 210 Q286 192 299 210"/>
+    </g>
+
+    <!-- Lentes -->
+    <rect x="184" y="178" width="60" height="52" rx="20" fill="#ffffff" fill-opacity="0.06" stroke="#e9dfb8" stroke-width="4"/>
+    <rect x="256" y="178" width="60" height="52" rx="20" fill="#ffffff" fill-opacity="0.06" stroke="#e9dfb8" stroke-width="4"/>
+    <path d="M244 198 Q250 190 256 198" fill="none" stroke="#e9dfb8" stroke-width="4" stroke-linecap="round"/>
+    <path d="M184 196 L152 190" stroke="#e9dfb8" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M316 196 L348 190" stroke="#e9dfb8" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M192 188 L202 182" stroke="#ffffff" stroke-opacity="0.5" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M264 188 L274 182" stroke="#ffffff" stroke-opacity="0.5" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- Mejillas y boca (pequeña al explicar; grande al saludar y al terminar) -->
+    <ellipse cx="190" cy="244" rx="10" ry="5" fill="#e98fa8" fill-opacity="0.4"/>
+    <ellipse cx="310" cy="244" rx="10" ry="5" fill="#e98fa8" fill-opacity="0.4"/>
+    <path class="chele-mouth t-line" d="M236 240 Q250 256 264 240 Z" fill="url(#chele-eye)" stroke="#d6c8f5" stroke-width="2" stroke-linejoin="round"/>
+    <path class="chele-mouth-big t-line" d="M230 236 Q250 266 270 236 Z" fill="url(#chele-eye)" stroke="#d6c8f5" stroke-width="2" stroke-linejoin="round"/>
+
+    <!-- Audífonos -->
+    <ellipse cx="116" cy="206" rx="17" ry="36" fill="url(#chele-cup)" stroke="#1e2638" stroke-width="4"/>
+    <ellipse cx="111" cy="206" rx="7" ry="23" fill="#9c7fd0" class="t-light-fill" stroke="#1e2638" stroke-width="2.5"/>
+    <ellipse cx="384" cy="206" rx="17" ry="36" fill="url(#chele-cup)" stroke="#1e2638" stroke-width="4"/>
+    <ellipse cx="389" cy="206" rx="7" ry="23" fill="#9c7fd0" class="t-light-fill" stroke="#1e2638" stroke-width="2.5"/>
+  </g>
+  </g>
+</svg>
