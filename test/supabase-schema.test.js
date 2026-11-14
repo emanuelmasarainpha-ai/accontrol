@@ -19,17 +19,17 @@ const allLower = all.toLowerCase();
 const tables = [...all.matchAll(/create table public\.(\w+)/gi)].map((m) => m[1]);
 
 describe('migraciones de Supabase: orden y contenido', () => {
-  it('hay seis migraciones numeradas en orden y sin repetirse (5.ª facturas de Freelancer 0.14.5; 6.ª no revivir 0.15.1)', () => {
-    assert.equal(files.length, 6);
+  it('hay siete migraciones numeradas en orden y sin repetirse (5.ª facturas 0.14.5; 6.ª no revivir 0.15.1; 7.ª invitaciones 0.16.0)', () => {
+    assert.equal(files.length, 7);
     const versions = files.map((name) => name.split('_')[0]);
     assert.deepEqual(versions, [...versions].sort());
     assert.equal(new Set(versions).size, versions.length);
     for (const name of files) assert.match(name, /^\d{14}_[a-z_]+\.sql$/);
   });
 
-  it('crea las 19 tablas esperadas', () => {
-    assert.equal(tables.length, 19);
-    assert.equal(new Set(tables).size, 19);
+  it('crea las 20 tablas esperadas (la 20.ª, invitaciones, en la 0.16.0)', () => {
+    assert.equal(tables.length, 20);
+    assert.equal(new Set(tables).size, 20);
     for (const expected of ['profiles', 'workspaces', 'workspace_members', 'builtin_categories', 'movements', 'goals', 'debts', 'invoices', 'invoice_payments']) {
       assert.ok(tables.includes(expected), `falta la tabla ${expected}`);
     }
@@ -173,3 +173,49 @@ describe('migración no_revive (0.15.1): lo borrado no revive con una versión m
   });
 });
 
+
+describe('migración de invitaciones (0.16.0): compartir un espacio con seguridad', () => {
+  const name = files.find((n) => n.includes('_invites'));
+  const body = name ? sql(name) : '';
+  const flat = body.toLowerCase().replace(/\s+/g, ' ');
+
+  it('existe, crea la tabla de invitaciones con RLS y solo deja leer columnas sin la huella del código', () => {
+    assert.ok(name, 'falta la migración');
+    assert.ok(flat.includes('create table public.workspace_invites'));
+    assert.ok(flat.includes('alter table public.workspace_invites enable row level security'));
+    assert.ok(flat.includes('grant select (id, workspace_id, role, created_by, created_at, expires_at, used_by, used_at, revoked_at) on public.workspace_invites to authenticated'));
+    assert.ok(!/grant (insert|update|delete)[^;]*workspace_invites/.test(flat), 'nadie escribe directo en invitaciones');
+    assert.ok(!/grant (insert|update|delete)[^;]*workspace_members/.test(flat), 'nadie escribe directo en miembros');
+  });
+
+  it('guarda solo la huella SHA-256 del código (64 hexadecimales) y el código usa un alfabeto sin letras confusas', () => {
+    assert.ok(flat.includes("code_hash text not null unique check (code_hash ~ '^[0-9a-f]{64}$')"));
+    assert.ok(flat.includes("extensions.digest(code, 'sha256')"));
+    assert.ok(flat.includes("'abcdefghjkmnpqrstuvwxyz23456789'"));
+    assert.ok(flat.includes('extensions.gen_random_bytes(12)'));
+  });
+
+  it('solo se invitan Administradores y Contadores; el Personal no se comparte; vence en 7 días', () => {
+    assert.ok(flat.includes("role in ('admin', 'accountant')"));
+    assert.ok(flat.includes("ws_kind = 'personal'"));
+    assert.ok(flat.includes("interval '7 days'"));
+  });
+
+  it('las 7 funciones públicas exigen sesión y no las puede llamar un visitante sin sesión', () => {
+    const fns = ['create_workspace_invite', 'accept_workspace_invite', 'revoke_workspace_invite', 'list_workspace_members', 'set_workspace_member_role', 'remove_workspace_member', 'leave_workspace'];
+    for (const fn of fns) {
+      const start = flat.indexOf(`function public.${fn}(`);
+      assert.ok(start >= 0, fn);
+      const text = flat.slice(start, flat.indexOf('$$;', start));
+      assert.ok(text.includes("if uid is null then raise exception 'necesitas iniciar sesión.'"), `${fn} exige sesión`);
+      assert.ok(text.includes("set search_path = ''"), `${fn} search_path`);
+    }
+    assert.ok(flat.includes('leave_workspace(uuid) from public, anon;'));
+  });
+
+  it('eliminar la cuenta se niega si eres dueño de un espacio con otros miembros', () => {
+    const start = flat.indexOf('create or replace function public.delete_my_account()');
+    assert.ok(start >= 0);
+    assert.ok(flat.slice(start).includes('other.user_id <> uid'));
+  });
+});

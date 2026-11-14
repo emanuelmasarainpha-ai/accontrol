@@ -86,6 +86,19 @@ Decisiones acordadas (2026-11-14): los **datos DEMO no se suben** a la nube; la 
 
 Es una estimación de orden y tamaño, no una promesa de fechas: las versiones pueden juntarse o partirse según lo que encontremos al verificar cada una.
 
+### Plan de la 0.16.0 (compartir un espacio: roles e invitaciones)
+
+Decisiones acordadas (2026-11-14): se invita con un **código que copias y envías tú** (vence en 7 días, un solo uso; sin correos automáticos ni servidor nuevo); primero **3 roles**: **Dueño** (todo: invitar, cambiar roles, quitar miembros, editar y borrar el espacio), **Administrador** (registra y edita todos los datos e invita contadores) y **Contador** (ve todo y exporta, no cambia nada). Cajero y empleado quedan para la 0.16.1. Se comparten **Freelancer, Emprendedor y Empresa**; el espacio **Personal no se comparte**. Compartir requiere tener activada la copia en la nube.
+
+| Paso | Contenido | Estado |
+|---|---|---|
+| 1 | **Base de datos:** tabla de invitaciones (se guarda solo la huella del código, nunca el código) y funciones seguras para crear, aceptar y anular invitaciones, ver los miembros, cambiar el rol, quitar a alguien y salir del espacio. Eliminar la cuenta se niega si eres dueño de un espacio con otros miembros (para no borrarles sus datos). Migración `20261117000100_invites`: código de 12 caracteres sin letras confusas (`XXXX-XXXX-XXXX`, 7 días, un solo uso, se guarda solo la huella SHA-256); 7 funciones con sesión obligatoria. Probada dentro de la base real con 4 usuarios falsos en un bloque que se deshace solo (26 de 26) y, ya aplicada, otra vez (21 de 21); 5 pruebas nuevas sobre el archivo SQL. | ✅ 2026-11-14 |
+| 2 | **Nube en la app:** el almacén de la nube conoce tu rol en cada espacio y llama a esas funciones; la base simulada de las pruebas las imita. | Pendiente |
+| 3 | **Sincronización con espacios compartidos:** no enviar cambios del espacio (nombre, saldo inicial) si no eres el dueño; quitar de tu dispositivo un espacio al que ya no tienes acceso; *Borrar de todos mis dispositivos* solo toca los espacios tuyos. | Pendiente |
+| 4 | **Permisos en la app:** el Contador no puede guardar nada (el almacén lo impide y las pantallas ocultan los botones); solo el dueño renombra o borra el espacio; se ve tu rol en el selector de espacios. | Pendiente |
+| 5 | **Pantalla Miembros:** invitar (elegir rol, copiar el código), ver miembros e invitaciones pendientes, cambiar rol, quitar, anular invitación; **Unirme con un código**; **Salir del espacio**. | Pendiente |
+| 6 | Prueba real con **dos cuentas de prueba** (necesita una segunda cuenta), documentación y publicación. | Pendiente |
+
 ### Cómo se llega a Android, iOS y escritorio sin rehacer todo
 
 - **Hoy:** la PWA ya se instala en Android (con HTTPS).
