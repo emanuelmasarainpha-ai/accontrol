@@ -222,6 +222,8 @@ export function createMockDataServer(options = {}) {
             return reply(200, sortAndLimit([...workspaces.values()].filter((w) => (w.created_by === user.id || isMember(user.id, w.id)) && match(w)).map((w) => ({ ...w })), params));
           }
           if (method === 'POST') {
+            // «Crear solo si no existe» (ON CONFLICT DO NOTHING): las filas que ya existen no se tocan, ni su deleted_at.
+            if (/resolution=ignore-duplicates/.test(headers.prefer ?? headers.Prefer ?? '')) return upsertWorkspaces(user, rows.filter((r) => !workspaces.has(r.id)));
             if (!upsert && rows.some((r) => workspaces.has(r.id))) return reply(409, { code: '23505', message: 'duplicate key value violates unique constraint "workspaces_pkey"' });
             return upsertWorkspaces(user, rows);
           }

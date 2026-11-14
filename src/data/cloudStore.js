@@ -163,6 +163,21 @@ export function createCloudStore(options) {
     },
 
     /**
+     * Crea en la nube los espacios que falten; los que ya existen (vivos o marcados como borrados) NO se tocan.
+     * Es la red de seguridad del envío: los registros necesitan su espacio, pero nunca se revive uno borrado en otro lado.
+     * @param {Workspace[]} workspaces
+     * @returns {Promise<{ ok: true } | CloudFailure>}
+     */
+    async ensureWorkspaces(workspaces) {
+      if (workspaces.length === 0) return { ok: true };
+      const reply = await call('POST', '/rest/v1/workspaces', {
+        query: { on_conflict: 'id' }, prefer: 'resolution=ignore-duplicates,return=minimal',
+        body: workspaces.map((w) => workspaceToRow(w)),
+      });
+      return reply.ok ? { ok: true } : reply;
+    },
+
+    /**
      * Marca espacios como borrados (`deleted_at`). Es una marca: la fila sigue en la nube, así los otros dispositivos
      * se enteran. El borrado definitivo es otra cosa (función delete_workspace_permanently, solo el dueño).
      * @param {string[]} ids

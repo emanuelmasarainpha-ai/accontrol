@@ -29,7 +29,7 @@ export function accountPanel(account) {
     <ul class="plain-list">
       <li><strong>Tus datos:</strong> ${account.sync?.state().enabled
         ? html`se guardan <strong>en este dispositivo y en la nube</strong> (copia en la nube activada, más abajo).`
-        : html`se guardan <strong>solo en este dispositivo</strong> mientras no actives la <strong>copia en la nube</strong> (más abajo). Ver tus datos en otro dispositivo llega en el siguiente paso de esta versión; hasta entonces, usa la copia de seguridad para pasar datos.`}</li>
+        : html`se guardan <strong>solo en este dispositivo</strong> mientras no actives la <strong>copia en la nube</strong> (más abajo). Al activarla, tus otros dispositivos con esta cuenta ven los mismos datos.`}</li>
       <li><strong>Al cerrar sesión</strong> los datos de este dispositivo se conservan: los verás de nuevo al entrar con esta misma cuenta. Otra cuenta que entre aquí no los ve.</li>
     </ul>
     <div class="actions actions--start">

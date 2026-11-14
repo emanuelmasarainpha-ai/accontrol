@@ -383,3 +383,47 @@ describe('dos dispositivos con la misma cuenta', () => {
     mock.offline = false;
   });
 });
+
+describe('revisión periódica (paso 7): lo de otro dispositivo llega sin pulsar nada', () => {
+  it('cada 3 minutos baja lo nuevo, avisa a la pantalla y vuelve a programarse', async () => {
+    const { mock, ws, A } = await twoDevices();
+    // Un tercer dispositivo de la misma cuenta, con relojes falsos para poder «adelantar» el tiempo.
+    let r = await mock.handle({ method: 'POST', url: `${URL_}/auth/v1/token?grant_type=password`, headers: { apikey: 'k' }, body: JSON.stringify({ email: 'ana@correo.com', password: PASS }) });
+    const token = r.body.access_token;
+    const userId = r.body.user.id;
+    const cloud = createCloudStore({ url: URL_, publishableKey: 'k', getAccessToken: async () => token, getUserId: () => userId, fetch: mock.fetch });
+    const local = createMemoryWorkspaceStore();
+    /** @type {Array<{ cb: () => void, ms: number }>} */
+    const timers = [];
+    const controller = createSyncController({
+      cloud, local, storage: fakeStorage(), userId,
+      engineOptions: { locks: null, setTimer: (cb, ms) => { const t = { cb, ms }; timers.push(t); return t; }, clearTimer: (t) => { const i = timers.indexOf(t); if (i >= 0) timers.splice(i, 1); } },
+    });
+    const remote = [];
+    controller.api.onRemote((x) => remote.push(x));
+    assert.equal((await controller.api.enable()).ok, true);
+    const polls = () => timers.filter((t) => t.ms === 180_000);
+    const settle = () => new Promise((res) => setTimeout(res, 30));
+    // Corre la revisión del arranque (0 ms), como pasaría al instante en la app.
+    for (const t of timers.filter((x) => x.ms === 0)) { timers.splice(timers.indexOf(t), 1); t.cb(); }
+    await settle();
+    assert.equal(polls().length, 1, 'al activar queda programada la revisión de cada 3 minutos');
+
+    // En A se registra un gasto y se envía.
+    const dinner = movement({ description: 'Cena (otro dispositivo)' });
+    await A.store.forWorkspace(ws.id).putMany({ movements: [dinner] });
+    await A.api.syncNow();
+    assert.equal((await local.forWorkspace(ws.id).load()).movements.some((m) => m.id === dinner.id), false);
+
+    // Pasan 3 minutos: sin pulsar nada, llega.
+    const tick = polls()[0];
+    timers.splice(timers.indexOf(tick), 1);
+    tick.cb();
+    for (let i = 0; i < 50 && remote.length === 0; i += 1) await new Promise((res) => setTimeout(res, 10));
+    assert.equal((await local.forWorkspace(ws.id).load()).movements.some((m) => m.id === dinner.id), true, 'el gasto llegó solo');
+    assert.equal(remote.length, 1, 'se avisó a la pantalla para que se redibuje');
+    assert.equal(polls().length, 1, 'la siguiente revisión quedó programada');
+    controller.api.disableOnThisDevice();
+    assert.equal(polls().length, 0, 'al apagar la copia, deja de revisar');
+  });
+});

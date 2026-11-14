@@ -159,7 +159,7 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
       6. Después, haz otra vez **Recuperar la contraseña** (el punto anterior): tiene que seguir funcionando **sin pedir la actual**.
     - **Sin conexión:** con la sesión iniciada, apaga el Wi-Fi y recarga: la app **abre** (la sesión está guardada). Entrar o crear una cuenta sin internet dice que no hay conexión.
     - **Eliminar la cuenta (usa una cuenta de prueba):** *Ajustes → Eliminar mi cuenta* y escribe `ELIMINAR`. La cuenta desaparece del servidor (en Supabase: *Authentication → Users*) y ya no se puede entrar con ella. **Los datos guardados en el dispositivo no se borran** (para eso, *Borrar todos mis datos*).
-    - **Lo que todavía NO hace:** copiar tus datos a la nube ni sincronizar el teléfono con la computadora (0.15.0).
+    - **Copia en la nube y sincronización:** desde la 0.15.0 (puntos 36 y 37).
     - **Actualizar desde la 0.13.0 (opcional):** exporta antes una copia completa, abre la versión nueva en la misma dirección, entra o crea tu cuenta y comprueba que tus espacios y su *Disponible* siguen iguales. **La base de datos del dispositivo no cambia** (sigue en la versión 8).
 
 30. **Recorrido guiado (0.14.2):** se prueba en la computadora **y** en el celular, en los cuatro tipos de espacio (Personal 15 pasos, Freelancer 17, Emprendedor 18, Empresa 19).
@@ -253,9 +253,9 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     5. **Sin internet:** apaga el wifi o pon el modo avión, registra otro gasto y abre *Ajustes*: «No hay conexión con la nube… Quedan 1 cambio por enviar; están guardados en este dispositivo.» Vuelve a conectar: en unos segundos «Todo enviado».
     6. **Borrar todo:** con la copia activada, *Ajustes → Borrar todo* tiene **dos** botones. *Borrar de este dispositivo* (escribe BORRAR) deja tus datos en Supabase y apaga la copia aquí. *Borrar de todos mis dispositivos* los marca como borrados también en Supabase (columna `deleted_at` con fecha) y sin internet no borra nada.
     7. **Otro dispositivo con datos propios:** entra con la misma cuenta en otro dispositivo que ya tiene datos y toca *Activar*. La confirmación dice que tu cuenta ya tiene espacios en la nube y que **se juntarán** con los de aquí; el botón dice *Activar y juntar mis datos*. Al terminar, los dos dispositivos tienen los espacios de ambos.
-37. **Sincronización entre dispositivos (0.15.0, paso 6).** Con la misma cuenta **de prueba** del punto 36 y dos navegadores (por ejemplo, la computadora y el teléfono, o Chrome y Edge).
+37. **Sincronización entre dispositivos (0.15.0).** Con la misma cuenta **de prueba** del punto 36 y dos navegadores (por ejemplo, la computadora y el teléfono, o Chrome y Edge).
     1. **Dispositivo vacío:** entra en el segundo navegador. Aparece «Tus datos están en la nube» con *Traer mis datos* y *Empezar de cero aquí*. Toca *Traer mis datos*: sale «Listo: tu espacio está en este dispositivo y sincronizando.» y ves los mismos movimientos que en el primero.
-    2. **Un cambio llega al otro:** en el primero registra un gasto. En el segundo toca *Ajustes → Copia en la nube → Sincronizar ahora* (o sal de la app y vuelve): el gasto aparece **sin recargar**.
+    2. **Un cambio llega al otro:** en el primero registra un gasto. En el segundo toca *Ajustes → Copia en la nube → Sincronizar ahora* (o sal de la app y vuelve, o espera unos 3 minutos): el gasto aparece **sin recargar**.
     3. **Espacio nuevo:** crea un espacio en el primero y sincroniza el segundo: sale «Llegó el espacio «…» desde tu otro dispositivo».
     4. **Borrado:** borra un gasto en el primero y sincroniza el segundo: desaparece también allí.
     5. **Conflicto:** apaga el wifi del segundo, edita **el mismo gasto** en los dos (primero en el segundo, luego en el primero), vuelve a conectar y sincroniza: se queda la edición **más reciente** y la app avisa «Un dato había cambiado en dos dispositivos…».
@@ -291,7 +291,7 @@ Chrome del teléfono por USB + `chrome://inspect` en la computadora permite ver 
 
 ## 4. Mover datos entre computadora y teléfono
 
-Los dispositivos **no se sincronizan** en la Etapa 1.
+Con la **copia en la nube** activada (0.15.0) tus dispositivos ya comparten los datos solos (punto 37). Sin activarla, se pasan a mano:
 
 1. En el dispositivo con los datos: **Ajustes → Copia de seguridad → Exportar copia (.json)**.
 2. Pasa el `.json` al otro dispositivo (correo, USB, Drive…).

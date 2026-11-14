@@ -29,7 +29,7 @@ import { runWorkspaceAction, workspacesPanel } from './workspaces.js';
 
 const ROADMAP = [
   { stage: 'Etapa 1', text: 'Prototipo funcional en este dispositivo: ingresos, gastos, metas y estadísticas (hecha).', done: true },
-  { stage: 'Etapa 2', text: 'Cuenta personal con correo y contraseña y base de datos en la nube con seguridad por usuario (hechas en esta versión); falta la copia en la nube y la sincronización entre tus dispositivos, y después los roles de usuario.', current: true },
+  { stage: 'Etapa 2', text: 'Cuenta personal con correo y contraseña, base de datos en la nube con seguridad por usuario, copia en la nube y sincronización entre tus dispositivos (hechas); faltan los roles de usuario.', current: true },
   { stage: 'Etapa 3', text: 'Deudas con riesgo y amortización, presupuesto automático, alertas y exportación a PDF, Excel y CSV (hecha).', done: true },
   { stage: 'Etapa 4', text: 'Patrimonio neto, estadísticas avanzadas (por mes, trimestre y año) y 9 calculadoras de matemática financiera (hecha).', done: true },
   { stage: 'Ampliación', text: 'Espacios de trabajo: Personal, Freelancer, Emprendedor y Empresa, cada uno con sus datos separados; los de negocio con sus datos de organización en los reportes (pasos 1 y 2) y el módulo Freelancer con clientes, servicios, cobros por cliente, ranking y flujo de caja (paso 3), el módulo Emprendedor con estado de resultados, margen, comparación y proyección (paso 4), las finanzas de Empresa con la pantalla Salud financiera (paso 5), el inventario de Emprendedor y Empresa: productos, proveedores, compras, ventas, stock, valor y ganancia bruta (paso 6a), las facturas internas de Emprendedor y Empresa: emisión con varias líneas, impuesto, cobros parciales, cuentas por cobrar, anulación y PDF de cada factura (paso 6b) y los departamentos de Empresa: cada gasto cargado a un área, presupuesto mensual por área con estado En orden, Cerca del límite o Excedido, y gastos sin departamento (paso 6c), los gastos cargados a cada cliente en Freelancer, con neto y margen por cliente (rentabilidad real), y los logros, rachas y niveles de todos los espacios, calculados con tus datos reales (paso 6d), el diagnóstico financiero con la viabilidad de cada meta, con reglas fijas y a la vista (paso 6e), y las facturas internas también en Freelancer, ligadas a clientes y servicios, con recordatorios de cobro para copiar y enviar tú (paso 6f, hecha). Los roles, empleados e invitaciones llegan después de la sincronización.', done: true },
@@ -199,7 +199,7 @@ ${cloudPanel(sync)}
             : 'solo en este navegador, en este dispositivo. Esta copia no tiene cuenta ni servidor, así que tus datos no se envían a ningún sitio.'}</li>
         <li><strong>Protección:</strong> los datos <strong>no están cifrados</strong> ni protegidos con contraseña. Quien use este navegador con tu usuario del dispositivo podría verlos. Bloquea tu equipo y tu teléfono.</li>
         <li><strong>Pérdida:</strong> ${cloudOn ? 'si borras los datos del sitio o limpias el navegador, este dispositivo los pierde, pero siguen en la nube.' : 'si borras los datos del sitio, limpias el navegador o lo desinstalas, se pierden. Exporta copias con frecuencia.'}</li>
-        <li><strong>Dispositivos:</strong> ${cloudOn ? 'este dispositivo envía sus cambios a la nube. Ver esos datos en otro dispositivo llega en el siguiente paso de esta versión; mientras tanto, para pasar datos usa la copia de seguridad.' : 'tu computadora y tu celular guardan datos separados. Para pasar datos de uno a otro usa la copia de seguridad.'}</li>
+        <li><strong>Dispositivos:</strong> ${cloudOn ? 'tus dispositivos con esta cuenta comparten los datos a través de la nube: lo que cambias en uno llega a los otros. Si el mismo dato cambió en dos, se queda el cambio más reciente y la app te avisa.' : 'tu computadora y tu celular guardan datos separados. Para pasar datos de uno a otro usa la copia de seguridad.'}</li>
       </ul>
       <p class="storage-status" id="storage-status" role="status">Comprobando el almacenamiento…</p>
     </section>
@@ -229,7 +229,7 @@ ${cloudPanel(sync)}
       <ol class="roadmap">${ROADMAP.map(
         (r) => html`<li class="roadmap__item${r.current ? ' roadmap__item--current' : ''}${r.done ? ' roadmap__item--done' : ''}"><span class="roadmap__stage">${r.stage}</span><span>${r.text}</span></li>`,
       )}</ol>
-      <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · Cuentas y base de datos en la nube (Etapa 2, parte 1)</p>
+      <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · Copia en la nube y sincronización (Etapa 2, parte 2)</p>
     </section>
   `;
 

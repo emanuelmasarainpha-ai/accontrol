@@ -43,7 +43,7 @@ Leyenda: ✅ hecho y verificado · 🟡 parcial · ⏳ planificado (no existe to
 
 | Tema | Estado | Detalle | Paso |
 |---|---|---|---|
-| Una identidad de usuario con varios espacios de trabajo | 🟡 | Los espacios existen y están aislados en el dispositivo. La **identidad (cuenta con correo y contraseña) existe desde la 0.14.0**; los espacios aún no están en la nube (sincronización en la 0.15.0), así que cada cuenta ve sus espacios solo en su dispositivo. | 1 / 7 |
+| Una identidad de usuario con varios espacios de trabajo | ✅ | La **identidad (cuenta con correo y contraseña) existe desde la 0.14.0** y, desde la **0.15.0**, los espacios y sus datos se copian a la nube y se sincronizan entre los dispositivos de la cuenta (si la persona activa la copia). Probado contra el Supabase real. Faltan compartir un espacio con otras personas (roles, 0.16.0). | 1 / 7 |
 | Selector de modalidad la primera vez que se abre la app | ✅ | Cuatro tarjetas: Personal, Freelancer, Emprendedor, Empresa. Aparece en instalaciones nuevas, otros navegadores y tras borrar todo. | 1 |
 | Cambiar de espacio (selector de espacios) | ✅ | En el menú lateral y, en el teléfono, arriba. Crear, renombrar, predeterminado y borrar desde *Ajustes*. | 1 |
 | Datos separados por espacio, copias de seguridad por espacio y completa | ✅ | Verificado con pruebas de aislamiento y en navegador real (incluida la actualización desde la 0.3.0). | 1 |

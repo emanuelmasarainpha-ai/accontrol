@@ -301,6 +301,29 @@ describe('motor de envío: vacía la bandeja contra la nube', () => {
     assert.equal((await inner.listWorkspaces()).some((w) => w.id === b.id), true);
   });
 
+  it('un gasto nuevo NO revive un espacio que otro dispositivo borró (paso 7, hallado contra Supabase real)', async () => {
+    const { mock, cloud, ws, store, engine } = await setupSync();
+    await store.forWorkspace(ws.id).putMany({ clients: real(buildFreelancerDemo(T, N).clients).slice(0, 1) });
+    assert.equal((await engine.flush()).ok, true);
+    // Otro dispositivo borra el espacio (marca deleted_at) entre la bajada y la subida de esta vuelta.
+    assert.equal((await cloud.markWorkspacesDeleted([ws.id])).ok, true);
+    const deletedAt = mock.data.workspaces.get(ws.id).deleted_at;
+    assert.notEqual(deletedAt, null);
+    // Aquí se guarda otra cosa (no se tocó el espacio): al enviar, el espacio sigue borrado en la nube.
+    await store.saveProfile({ displayName: 'Ana', lastWorkspaceId: ws.id });
+    await engine.flush();
+    assert.equal(mock.data.workspaces.get(ws.id).deleted_at, deletedAt, 'el espacio no debe revivir');
+  });
+
+  it('red de seguridad: un espacio de aquí que falta en la nube se crea al enviar sus datos', async () => {
+    const { mock, ws, store, engine } = await setupSync(); // el espacio existe aquí y NO en la nube, sin anotación
+    assert.equal(mock.data.workspaces.has(ws.id), false);
+    await store.forWorkspace(ws.id).putMany({ clients: real(buildFreelancerDemo(T, N).clients).slice(0, 1) });
+    assert.equal((await engine.flush()).ok, true);
+    assert.equal(mock.data.workspaces.get(ws.id)?.deleted_at, null);
+    assert.equal(mock.data.live('clients', ws.id).length, 1);
+  });
+
   it('envía el perfil y el predeterminado', async () => {
     const { mock, ws, store, engine, userId } = await setupSync();
     const b = buildWorkspace({ kind: 'company', name: 'B' }, { id: randomUUID(), nowISO: N });

@@ -104,11 +104,20 @@ export function createSyncEngine(options) {
     const workspaces = await local.listWorkspaces();
     const here = new Set(workspaces.map((w) => w.id));
 
-    // 1. Espacios: todos los del dispositivo (el perfil y los registros apuntan a ellos).
+    // 1. Espacios. Los que cambiaron aquí se guardan (y reviven si estaban marcados como borrados). Los demás solo se
+    //    CREAN si faltan en la nube, sin tocar los existentes: antes se guardaban todos con cada cambio y eso revivía,
+    //    con una versión más vieja, un espacio que otro dispositivo borró entre la bajada y la subida de esta vuelta.
     const wsEntries = entries.filter((e) => e.type === 'ws');
-    if (workspaces.length > 0) {
-      const saved = await cloud.saveWorkspaces(workspaces);
+    const changedWs = new Set(wsEntries.map((e) => e.ws));
+    const toSave = workspaces.filter((w) => changedWs.has(w.id));
+    const toEnsure = workspaces.filter((w) => !changedWs.has(w.id));
+    if (toSave.length > 0) {
+      const saved = await cloud.saveWorkspaces(toSave);
       if (!saved.ok) return saved;
+    }
+    if (toEnsure.length > 0) {
+      const ensured = await cloud.ensureWorkspaces(toEnsure);
+      if (!ensured.ok) return ensured;
     }
     outbox.settle(wsEntries);
 
