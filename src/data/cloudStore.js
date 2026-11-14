@@ -22,7 +22,7 @@ import { CLOUD_KINDS, cloudKind, fromRow, toRow, workspaceFromRow, workspaceToRo
 /** @typedef {import('./dataStore.js').Changes} Changes */
 /** @typedef {import('./dataStore.js').Deletions} Deletions */
 
-/** @typedef {{ code: CloudErrorCode, status: number, message: string, detail?: string }} CloudError */
+/** @typedef {{ code: CloudErrorCode, status: number, message: string, detail?: string, pgCode?: string }} CloudError */
 /** @typedef {'network' | 'timeout' | 'session' | 'forbidden' | 'rejected' | 'server'} CloudErrorCode */
 /** @typedef {{ ok: false, error: CloudError }} CloudFailure */
 
@@ -45,10 +45,25 @@ const MESSAGES = {
   server: 'La nube tuvo un problema. Se intentará de nuevo en unos minutos.',
 };
 
-/** @param {CloudErrorCode} code @param {number} status @param {string} [detail] @returns {CloudFailure} */
-function fail(code, status, detail) {
-  return { ok: false, error: { code, status, message: MESSAGES[code], ...(detail ? { detail } : {}) } };
+/** @param {CloudErrorCode} code @param {number} status @param {string} [detail] @param {string} [pgCode] @returns {CloudFailure} */
+function fail(code, status, detail, pgCode) {
+  return { ok: false, error: { code, status, message: MESSAGES[code], ...(detail ? { detail } : {}), ...(pgCode ? { pgCode } : {}) } };
 }
+
+/**
+ * Las funciones de compartir (0.16.0) explican el motivo en español (por ejemplo «Solo el dueño puede cambiar
+ * roles.»): ese texto es de nuestra base, así que se muestra tal cual. Otros errores mantienen el mensaje general.
+ * @param {CloudFailure} failure @returns {CloudFailure}
+ */
+export function withServerReason(failure) {
+  const { pgCode, detail } = failure.error;
+  if (detail && (pgCode === 'P0001' || pgCode === '42501' || pgCode === '22023')) return { ok: false, error: { ...failure.error, message: detail } };
+  return failure;
+}
+
+/** @typedef {import('../domain/types.js').WorkspaceRole} WorkspaceRole */
+/** @typedef {{ userId: string, role: WorkspaceRole, displayName: string, email: string | null, isMe: boolean, joinedAt: string }} Member */
+/** @typedef {{ id: string, role: 'admin' | 'accountant', createdAt: string, expiresAt: string, usedAt: string | null, revokedAt: string | null }} Invite */
 
 /** Qué tipo de error es una respuesta de la API. @param {number} status @param {any} body @returns {CloudErrorCode} */
 function classify(status, body) {
@@ -112,7 +127,10 @@ export function createCloudStore(options) {
           body = null;
         }
       }
-      if (!response.ok) return fail(classify(response.status, body), response.status, typeof body?.message === 'string' ? body.message.slice(0, 300) : undefined);
+      if (!response.ok) {
+        return fail(classify(response.status, body), response.status, typeof body?.message === 'string' ? body.message.slice(0, 300) : undefined,
+          typeof body?.code === 'string' ? body.code : undefined);
+      }
       return { ok: true, status: response.status, body };
     } catch (error) {
       return fail(error instanceof Error && error.name === 'AbortError' ? 'timeout' : 'network', 0);
@@ -135,13 +153,15 @@ export function createCloudStore(options) {
       if (!userId) return fail('session', 401);
       const [rows, mine] = await Promise.all([
         call('GET', '/rest/v1/workspaces', { query: { select: '*', order: 'created_at.asc,id.asc' } }),
-        call('GET', '/rest/v1/workspace_members', { query: { select: 'workspace_id,is_default', user_id: `eq.${userId}` } }),
+        call('GET', '/rest/v1/workspace_members', { query: { select: 'workspace_id,is_default,role', user_id: `eq.${userId}` } }),
       ]);
       if (!rows.ok) return rows;
       if (!mine.ok) return mine;
       const defaults = new Set((mine.body ?? []).filter((m) => m.is_default).map((m) => m.workspace_id));
+      /** @type {Map<string, string>} */
+      const roles = new Map((mine.body ?? []).map((/** @type {any} */ m) => [m.workspace_id, m.role]));
       try {
-        return { ok: true, workspaces: (rows.body ?? []).map((/** @type {any} */ r) => workspaceFromRow(r, defaults.has(r.id))) };
+        return { ok: true, workspaces: (rows.body ?? []).map((/** @type {any} */ r) => workspaceFromRow(r, defaults.has(r.id), roles.get(r.id) ?? 'owner')) };
       } catch (error) {
         return fail('rejected', 0, String(/** @type {Error} */ (error).message));
       }
@@ -330,6 +350,88 @@ export function createCloudStore(options) {
         }
       }
       return { ok: true, counts };
+    },
+
+    // ------------------------------------------------------------ compartir (0.16.0)
+    /**
+     * Crea una invitación y devuelve el código UNA sola vez (la nube solo guarda su huella).
+     * @param {string} workspaceId @param {'admin' | 'accountant'} role
+     * @returns {Promise<{ ok: true, code: string, expiresAt: string } | CloudFailure>}
+     */
+    async createInvite(workspaceId, role) {
+      const reply = await call('POST', '/rest/v1/rpc/create_workspace_invite', { body: { ws: workspaceId, invite_role: role } });
+      if (!reply.ok) return withServerReason(reply);
+      const row = Array.isArray(reply.body) ? reply.body[0] : reply.body;
+      if (!row || typeof row.code !== 'string') return fail('rejected', 0, 'La nube no devolvió el código.');
+      return { ok: true, code: row.code, expiresAt: String(row.expires_at) };
+    },
+
+    /**
+     * Acepta un código: quien llama pasa a ser miembro del espacio.
+     * @param {string} code
+     * @returns {Promise<{ ok: true, workspaceId: string, workspaceName: string, role: WorkspaceRole } | CloudFailure>}
+     */
+    async acceptInvite(code) {
+      const reply = await call('POST', '/rest/v1/rpc/accept_workspace_invite', { body: { invite_code: String(code ?? '') } });
+      if (!reply.ok) return withServerReason(reply);
+      const row = Array.isArray(reply.body) ? reply.body[0] : reply.body;
+      if (!row || typeof row.workspace_id !== 'string') return fail('rejected', 0, 'La nube no devolvió el espacio.');
+      return { ok: true, workspaceId: row.workspace_id, workspaceName: String(row.workspace_name ?? ''), role: row.role };
+    },
+
+    /** Anula una invitación pendiente. @param {string} inviteId @returns {Promise<{ ok: true } | CloudFailure>} */
+    async revokeInvite(inviteId) {
+      const reply = await call('POST', '/rest/v1/rpc/revoke_workspace_invite', { body: { invite: inviteId } });
+      return reply.ok ? { ok: true } : withServerReason(reply);
+    },
+
+    /**
+     * Invitaciones de un espacio (solo las ve Dueño o Administrador; sin el código).
+     * @param {string} workspaceId @returns {Promise<{ ok: true, invites: Invite[] } | CloudFailure>}
+     */
+    async listInvites(workspaceId) {
+      const reply = await call('GET', '/rest/v1/workspace_invites', {
+        query: { select: 'id,role,created_at,expires_at,used_at,revoked_at', workspace_id: `eq.${workspaceId}`, order: 'created_at.desc' },
+      });
+      if (!reply.ok) return withServerReason(reply);
+      const invites = (Array.isArray(reply.body) ? reply.body : []).map((/** @type {any} */ r) => ({
+        id: String(r.id), role: r.role, createdAt: String(r.created_at), expiresAt: String(r.expires_at),
+        usedAt: r.used_at ? String(r.used_at) : null, revokedAt: r.revoked_at ? String(r.revoked_at) : null,
+      }));
+      return { ok: true, invites };
+    },
+
+    /** Miembros de un espacio. @param {string} workspaceId @returns {Promise<{ ok: true, members: Member[] } | CloudFailure>} */
+    async listMembers(workspaceId) {
+      const reply = await call('POST', '/rest/v1/rpc/list_workspace_members', { body: { ws: workspaceId } });
+      if (!reply.ok) return withServerReason(reply);
+      const members = (Array.isArray(reply.body) ? reply.body : []).map((/** @type {any} */ r) => ({
+        userId: String(r.user_id), role: r.role, displayName: String(r.display_name ?? ''),
+        email: typeof r.email === 'string' ? r.email : null, isMe: r.is_me === true, joinedAt: String(r.joined_at),
+      }));
+      return { ok: true, members };
+    },
+
+    /**
+     * Cambia el rol de un miembro (solo el Dueño).
+     * @param {string} workspaceId @param {string} userId @param {'admin' | 'accountant'} role
+     * @returns {Promise<{ ok: true } | CloudFailure>}
+     */
+    async setMemberRole(workspaceId, userId, role) {
+      const reply = await call('POST', '/rest/v1/rpc/set_workspace_member_role', { body: { ws: workspaceId, member: userId, new_role: role } });
+      return reply.ok ? { ok: true } : withServerReason(reply);
+    },
+
+    /** Quita a un miembro. @param {string} workspaceId @param {string} userId @returns {Promise<{ ok: true } | CloudFailure>} */
+    async removeMember(workspaceId, userId) {
+      const reply = await call('POST', '/rest/v1/rpc/remove_workspace_member', { body: { ws: workspaceId, member: userId } });
+      return reply.ok ? { ok: true } : withServerReason(reply);
+    },
+
+    /** Sale de un espacio compartido (no el Dueño). @param {string} workspaceId @returns {Promise<{ ok: true } | CloudFailure>} */
+    async leaveWorkspace(workspaceId) {
+      const reply = await call('POST', '/rest/v1/rpc/leave_workspace', { body: { ws: workspaceId } });
+      return reply.ok ? { ok: true } : withServerReason(reply);
     },
   };
 }

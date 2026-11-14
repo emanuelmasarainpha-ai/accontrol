@@ -170,7 +170,7 @@ export function workspaceToRow(workspace) {
  * @param {boolean} isDefault
  * @returns {{ workspace: import('../domain/types.js').Workspace, deletedAt: string | null }}
  */
-export function workspaceFromRow(row, isDefault) {
+export function workspaceFromRow(row, isDefault, role = 'owner') {
   for (const col of ['id', 'kind', 'name', 'currency', 'created_at', 'updated_at']) {
     if (typeof row[col] !== 'string' || row[col] === '') throw new Error(`La nube devolvió un espacio sin «${col}».`);
   }
@@ -190,6 +190,8 @@ export function workspaceFromRow(row, isDefault) {
       Object.fromEntries(ORGANIZATION_FIELDS.map((f) => [f, typeof row.organization[f] === 'string' ? row.organization[f] : '']))
     );
   }
+  // El rol solo se guarda si NO eres el dueño (ausente = dueño, como en todos los espacios de antes de la 0.16.0).
+  if (role === 'admin' || role === 'accountant') workspace.role = role;
   return { workspace, deletedAt: row.deleted_at ? toIso(row.deleted_at, 'deleted_at') : null };
 }
 

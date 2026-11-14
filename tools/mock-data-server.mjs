@@ -9,6 +9,7 @@
 //   · el servidor pone `synced_at` (con microsegundos, igual para todo lo de una misma petición, como now()).
 // NO es Postgres: no comprueba los CHECK de rango ni los triggers de facturas. Eso se prueba contra la base real.
 // =============================================================================
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -42,7 +43,7 @@ const FOREIGN = {
 };
 
 /**
- * @param {{ now?: () => number }} [options]
+ * @param {{ now?: () => number, emailOf?: (userId: string) => string | null }} [options]
  */
 export function createMockDataServer(options = {}) {
   const nowMs = options.now ?? (() => Date.now());
@@ -53,6 +54,105 @@ export function createMockDataServer(options = {}) {
   const members = [];
   /** @type {Map<string, { user_id: string, display_name: string, last_workspace_id: string | null }>} */
   const profiles = new Map();
+  /** Invitaciones (0.16.0): como en la base real, solo la huella del código. */
+  /** @type {Array<{ id: string, workspace_id: string, code_hash: string, role: string, created_by: string, created_at: string, expires_at: string, used_by: string | null, used_at: string | null, revoked_at: string | null }>} */
+  const invites = [];
+  const emailOf = options.emailOf ?? (() => null);
+  const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const hashCode = (/** @type {string} */ c) => createHash('sha256').update(c).digest('hex');
+  const normalize = (/** @type {unknown} */ c) => String(c ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const roleOf = (/** @type {string} */ userId, /** @type {string} */ ws) => members.find((m) => m.user_id === userId && m.workspace_id === ws)?.role ?? null;
+  const P0001 = (/** @type {string} */ message) => ({ status: 400, body: { code: 'P0001', message } });
+  const DENIED = (/** @type {string} */ message) => ({ status: 403, body: { code: '42501', message } });
+  const INVALID = 'El código no es válido o ya venció. Pide uno nuevo.';
+
+  /** Las funciones (RPC) de compartir, con las mismas reglas que 20261117000100_invites.sql. */
+  function shareRpc(name, uid, body) {
+    const now = nowMs();
+    const iso = new Date(now).toISOString();
+    if (name === 'create_workspace_invite') {
+      const ws = body?.ws;
+      const want = body?.invite_role;
+      const mine = roleOf(uid, ws);
+      if (mine !== 'owner' && mine !== 'admin') return DENIED('Solo el dueño o un administrador del espacio puede invitar.');
+      if (want !== 'admin' && want !== 'accountant') return { status: 400, body: { code: '22023', message: 'Rol no válido.' } };
+      if (want === 'admin' && mine !== 'owner') return DENIED('Solo el dueño puede invitar administradores.');
+      const w = workspaces.get(ws);
+      if (w?.kind === 'personal') return P0001('El espacio Personal no se comparte.');
+      if (w?.deleted_at) return P0001('Ese espacio está borrado.');
+      if (invites.filter((x) => x.workspace_id === ws && !x.used_at && !x.revoked_at && Date.parse(x.expires_at) > now).length >= 20) {
+        return P0001('Hay demasiadas invitaciones pendientes en este espacio. Anula alguna.');
+      }
+      const bytes = randomBytes(12);
+      const plain = [...bytes].map((b) => ALPHABET[b % ALPHABET.length]).join('');
+      const expires = new Date(now + 7 * 86_400_000).toISOString();
+      invites.push({ id: randomUUID(), workspace_id: ws, code_hash: hashCode(plain), role: want, created_by: uid, created_at: iso, expires_at: expires, used_by: null, used_at: null, revoked_at: null });
+      return reply(200, [{ code: plain.slice(0, 4) + '-' + plain.slice(4, 8) + '-' + plain.slice(8), expires_at: expires }]);
+    }
+    if (name === 'accept_workspace_invite') {
+      const inv = invites.find((x) => x.code_hash === hashCode(normalize(body?.invite_code)));
+      if (!inv || inv.used_at || inv.revoked_at || Date.parse(inv.expires_at) <= now) return P0001(INVALID);
+      const w = workspaces.get(inv.workspace_id);
+      if (!w || w.deleted_at) return P0001(INVALID);
+      if (roleOf(uid, inv.workspace_id)) return P0001('Ya perteneces a ese espacio.');
+      members.push({ workspace_id: inv.workspace_id, user_id: uid, role: inv.role, is_default: false, created_at: iso });
+      inv.used_by = uid;
+      inv.used_at = iso;
+      return reply(200, [{ workspace_id: inv.workspace_id, workspace_name: w.name, role: inv.role }]);
+    }
+    if (name === 'revoke_workspace_invite') {
+      const inv = invites.find((x) => x.id === body?.invite);
+      if (!inv) return P0001('Esa invitación no existe.');
+      const mine = roleOf(uid, inv.workspace_id);
+      if (!(mine === 'owner' || (mine === 'admin' && inv.role === 'accountant'))) return DENIED('No puedes anular esa invitación.');
+      if (!inv.used_at && !inv.revoked_at) inv.revoked_at = iso;
+      return reply(204, null);
+    }
+    if (name === 'list_workspace_members') {
+      const ws = body?.ws;
+      const mine = roleOf(uid, ws);
+      if (!mine) return DENIED('No perteneces a ese espacio.');
+      const manager = mine === 'owner' || mine === 'admin';
+      const order = { owner: 0, admin: 1, accountant: 2 };
+      const list = members.filter((m) => m.workspace_id === ws)
+        .sort((a, b) => (order[a.role] ?? 3) - (order[b.role] ?? 3) || a.created_at.localeCompare(b.created_at))
+        .map((m) => ({
+          user_id: m.user_id, role: m.role, display_name: profiles.get(m.user_id)?.display_name ?? '',
+          email: manager || m.user_id === uid ? emailOf(m.user_id) : null, is_me: m.user_id === uid, joined_at: m.created_at,
+        }));
+      return reply(200, list);
+    }
+    if (name === 'set_workspace_member_role') {
+      if (roleOf(uid, body?.ws) !== 'owner') return DENIED('Solo el dueño puede cambiar roles.');
+      if (body?.new_role !== 'admin' && body?.new_role !== 'accountant') return { status: 400, body: { code: '22023', message: 'Rol no válido.' } };
+      if (body?.member === uid) return P0001('No puedes cambiar tu propio rol.');
+      const m = members.find((x) => x.workspace_id === body?.ws && x.user_id === body?.member && x.role !== 'owner');
+      if (!m) return P0001('Esa persona no es miembro del espacio.');
+      m.role = body.new_role;
+      return reply(204, null);
+    }
+    if (name === 'remove_workspace_member') {
+      const mine = roleOf(uid, body?.ws);
+      const theirs = roleOf(body?.member, body?.ws);
+      if (!theirs) return P0001('Esa persona no es miembro del espacio.');
+      if (body?.member === uid) return P0001('Para irte del espacio usa «Salir del espacio».');
+      if (theirs === 'owner' || !(mine === 'owner' || (mine === 'admin' && theirs === 'accountant'))) return DENIED('No puedes quitar a esa persona.');
+      members.splice(members.findIndex((x) => x.workspace_id === body.ws && x.user_id === body.member), 1);
+      const prof = profiles.get(body.member);
+      if (prof?.last_workspace_id === body.ws) prof.last_workspace_id = null;
+      return reply(204, null);
+    }
+    if (name === 'leave_workspace') {
+      const mine = roleOf(uid, body?.ws);
+      if (!mine) return P0001('No perteneces a ese espacio.');
+      if (mine === 'owner') return P0001('El dueño no puede salir de su propio espacio.');
+      members.splice(members.findIndex((x) => x.workspace_id === body.ws && x.user_id === uid), 1);
+      const prof = profiles.get(uid);
+      if (prof?.last_workspace_id === body.ws) prof.last_workspace_id = null;
+      return reply(204, null);
+    }
+    return null;
+  }
   /** @type {Record<string, Map<string, Record<string, any>>>} */
   const tables = Object.fromEntries(ENTITY_TABLES.map((t) => [t, new Map()]));
   let lastStampUs = 0;
@@ -192,7 +292,12 @@ export function createMockDataServer(options = {}) {
   }
 
   const server = {
-    workspaces, members, profiles, tables,
+    workspaces, members, profiles, tables, invites,
+    /** ¿Es dueño de un espacio vivo con otros miembros? (delete_my_account se niega). @param {string} userId */
+    ownsSharedWorkspace(userId) {
+      return members.some((mine) => mine.user_id === userId && mine.role === 'owner' && !workspaces.get(mine.workspace_id)?.deleted_at
+        && members.some((o) => o.workspace_id === mine.workspace_id && o.user_id !== userId));
+    },
     /** Crea el perfil de una cuenta nueva (en Supabase lo hace un trigger al registrarse). @param {string} userId */
     ensureProfile(userId) {
       if (!profiles.has(userId)) profiles.set(userId, { user_id: userId, display_name: '', last_workspace_id: null });
@@ -219,6 +324,15 @@ export function createMockDataServer(options = {}) {
       server.ensureProfile(user.id);
       const table = path.replace('/rest/v1/', '');
       try {
+        if (method === 'POST' && table.startsWith('rpc/')) {
+          const shared = shareRpc(table.slice(4), user.id, body);
+          if (shared) return shared;
+        }
+        if (table === 'workspace_invites' && method === 'GET') {
+          const match = parseFilters(params);
+          const visible = invites.filter((x) => ['owner', 'admin'].includes(roleOf(user.id, x.workspace_id) ?? '') && match(x));
+          return reply(200, sortAndLimit(visible.map(({ code_hash: _h, ...rest }) => ({ ...rest })), params));
+        }
         if (method === 'POST' && table === 'rpc/set_default_workspace') {
           if (!isMember(user.id, body?.ws)) return reply(403, { code: '42501', message: 'No perteneces a ese espacio.' });
           for (const m of members) if (m.user_id === user.id) m.is_default = m.workspace_id === body.ws;

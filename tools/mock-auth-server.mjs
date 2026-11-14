@@ -41,7 +41,7 @@ export function createMockAuthServer(options = {}) {
   const codes = new Map();
   let counter = 0;
   /** La base de datos simulada (0.15.0): /rest/v1/… salvo borrar la cuenta. */
-  const data = createMockDataServer({ now: nowMs });
+  const data = createMockDataServer({ now: nowMs, emailOf: (id) => [...users.values()].find((u) => u.id === id)?.email ?? null });
 
   const server = {
     users,
@@ -337,6 +337,9 @@ export function createMockAuthServer(options = {}) {
   function deleteAccount(token) {
     const user = userFor(token);
     if (!user) return reply(401, { code: 'PGRST301', message: 'JWT expired' });
+    if (data.ownsSharedWorkspace(user.id)) {
+      return reply(400, { code: 'P0001', message: 'Eres dueño de un espacio que tiene otros miembros. Quítalos (o borra ese espacio) antes de eliminar tu cuenta.' });
+    }
     server.revokeAll(user.email);
     data.deleteUser(user.id);
     users.delete(user.email);

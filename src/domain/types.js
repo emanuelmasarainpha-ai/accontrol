@@ -318,6 +318,12 @@
  */
 
 /**
+ * Rol de una persona en un espacio compartido (0.16.0): Dueño (todo), Administrador (registra y edita, invita
+ * contadores) y Contador (solo ve y exporta).
+ * @typedef {'owner' | 'admin' | 'accountant'} WorkspaceRole
+ */
+
+/**
  * Un espacio de trabajo: un conjunto de datos aislado (Mi espacio personal, Mi emprendimiento, Empresa ABC...).
  * Un ingreso de un espacio nunca aparece en otro. El saldo inicial es de cada espacio.
  * @typedef {Object} Workspace
@@ -328,6 +334,7 @@
  * @property {number} openingBalanceCents Saldo con el que empiezas en este espacio.
  * @property {boolean} isDefault          El que se abre primero si no hay un "último usado".
  * @property {Organization} [organization] Datos del negocio u organización (solo espacios que no son Personal). Ausente = sin completar.
+ * @property {WorkspaceRole} [role]        Tu rol en un espacio COMPARTIDO contigo (0.16.0). Ausente = eres el dueño. Solo vive en el dispositivo: no se sube.
  * @property {string} createdAt
  * @property {string} updatedAt
  */
