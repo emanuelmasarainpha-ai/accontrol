@@ -199,11 +199,12 @@ export function createMockDataServer(options = {}) {
   function sortAndLimit(rows, params) {
     const order = params.get('order');
     if (order) {
-      const keys = order.split(',').map((o) => o.split('.')[0]);
+      // Como PostgREST: «columna» o «columna.asc» de menor a mayor; «columna.desc» de mayor a menor.
+      const keys = order.split(',').map((o) => ({ k: o.split('.')[0], dir: o.split('.')[1] === 'desc' ? -1 : 1 }));
       rows.sort((a, b) => {
-        for (const k of keys) {
-          if (a[k] < b[k]) return -1;
-          if (a[k] > b[k]) return 1;
+        for (const { k, dir } of keys) {
+          if (a[k] < b[k]) return -dir;
+          if (a[k] > b[k]) return dir;
         }
         return 0;
       });

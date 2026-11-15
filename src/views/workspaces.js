@@ -271,15 +271,21 @@ export async function deleteWorkspaceFlow(store, id) {
 
 // ---- Panel de Ajustes ------------------------------------------------------------------------------
 
-/** @param {Store} store */
-export function workspacesPanel(store) {
+/**
+ * @param {Store} store
+ * @param {{ canShare?: boolean }} [options]  canShare: hay cuenta (se puede unir a espacios compartidos y salir de ellos).
+ */
+export function workspacesPanel(store, { canShare = false } = {}) {
   const { workspaces, activeWorkspaceId } = store.getState();
   const canDelete = workspaces.length > 1;
   const anyShared = workspaces.some((w) => !canManageWorkspace(w));
   return html`<section class="panel" aria-labelledby="set-workspaces">
     <div class="panel__head">
       <h2 class="panel__title" id="set-workspaces">Espacios de trabajo</h2>
-      <button type="button" class="btn btn--ghost btn--small" data-action="ws-new">${icon('plus', 16)}Crear otro espacio</button>
+      <span class="panel__head-actions">
+        ${canShare ? html`<button type="button" class="btn btn--ghost btn--small" data-action="ws-join">${icon('user', 16)}Unirme con un código</button>` : ''}
+        <button type="button" class="btn btn--ghost btn--small" data-action="ws-new">${icon('plus', 16)}Crear otro espacio</button>
+      </span>
     </div>
     <p class="panel__sub">Cada espacio guarda sus datos por separado. El predeterminado es el que se abre si no recuerdo cuál usaste por última vez.</p>
     <ul class="ws-manage" role="list">
@@ -301,6 +307,7 @@ export function workspacesPanel(store) {
             ${canManageWorkspace(w) ? html`<button type="button" class="btn btn--ghost btn--small" data-action="ws-rename" data-id="${w.id}" aria-label="Renombrar ${w.name}">Renombrar</button>` : ''}
             ${w.isDefault ? '' : html`<button type="button" class="btn btn--ghost btn--small" data-action="ws-default" data-id="${w.id}" aria-label="Hacer predeterminado ${w.name}">Predeterminado</button>`}
             ${canDelete && canManageWorkspace(w) ? html`<button type="button" class="btn btn--danger-ghost btn--small" data-action="ws-delete" data-id="${w.id}" aria-label="Borrar ${w.name}">Borrar</button>` : ''}
+            ${canShare && !canManageWorkspace(w) ? html`<button type="button" class="btn btn--danger-ghost btn--small" data-action="ws-leave" data-id="${w.id}" aria-label="Salir de ${w.name}">Salir</button>` : ''}
           </span>
         </li>`;
       })}

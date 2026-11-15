@@ -21,6 +21,7 @@ import { currentTheme, dayNightButton } from '../ui/theme.js';
 import { toast } from '../ui/toast.js';
 import { accountDangerPanel, accountPanel, runAccountAction } from './account.js';
 import { clearAllActions, cloudPanel, runCloudAction, watchCloudPanel } from './cloud.js';
+import { membersPanel, runShareAction, watchMembers } from './members.js';
 import { openCategoryForm } from './forms.js';
 import { openOrganizationForm, workspaceDetailsPanel } from './organization.js';
 import { runWorkspaceAction, workspacesPanel } from './workspaces.js';
@@ -135,7 +136,7 @@ export function renderSettings(store, ctx) {
         <div class="field" data-field="displayName">
           <label for="set-name">Tu nombre</label>
           <input id="set-name" name="displayName" class="input" type="text" maxlength="40" autocomplete="given-name" value="${data.settings.displayName}" aria-describedby="displayName-error" />
-          <p class="hint">Solo se usa para saludarte en Inicio. Es el mismo en todos tus espacios.</p>
+          <p class="hint">Se usa para saludarte en Inicio y es el nombre que ven las personas con las que compartes un espacio. Es el mismo en todos tus espacios.</p>
           <p class="field__error" id="displayName-error" data-error-for="displayName" hidden></p>
         </div>
         <div class="field" data-field="opening">
@@ -156,9 +157,11 @@ export function renderSettings(store, ctx) {
 
     ${devicePanel({ vibration: vibrationEnabled(), canVibrate: canVibrate(), theme: currentTheme() })}
 
-    ${workspacesPanel(store)}
+    ${workspacesPanel(store, { canShare: Boolean(sync) })}
 
     ${workspaceDetailsPanel(store)}
+
+    ${membersPanel(store, sync)}
 
     <section class="panel" aria-labelledby="set-cats">
       <div class="panel__head">
@@ -284,6 +287,9 @@ ${cloudPanel(sync)}
       const stopWatching = watchCloudPanel(sync, root, () => ctx?.rerender());
       signal.addEventListener('abort', stopWatching, { once: true });
 
+      // ---- miembros del espacio abierto (0.16.0) -----------------------------
+      watchMembers(root, store, sync, signal);
+
       // ---- preferencias de este dispositivo ---------------------------------
       const vibrationBox = root.querySelector('[data-pref="vibration"]');
       if (vibrationBox instanceof HTMLInputElement) {
@@ -306,6 +312,7 @@ ${cloudPanel(sync)}
           if (!el) return;
           if (runAccountAction(account, el.dataset.action)) return;
           if (runCloudAction(sync, el.dataset.action, { store, rerender: () => ctx?.rerender(), button: el })) return;
+          if (runShareAction({ store, sync, root }, el)) return;
           switch (el.dataset.action) {
             case 'tour-replay':
               ctx?.tour.start();

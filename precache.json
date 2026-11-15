@@ -1,5 +1,5 @@
 {
-  "version": "70cc421a0c94",
+  "version": "ffc76164dcea",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -66,6 +66,7 @@
     "src/domain/organization.js",
     "src/domain/roles.js",
     "src/domain/settings.js",
+    "src/domain/sharing.js",
     "src/domain/summaries.js",
     "src/domain/types.js",
     "src/domain/workspaces.js",
@@ -140,6 +141,7 @@
     "src/views/inventory.js",
     "src/views/invoice-forms.js",
     "src/views/invoices.js",
+    "src/views/members.js",
     "src/views/networth.js",
     "src/views/onboarding.js",
     "src/views/organization.js",

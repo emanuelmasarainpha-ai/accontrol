@@ -2218,3 +2218,61 @@
   color: var(--gray-400);
   letter-spacing: 0.22em;
 }
+
+/* ---- Miembros de un espacio (0.16.0) ------------------------------------------ */
+.panel__head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.member-list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+.member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-3);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.member__who {
+  display: grid;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.member__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.member__mail {
+  font-size: var(--fs-sm);
+  color: var(--text-muted, var(--navy-600));
+  overflow-wrap: anywhere;
+}
+.member__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.invite-code {
+  margin: 0;
+  padding: var(--space-3);
+  text-align: center;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  user-select: all;
+}
+.invite-input {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

@@ -260,6 +260,13 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     4. **Borrado:** borra un gasto en el primero y sincroniza el segundo: desaparece también allí.
     5. **Conflicto:** apaga el wifi del segundo, edita **el mismo gasto** en los dos (primero en el segundo, luego en el primero), vuelve a conectar y sincroniza: se queda la edición **más reciente** y la app avisa «Un dato había cambiado en dos dispositivos…».
 
+38. **Compartir un espacio (0.16.0).** Necesitas **dos cuentas de prueba** (A y B), cada una en un navegador distinto, las dos con la copia en la nube activada. Usa un espacio **Emprendedor, Freelancer o Empresa** (el Personal no se comparte).
+    1. **Invitar:** con A, en *Ajustes → Miembros*, toca *Invitar*, elige **Contador** y *Crear código*. Sale un código `XXXX-XXXX-XXXX` y un mensaje. Cópialo (este código no se vuelve a mostrar).
+    2. **Unirse:** con B, en *Ajustes → Espacios de trabajo*, toca *Unirme con un código*, pega el código y *Unirme*. Sale «Te uniste a «…» como Contador» y el espacio queda abierto con el aviso **Solo lectura**: no hay botones para añadir ni editar.
+    3. **Cambiar el rol:** con A, en *Miembros*, cambia a B a **Administrador**. Con B, *Copia en la nube → Sincronizar ahora*: sale «Tu rol… ahora es Administrador», desaparece el aviso y ya puede registrar un gasto, que le llega a A al sincronizar. B sigue sin poder renombrar el espacio ni cambiar su saldo inicial.
+    4. **Anular:** con A crea otro código y luego toca *Anular*. Ese código ya no sirve.
+    5. **Salir y quitar:** con B toca *Salir* en el espacio de A: desaparece de B, y A lo conserva con todos sus datos. Invítalo otra vez y, con A, toca *Quitar*: al sincronizar, B deja de verlo.
+
 ## 3. Probar en el teléfono Android
 
 ### Opción A — Misma red Wi-Fi (la más rápida)

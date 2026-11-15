@@ -45,6 +45,25 @@ import { withOutbox } from './trackedStore.js';
  * @property {() => void} forget  Al eliminar la cuenta: olvida todo lo de la sincronización en este dispositivo.
  * @property {(listener: () => void) => () => void} onChange
  * @property {(listener: (result: PullResult) => void) => () => void} onRemote  Llegó algo de la nube a este dispositivo.
+ * @property {ShareApi} share  Compartir un espacio (0.16.0). Todo necesita la copia en la nube activada.
+ */
+
+/** @typedef {import('../data/cloudStore.js').Member} Member */
+/** @typedef {import('../data/cloudStore.js').Invite} Invite */
+/** @typedef {{ ok: false, message: string }} ShareFailure */
+/**
+ * @typedef {Object} ShareApi
+ * @property {(workspaceId: string, role: 'admin' | 'accountant') => Promise<{ ok: true, code: string, expiresAt: string } | ShareFailure>} invite
+ *   Crea una invitación. El código se ve UNA sola vez (la nube solo guarda su huella).
+ * @property {(workspaceId: string) => Promise<{ ok: true, members: Member[], invites: Invite[] } | ShareFailure>} list
+ *   Miembros e invitaciones PENDIENTES (sin usar, sin anular y sin vencer). Las invitaciones solo las ve quien puede invitar.
+ * @property {(workspaceId: string, userId: string, role: 'admin' | 'accountant') => Promise<{ ok: true } | ShareFailure>} setRole
+ * @property {(workspaceId: string, userId: string) => Promise<{ ok: true } | ShareFailure>} remove
+ * @property {(inviteId: string) => Promise<{ ok: true } | ShareFailure>} revoke
+ * @property {(code: string) => Promise<{ ok: true, workspaceId: string, workspaceName: string, role: 'admin' | 'accountant' } | ShareFailure>} join
+ *   Acepta un código y trae el espacio a este dispositivo.
+ * @property {(workspaceId: string) => Promise<{ ok: true } | ShareFailure>} leave
+ *   Sale de un espacio compartido contigo y lo quita de este dispositivo (en la nube sigue siendo de su dueño).
  */
 /** @typedef {import('./pull.js').PullResult} PullResult */
 
@@ -278,7 +297,86 @@ export function createSyncController(options) {
       remoteListeners.add(listener);
       return () => remoteListeners.delete(listener);
     },
+
+    share: {
+      async invite(workspaceId, role) {
+        const off = needsCloud();
+        if (off) return off;
+        // El espacio tiene que estar ya en la nube (uno recién creado puede estar todavía en la bandeja).
+        await engine.flush();
+        if (outbox.snapshot().some((e) => e.ws === workspaceId)) await engine.flush();
+        const made = await cloud.createInvite(workspaceId, role);
+        return made.ok ? made : failed(made);
+      },
+      async list(workspaceId) {
+        const off = needsCloud();
+        if (off) return off;
+        const members = await cloud.listMembers(workspaceId);
+        if (!members.ok) return failed(members);
+        const local = await options.local.listWorkspaces().catch(() => []);
+        const role = local.find((w) => w.id === workspaceId)?.role ?? 'owner';
+        // Solo Dueño y Administrador pueden ver las invitaciones (así lo dice también la nube).
+        if (role === 'accountant') return { ok: true, members: members.members, invites: [] };
+        const invites = await cloud.listInvites(workspaceId);
+        if (!invites.ok) return failed(invites);
+        const now = Date.now();
+        const pending = invites.invites.filter((i) => i.usedAt === null && i.revokedAt === null && Date.parse(i.expiresAt) > now);
+        return { ok: true, members: members.members, invites: pending };
+      },
+      async setRole(workspaceId, userId, role) {
+        const off = needsCloud();
+        if (off) return off;
+        const done = await cloud.setMemberRole(workspaceId, userId, role);
+        return done.ok ? done : failed(done);
+      },
+      async remove(workspaceId, userId) {
+        const off = needsCloud();
+        if (off) return off;
+        const done = await cloud.removeMember(workspaceId, userId);
+        return done.ok ? done : failed(done);
+      },
+      async revoke(inviteId) {
+        const off = needsCloud();
+        if (off) return off;
+        const done = await cloud.revokeInvite(inviteId);
+        return done.ok ? done : failed(done);
+      },
+      async join(code) {
+        const off = needsCloud();
+        if (off) return off;
+        const accepted = await cloud.acceptInvite(code);
+        if (!accepted.ok) return failed(accepted);
+        // Trae el espacio (y sus datos) a este dispositivo ahora mismo.
+        await engine.flush();
+        return { ok: true, workspaceId: accepted.workspaceId, workspaceName: accepted.workspaceName, role: accepted.role === 'admin' ? 'admin' : 'accountant' };
+      },
+      async leave(workspaceId) {
+        const off = needsCloud();
+        if (off) return off;
+        const done = await cloud.leaveWorkspace(workspaceId);
+        if (!done.ok) return failed(done);
+        // Ya no eres miembro: se quita de este dispositivo, con lo pendiente y su cursor (en la nube sigue siendo de su dueño).
+        try {
+          await local.deleteWorkspace(workspaceId);
+        } catch (error) {
+          console.error('No se pudo quitar el espacio de este dispositivo:', error);
+        }
+        cursors.remove(workspaceId);
+        outbox.settle(outbox.snapshot().filter((e) => e.ws === workspaceId));
+        return { ok: true };
+      },
+    },
   };
+
+  /** @returns {ShareFailure | null} */
+  function needsCloud() {
+    return settings.enabled ? null : { ok: false, message: 'Para compartir espacios necesitas activar la copia en la nube (Ajustes → Copia en la nube).' };
+  }
+
+  /** El motivo de la nube, ya en español. @param {{ error: { message: string } }} reply @returns {ShareFailure} */
+  function failed(reply) {
+    return { ok: false, message: reply.error.message };
+  }
 
   return {
     /** El almacén que debe usar la app (guarda igual que siempre y anota cuando la copia está activa). */
