@@ -158,6 +158,28 @@ describe('miembros a través de account.sync.share', () => {
     assert.equal((await carla.share.join(inv.ok ? inv.code : '')).ok, false);
   });
 
+  it('unirse mientras ya hay una sincronización en marcha: igual trae el espacio (fallo visto contra la nube real)', async () => {
+    const { shop, ana, beto } = await people();
+    const inv = await ana.share.invite(shop.id, 'accountant');
+    const busy = beto.api.syncNow(); // esta vuelta empezó ANTES de aceptar el código
+    const join = await beto.share.join(inv.ok ? inv.code : '');
+    await busy;
+    assert.equal(join.ok, true);
+    assert.equal((await wsOf(beto, shop.id))?.role, 'accountant', 'el espacio ya está en el dispositivo al terminar «unirse»');
+  });
+
+  it('«Sincronizar ahora» durante una vuelta en marcha hace otra bajada después (no se pierde)', async () => {
+    const { shop, sale, ana, beto } = await joined('admin');
+    const busy = beto.api.syncNow();
+    // Mientras tanto, la dueña cambia algo en la nube.
+    await ana.store.forWorkspace(shop.id).putMany({ movements: [{ ...sale, description: 'Cambiada', updatedAt: new Date(Date.now() + 60_000).toISOString() }] });
+    await ana.api.syncNow();
+    await beto.api.syncNow();
+    await busy;
+    const moves = (await beto.local.forWorkspace(shop.id).load()).movements;
+    assert.deepEqual(moves.map((m) => m.description), ['Cambiada']);
+  });
+
   it('invitar en un espacio recién creado que todavía no subió: primero lo sube', async () => {
     const { ana } = await people();
     const fresh = buildWorkspace({ kind: 'entrepreneur', name: 'Tienda nueva', isDefault: false }, { id: randomUUID(), nowISO: N });

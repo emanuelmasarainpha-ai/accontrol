@@ -396,18 +396,21 @@ describe('motor de envío: vacía la bandeja contra la nube', () => {
     assert.equal(timers.length, 0);
   });
 
-  it('dos envíos a la vez no se pisan: el segundo espera y hace otra vuelta', async () => {
+  it('dos envíos a la vez no se pisan: el segundo espera al primero y hace su propia vuelta', async () => {
     const { mock, ws, store, engine } = await setupSync();
     const goals = real(buildDemoData(T, N).goals);
     await store.forWorkspace(ws.id).putMany({ goals: [goals[0]] });
-    const first = engine.flush();
+    /** @type {string[]} */
+    const order = [];
+    const first = engine.flush().then((r) => { order.push('fin 1'); return r; });
     await store.forWorkspace(ws.id).putMany({ goals: [goals[1]] });
-    const second = engine.flush(); // mientras corre el primero: espera a que termine y deja otra vuelta pedida
+    // Mientras corre el primero: espera a que termine y DESPUÉS hace otra vuelta (0.16.0: antes devolvía la vuelta en
+    // marcha y la petición se perdía si no quedaba nada por enviar).
+    const second = engine.flush().then((r) => { order.push('fin 2'); return r; });
     const [r1, r2] = await Promise.all([first, second]);
     assert.equal(r1.ok, true);
     assert.equal(r2.ok, true);
-    assert.equal(mock.count('POST /rest/v1/workspaces'), 1, 'no hubo dos envíos a la vez');
-    await engine.flush(); // la vuelta pedida
-    assert.equal(mock.data.live('goals', ws.id).length, 2);
+    assert.deepEqual(order, ['fin 1', 'fin 2'], 'una detrás de otra, nunca a la vez');
+    assert.equal(mock.data.live('goals', ws.id).length, 2, 'al terminar la segunda ya está todo, sin pedir otra vuelta');
   });
 });

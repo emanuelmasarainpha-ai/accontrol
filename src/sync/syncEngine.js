@@ -189,11 +189,17 @@ export function createSyncEngine(options) {
     return { ok: true, sent };
   }
 
-  /** Envía lo pendiente ahora. Si ya se está enviando, se espera y se hace otra vuelta al terminar. */
+  /**
+   * Baja lo nuevo y envía lo pendiente ahora. Si ya hay una vuelta en marcha, esa empezó ANTES de esta petición: se
+   * espera a que termine y se hace otra, así quien pide «sincronizar ahora» (o acaba de unirse a un espacio) recibe una
+   * bajada hecha DESPUÉS de pedirla. (Antes se devolvía la vuelta en marcha y, si no quedaba nada por enviar, la
+   * petición se perdía: contra la nube real, un espacio recién compartido no llegaba hasta la siguiente revisión.)
+   */
   async function flush() {
     if (running) {
-      again = true;
-      return running;
+      await running.catch(() => undefined);
+      // Mientras se esperaba, otra petición pudo empezar ya una vuelta nueva (posterior a esta petición): vale esa.
+      if (running) return running;
     }
     if (timer !== null) {
       clearTimer(timer);
