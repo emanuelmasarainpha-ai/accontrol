@@ -61,7 +61,8 @@ Hoy, el espacio Emprendedor tiene su pantalla *Resultados* y su panel en *Inicio
 | 0.14.6 ✅ | **Códigos de 6 dígitos por correo** para confirmar la cuenta nueva y para recuperar la contraseña (Supabase `/auth/v1/verify`; requiere ajustar las plantillas de correo en el panel), **ojo** para mostrar u ocultar la contraseña y **el sol y la luna en PNG** (también en las pantallas de acceso) con animación al tocarlos. |
 | 0.15.0 ✅ | **Etapa 2, parte 2:** copia en la nube y sincronización entre dispositivos (se guarda primero en el dispositivo y se envía después; gana el cambio más reciente, con aviso). Probada contra el Supabase real con dos navegadores (ver «Plan de la 0.15.0»). Publicada en Vercel desde GitHub. |
 | 0.15.1 ✅ | **Lo borrado no revive con una versión más vieja.** Regla en Supabase (migración `20261116000100_no_revive`: los triggers `entity_guard` y `workspace_guard` conservan `deleted_at` si llega una versión con `updated_at` anterior o igual al borrado; las categorías quedan fuera porque la app no les pone `updated_at`). La app marca con la hora actual lo que se conserva al **juntar** y lo que se **restaura** de una copia (si no, se perdería). Probada dentro de la base real en un bloque que se deshace solo. **Aplicada en Supabase el 2026-11-14**, después de publicar la app 0.15.1; verificada contra el servidor real a través de la app (13 de 13: versión vieja sigue borrada y el dispositivo que la envió converge; versión nueva revive; espacios igual; categorías como antes). Para deshacerla: `supabase/rollback/20261116000100_no_revive_deshacer.sql`. |
-| 0.16.0 | Roles, empleados e invitaciones por espacio. |
+| 0.16.0 | Compartir un espacio: invitaciones con código y 3 roles (Dueño, Administrador, Contador). |
+| 0.16.1 | **Roles a medida:** el Dueño crea los roles de su empresa (por ejemplo Cajero o Encargado) marcando casillas de una lista fija de permisos por módulo, con las reglas también en la base de datos. |
 | 0.17.0 | IA financiera real (con la clave protegida en un servidor) y notificaciones. |
 | 0.18.0 | Panel administrativo, versión premium y pagos. |
 | 0.19.0 | Conexión con bancos. |
@@ -88,7 +89,7 @@ Es una estimación de orden y tamaño, no una promesa de fechas: las versiones p
 
 ### Plan de la 0.16.0 (compartir un espacio: roles e invitaciones)
 
-Decisiones acordadas (2026-11-14): se invita con un **código que copias y envías tú** (vence en 7 días, un solo uso; sin correos automáticos ni servidor nuevo); primero **3 roles**: **Dueño** (todo: invitar, cambiar roles, quitar miembros, editar y borrar el espacio), **Administrador** (registra y edita todos los datos e invita contadores) y **Contador** (ve todo y exporta, no cambia nada). Cajero y empleado quedan para la 0.16.1. Se comparten **Freelancer, Emprendedor y Empresa**; el espacio **Personal no se comparte**. Compartir requiere tener activada la copia en la nube.
+Decisiones acordadas (2026-11-14): se invita con un **código que copias y envías tú** (vence en 7 días, un solo uso; sin correos automáticos ni servidor nuevo); primero **3 roles**: **Dueño** (todo: invitar, cambiar roles, quitar miembros, editar y borrar el espacio), **Administrador** (registra y edita todos los datos e invita contadores) y **Contador** (ve todo y exporta, no cambia nada). Cajero, empleado y cualquier otro rol quedan para la 0.16.1 como **roles a medida** (ver abajo). Se comparten **Freelancer, Emprendedor y Empresa**; el espacio **Personal no se comparte**. Compartir requiere tener activada la copia en la nube.
 
 | Paso | Contenido | Estado |
 |---|---|---|
@@ -98,6 +99,16 @@ Decisiones acordadas (2026-11-14): se invita con un **código que copias y enví
 | 4 | **Permisos en la app:** el Contador no puede guardar nada (el almacén lo impide y las pantallas ocultan los botones); solo el dueño renombra o borra el espacio; se ve tu rol en el selector de espacios. Reglas en un solo sitio (`src/domain/roles.js`, las mismas que la nube): **candado** en el almacén del espacio abierto (`store.js`, mira el rol al guardar, así un cambio de rol que llega de la nube vale al momento); solo el dueño renombra, cambia la organización, el saldo inicial, restaura una copia sobre el espacio o lo borra (el Administrador y el Contador sí cambian **su** nombre, que es de su perfil). Pantalla: aviso «Solo lectura» arriba, botones de escritura escondidos (`src/styles/roles.css`, generado por `npm run roles-css`) y, si alguno se pulsara, no abre nada y explica por qué; el selector y Ajustes dicen «Compartido · Contador/Administrador»; sin Renombrar ni Borrar en espacios ajenos; el recorrido guiado no se ofrece en un espacio de solo lectura; al activar la copia avisa de los espacios compartidos que llegaron; *Borrar de todos mis dispositivos* aclara que los compartidos no se borran. 11 pruebas en `test/roles.test.js`, 14 de 14 averías a propósito detectadas; **navegador real 40 de 40** (Ana comparte su negocio con Beto como Contador → solo lectura; lo sube a Administrador → su gasto llega a la nube de Ana) y el recorrido completo 33 de 33. | ✅ 2026-11-14 |
 | 5 | **Pantalla Miembros:** invitar (elegir rol, copiar el código), ver miembros e invitaciones pendientes, cambiar rol, quitar, anular invitación; **Unirme con un código**; **Salir del espacio**. | Pendiente |
 | 6 | Prueba real con **dos cuentas de prueba** (necesita una segunda cuenta), documentación y publicación. | Pendiente |
+
+### Plan de la 0.16.1 (roles a medida)
+
+Decisión acordada (2026-11-14): en vez de añadir más roles fijos (cajero, empleado), cada empresa arma los suyos.
+
+- **Solo el Dueño** crea, cambia y borra roles. El Administrador puede **asignar** roles que ya existen, pero no crearlos ni cambiarlos (así nadie se da más poder del que el dueño quiso).
+- Los permisos salen de una **lista fija por módulo** (Movimientos, Metas, Deudas, Patrimonio, Clientes, Inventario, Facturas y cobros, Departamentos, Reportes/exportar, Miembros) con niveles **Ver**, **Registrar** y **Editar / borrar**. No se escriben permisos libres, y la app no deja marcar combinaciones sin sentido (marcar «Registrar» marca «Ver»).
+- Administrador y Contador quedan como **plantillas** listas para copiar y ajustar (ejemplo: Cajero = Contador + registrar movimientos y cobros).
+- La seguridad **va en la base de datos** (RLS que consulta los permisos del rol en cada guardado), no solo en la pantalla. Es una migración grande: copia de seguridad antes, pruebas dentro de la base real que se deshacen solas y, después, prueba real con dos cuentas.
+- La app ya tiene las reglas en un solo sitio (`src/domain/roles.js`): ahí se cambia «rol fijo» por «rol con casillas» sin rehacer las pantallas.
 
 ### Cómo se llega a Android, iOS y escritorio sin rehacer todo
 
