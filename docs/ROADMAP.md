@@ -109,6 +109,16 @@ Decisión acordada (2026-11-14): en vez de añadir más roles fijos (cajero, emp
 - Administrador y Contador quedan como **plantillas** listas para copiar y ajustar (ejemplo: Cajero = Contador + registrar movimientos y cobros).
 - La seguridad **va en la base de datos** (RLS que consulta los permisos del rol en cada guardado), no solo en la pantalla. Es una migración grande: copia de seguridad antes, pruebas dentro de la base real que se deshacen solas y, después, prueba real con dos cuentas.
 - La app ya tiene las reglas en un solo sitio (`src/domain/roles.js`): ahí se cambia «rol fijo» por «rol con casillas» sin rehacer las pantallas.
+- Decisiones del 2026-11-14: **Registrar** = crear y corregir o borrar **lo suyo**; **Editar y borrar** = cualquier registro del módulo. Sin permiso aparte para descargar reportes (quien ve algo puede copiarlo igual: sería un bloqueo falso). Invitar, cambiar roles y quitar miembros siguen siendo de Dueño y Administrador. Hasta 10 roles a medida por espacio.
+
+| Paso | Contenido | Estado |
+|---|---|---|
+| 1 | **Reglas en la app** (): 8 módulos que cubren los 15 tipos de registro (Movimientos y categorías, Metas y aportes, Deudas y pagos, Patrimonio, Clientes y servicios, Inventario, Facturas y cobros, Departamentos), 4 niveles (Sin acceso, Ver, Registrar, Editar y borrar), **dependencias** que se suben solas (por ejemplo «Facturas: Registrar» sube Movimientos e Inventario a Registrar y Clientes a Ver, porque un cobro crea un ingreso y una factura saca productos del stock), validación del nombre (1–30, sin repetir, distinto de Dueño/Administrador/Contador) y plantillas (Cajero, Encargado, Como Contador, Como Administrador). 10 pruebas en ; 12 de 14 averías detectadas (las 2 restantes no cambian el resultado: una es equivalente y la otra es una protección para dependencias futuras). | ✅ 2026-11-14 |
+| 2 | **Base de datos:** tabla de roles por espacio; el miembro puede tener un rol a medida; las reglas de seguridad (RLS) de las 15 tablas miran el nivel del módulo (Registrar solo cambia lo que creó esa persona: columna ). Copia de seguridad y permiso antes de aplicar. | Pendiente |
+| 3 | **Nube y sincronización:** el rol a medida llega al dispositivo; no se envía lo que el rol no permite y lo que no puede ver no se baja. | Pendiente |
+| 4 | **Permisos en la app por módulo:** el almacén y las pantallas siguen el rol (módulos ocultos, botones según el nivel, «lo suyo» al corregir). | Pendiente |
+| 5 | **Pantalla Roles:** el dueño crea, edita y borra roles con casillas (con plantillas y aviso de lo que se sube solo) y los asigna al invitar y en Miembros. | Pendiente |
+| 6 | Prueba real con las dos cuentas de prueba, documentación y publicación. | Pendiente |
 
 ### Cómo se llega a Android, iOS y escritorio sin rehacer todo
 

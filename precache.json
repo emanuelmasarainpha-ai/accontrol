@@ -1,5 +1,5 @@
 {
-  "version": "4aa364a34140",
+  "version": "2acae39c368b",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -64,6 +64,7 @@
     "src/domain/netWorth.js",
     "src/domain/notices.js",
     "src/domain/organization.js",
+    "src/domain/permissions.js",
     "src/domain/roles.js",
     "src/domain/settings.js",
     "src/domain/sharing.js",
