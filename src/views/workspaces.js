@@ -9,6 +9,7 @@
 
 import { routeParams } from '../app/router.js';
 import { plural } from '../domain/dates.js';
+import { canManageWorkspace, ROLE_NAMES, roleOf } from '../domain/roles.js';
 import { KIND_INFO, suggestWorkspaceName, WORKSPACE_KINDS } from '../domain/workspaces.js';
 import { confirmDialog, openSheet } from '../ui/dialog.js';
 import { $, $$ } from '../ui/dom.js';
@@ -20,6 +21,9 @@ import { toast } from '../ui/toast.js';
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 /** @typedef {import('../domain/types.js').Workspace} Workspace */
 /** @typedef {import('../domain/types.js').WorkspaceKind} WorkspaceKind */
+
+/** «Compartido · Contador»: tu rol en un espacio de otra persona (vacío si es tuyo). @param {Workspace} w */
+export const sharedLabel = (w) => (roleOf(w) === 'owner' ? '' : `Compartido · ${ROLE_NAMES[roleOf(w)]}`);
 
 /** @param {WorkspaceKind} kind @param {number} [size] */
 export const kindIcon = (kind, size = 20) => icon(KIND_INFO[kind].icon, size);
@@ -35,14 +39,15 @@ export function updateWorkspaceSwitchers(state) {
   for (const button of $$('[data-workspace-switch]')) {
     button.hidden = !active;
     if (!active) continue;
-    const key = `${active.id}|${active.name}|${active.kind}`;
+    const key = `${active.id}|${active.name}|${active.kind}|${roleOf(active)}`;
     if (button.dataset.rendered === key) continue;
     button.dataset.rendered = key;
-    button.setAttribute('aria-label', `Espacio de trabajo: ${active.name}. Cambiar de espacio`);
+    const shared = sharedLabel(active);
+    button.setAttribute('aria-label', `Espacio de trabajo: ${active.name}${shared ? ` (${shared})` : ''}. Cambiar de espacio`);
     setHtml(
       button,
       html`<span class="ws-switch__icon">${kindIcon(active.kind, 18)}</span>
-        <span class="ws-switch__text"><span class="ws-switch__name">${active.name}</span><span class="ws-switch__kind">${KIND_INFO[active.kind].label}</span></span>
+        <span class="ws-switch__text"><span class="ws-switch__name">${active.name}</span><span class="ws-switch__kind">${KIND_INFO[active.kind].label}${shared ? ` · ${ROLE_NAMES[roleOf(active)]}` : ''}</span></span>
         <span class="ws-switch__chev">${icon('chevronsUpDown', 16)}</span>`,
     );
   }
@@ -91,7 +96,7 @@ function workspaceOption(w, current) {
       <span class="ws-option__icon">${kindIcon(w.kind, 20)}</span>
       <span class="ws-option__text">
         <span class="ws-option__name">${w.name}</span>
-        <span class="ws-option__meta">${KIND_INFO[w.kind].label}${w.isDefault ? ' · Predeterminado' : ''}</span>
+        <span class="ws-option__meta">${KIND_INFO[w.kind].label}${sharedLabel(w) ? ` · ${sharedLabel(w)}` : ''}${w.isDefault ? ' · Predeterminado' : ''}</span>
       </span>
       ${current ? html`<span class="ws-option__check" aria-label="Abierto ahora">${icon('check', 20)}</span>` : ''}
     </button>
@@ -270,6 +275,7 @@ export async function deleteWorkspaceFlow(store, id) {
 export function workspacesPanel(store) {
   const { workspaces, activeWorkspaceId } = store.getState();
   const canDelete = workspaces.length > 1;
+  const anyShared = workspaces.some((w) => !canManageWorkspace(w));
   return html`<section class="panel" aria-labelledby="set-workspaces">
     <div class="panel__head">
       <h2 class="panel__title" id="set-workspaces">Espacios de trabajo</h2>
@@ -288,17 +294,18 @@ export function workspacesPanel(store) {
           <span class="ws-manage__chips">
             ${open ? html`<span class="chip chip--good">Abierto</span>` : ''}
             ${w.isDefault ? html`<span class="chip">Predeterminado</span>` : ''}
+            ${sharedLabel(w) ? html`<span class="chip chip--role">${sharedLabel(w)}</span>` : ''}
           </span>
           <span class="ws-manage__actions">
             ${open ? '' : html`<button type="button" class="btn btn--ghost btn--small" data-action="ws-open" data-id="${w.id}" aria-label="Abrir ${w.name}">Abrir</button>`}
-            <button type="button" class="btn btn--ghost btn--small" data-action="ws-rename" data-id="${w.id}" aria-label="Renombrar ${w.name}">Renombrar</button>
+            ${canManageWorkspace(w) ? html`<button type="button" class="btn btn--ghost btn--small" data-action="ws-rename" data-id="${w.id}" aria-label="Renombrar ${w.name}">Renombrar</button>` : ''}
             ${w.isDefault ? '' : html`<button type="button" class="btn btn--ghost btn--small" data-action="ws-default" data-id="${w.id}" aria-label="Hacer predeterminado ${w.name}">Predeterminado</button>`}
-            ${canDelete ? html`<button type="button" class="btn btn--danger-ghost btn--small" data-action="ws-delete" data-id="${w.id}" aria-label="Borrar ${w.name}">Borrar</button>` : ''}
+            ${canDelete && canManageWorkspace(w) ? html`<button type="button" class="btn btn--danger-ghost btn--small" data-action="ws-delete" data-id="${w.id}" aria-label="Borrar ${w.name}">Borrar</button>` : ''}
           </span>
         </li>`;
       })}
     </ul>
-    <p class="hint">Los empleados, los roles (administrador, contador, cajero…) y las invitaciones necesitan que los datos estén en la nube y compartidos entre cuentas, así que llegan después de la sincronización. Hoy cada espacio es solo tuyo y vive en este dispositivo.</p>
+    ${anyShared ? html`<p class="hint">Los espacios marcados como «Compartido» son de otra persona: solo su dueño puede renombrarlos o borrarlos. Como Administrador registras y editas sus datos; como Contador solo los ves.</p>` : ''}
   </section>`;
 }
 

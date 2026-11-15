@@ -9,6 +9,7 @@
     "test": "node --test",
     "typecheck": "tsc -p jsconfig.json",
     "precache": "node tools/make-precache.mjs",
+    "roles-css": "node tools/make-roles-css.mjs",
     "build": "node tools/build.mjs"
   },
   "devDependencies": {

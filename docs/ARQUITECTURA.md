@@ -175,6 +175,13 @@ Un paseo paso a paso por las funciones de cada tipo de espacio. **No es IA**: so
 - **Sol y luna:** `src/assets/sun.png` y `moon.png` (192 px, fondo transparente, dibujados en SVG y convertidos con Edge). `ui/theme.js → dayNightArt` los muestra con cuatro chispas; `components.css` los coloca según `data-theme` y anima las chispas al tocar (`is-switching`). También en `views/auth.js` (`.auth__theme`).
 - **Pruebas:** `test/auth-codes.test.js`, `test/password-toggle.test.js` y `test/theme.test.js`.
 
+## 3i. Roles en un espacio compartido (0.16.0)
+
+- **Reglas en un solo sitio:** `src/domain/roles.js` (`roleOf`, `canEditData`, `canManageWorkspace`, `WRITE_ACTIONS`, `OWNER_ACTIONS`). Son las mismas que aplica la nube con RLS: Dueño todo; Administrador datos sí, el espacio en sí no; Contador solo lee.
+- **Candado en el almacén** (`store.js`, `openStore`): el almacén del espacio abierto rechaza `putMany`, `deleteMany`, `saveSettings`, `replaceAll` y `clearAll` si en ese espacio eres Contador. El rol se consulta **al guardar**, no al abrir. Las acciones del espacio (renombrar, organización, borrar, restaurar una copia de un espacio, saldo inicial) comprueban `canManageWorkspace`. En un espacio ajeno, *Guardar perfil* solo guarda tu nombre (`root.saveProfile`).
+- **Pantalla:** `app.js` marca `<html data-read-only>` / `<html data-not-owner>` y `src/styles/roles.css` esconde los botones de `WRITE_ACTIONS` / `OWNER_ACTIONS` (y lo marcado con `data-write-only` / `data-owner-only`). La política de seguridad (`style-src 'self'`) no deja crear estilos desde JavaScript: el archivo se genera con `npm run roles-css` y una prueba comprueba que está al día. Un oyente de clics en fase de *captura* frena cualquier botón de escritura antes que la pantalla y explica por qué.
+- Tres defensas en fila: la pantalla no lo muestra, el almacén no lo guarda y, aunque algo se colara, la sincronización nunca envía cambios del Contador y la nube (RLS) los rechazaría.
+
 ## 4. Migración a la nube (Etapa 2)
 
 El resto de la app solo habla con el contrato `WorkspaceStore` (`src/data/workspaceStore.js`): administrar espacios y perfil (`listWorkspaces`, `createWorkspace`, `updateWorkspace`, `deleteWorkspace`, `setDefaultWorkspace`, `getProfile`, `saveProfile`), `forWorkspace(id)` (que devuelve el contrato de datos de un espacio: `load`, `putMany`, `deleteMany`, `saveSettings`, `replaceAll`, `clearAll`) y las operaciones de copia completa (`loadEverything`, `replaceEverything`, `clearEverything`).

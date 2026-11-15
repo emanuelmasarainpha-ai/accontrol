@@ -146,6 +146,8 @@ export function createTourController({ store, memory }) {
       if (busy) return;
       window.setTimeout(() => {
         const state = store.getState();
+        // En un espacio de solo lectura (Contador) no se ofrece: el recorrido enseña a registrar, y ahí no se puede.
+        if (!store.canEditData()) return;
         const kind = tourToOffer({
           ready: state.status === 'ready' && state.activeWorkspaceId !== null,
           kind: activeKind(),
@@ -161,7 +163,7 @@ export function createTourController({ store, memory }) {
     /** Empieza el recorrido del espacio abierto (botón «Ver el recorrido otra vez» de Ajustes). */
     startActive() {
       const kind = activeKind();
-      if (kind) void start(kind);
+      if (kind && store.canEditData()) void start(kind);
     },
   };
 }

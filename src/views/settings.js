@@ -75,7 +75,7 @@ export function tourPanel(workspace, available) {
     <h2 class="panel__title" id="set-tour">Recorrido guiado</h2>
     ${available
       ? html`<p>Un paseo paso a paso por las funciones de los espacios ${label}: te señala cada una en la pantalla y te explica para qué sirve.</p>
-          <div class="actions actions--start">
+          <div class="actions actions--start" data-write-only>
             <button type="button" class="btn btn--ghost" data-action="tour-replay">${icon('info', 18)}Ver el recorrido otra vez</button>
           </div>`
       : html`<p class="muted">Los espacios ${label} todavía no tienen recorrido guiado. Llega en la próxima actualización.</p>`}
@@ -96,6 +96,8 @@ export function renderSettings(store, ctx) {
   const workspaceName = workspace?.name ?? 'este espacio';
   const hasDemo = store.hasDemoData();
   const opening = data.settings.openingBalanceCents;
+  // En un espacio de otra persona el saldo inicial es del dueño (0.16.0): se ve, pero no se cambia.
+  const ownsSpace = store.canManageWorkspace();
 
   /** @param {'income' | 'expense'} kind */
   const categoryList = (kind) => {
@@ -140,9 +142,9 @@ export function renderSettings(store, ctx) {
           <label for="set-opening">Saldo inicial de «${workspaceName}»</label>
           <div class="input-money">
             <span class="input-money__symbol" aria-hidden="true">RD$</span>
-            <input id="set-opening" name="openingText" class="input input--money" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${opening > 0 ? centsToInputValue(opening) : ''}" aria-describedby="opening-hint opening-error" />
+            <input id="set-opening" name="openingText" class="input input--money" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${opening > 0 ? centsToInputValue(opening) : ''}" aria-describedby="opening-hint opening-error" ${ownsSpace ? '' : 'readonly'} />
           </div>
-          <p class="hint" id="opening-hint">El dinero que ya tenías (efectivo, cuentas) el día que empiezas a usar este espacio. Se suma a su “Disponible”. Cada espacio tiene el suyo.</p>
+          <p class="hint" id="opening-hint">${ownsSpace ? 'El dinero que ya tenías (efectivo, cuentas) el día que empiezas a usar este espacio. Se suma a su “Disponible”. Cada espacio tiene el suyo.' : `«${workspaceName}» es de otra persona: solo su dueño puede cambiar su saldo inicial.`}</p>
           <p class="field__error" id="opening-error" data-error-for="opening" hidden></p>
         </div>
         <p class="field__error field__error--form" data-error-for="form" role="alert" hidden></p>

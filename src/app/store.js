@@ -48,6 +48,7 @@ import { CLASSIFICATIONS_BY_TYPE, LIMITS } from '../domain/types.js';
 import {
   buildWorkspace, defaultProfile, isWorkspaceKind, pickActiveWorkspace, validateWorkspaceName, withDefault,
 } from '../domain/workspaces.js';
+import { canEditData, canManageWorkspace, NOT_YOURS_TO_DELETE, OWNER_ONLY_MESSAGE, READ_ONLY_MESSAGE, roleOf } from '../domain/roles.js';
 import { singleWorkspace } from '../data/singleWorkspace.js';
 import { WORKSPACE_ERRORS } from '../data/workspaceScope.js';
 
@@ -96,7 +97,11 @@ const SAVE_FAILED =
   'No se pudo guardar en este dispositivo. Tus datos no cambiaron. Si el problema continúa, exporta una copia de seguridad.';
 
 /** Fallos que tienen una explicación propia (en vez del mensaje general de «no se pudo guardar»). */
+/** Lo lanza el candado de solo lectura (Contador) cuando algo intenta guardar en su espacio. */
+const READ_ONLY_ERROR = 'accontrol:espacio-de-solo-lectura';
+
 const KNOWN_PROBLEMS = new Map([
+  [READ_ONLY_ERROR, READ_ONLY_MESSAGE],
   [WORKSPACE_ERRORS.collision, 'Esta copia trae registros que ya existen en otro de tus espacios y no se pueden mezclar. Impórtala en el espacio donde se creó, o usa una copia completa.'],
   [WORKSPACE_ERRORS.gone, 'Este espacio de trabajo ya no existe (quizá se borró en otra pestaña). Cambia de espacio e inténtalo de nuevo.'],
 ]);
@@ -166,6 +171,27 @@ export function createStore(source, clock = () => new Date()) {
     for (const listener of listeners) listener();
   }
 
+  /**
+   * Abre el almacén de un espacio con el CANDADO de roles: si en ese espacio eres Contador, ningún guardado llega al
+   * dispositivo (ni, por tanto, a la nube). El rol se mira en el momento de guardar, así que un cambio de rol que llega
+   * de la nube se respeta sin volver a abrir el espacio. Leer siempre se puede.
+   * @param {string} id @returns {DataStore}
+   */
+  function openStore(id) {
+    const inner = root.forWorkspace(id);
+    const locked = () => !canEditData(state.workspaces.find((w) => w.id === id));
+    /** @template {any[]} A @template R @param {(...args: A) => Promise<R>} fn */
+    const guard = (fn) => (/** @type {A} */ ...args) => (locked() ? Promise.reject(new Error(READ_ONLY_ERROR)) : fn(...args));
+    return {
+      load: () => inner.load(),
+      putMany: guard((changes, deletions) => inner.putMany(changes, deletions)),
+      deleteMany: guard((deletions) => inner.deleteMany(deletions)),
+      saveSettings: guard((settings) => inner.saveSettings(settings)),
+      replaceAll: guard((data) => inner.replaceAll(data)),
+      clearAll: guard(() => inner.clearAll()),
+    };
+  }
+
   /** @param {(data: AppData) => AppData} change */
   function updateData(change) {
     state = { ...state, data: change(state.data) };
@@ -219,7 +245,7 @@ export function createStore(source, clock = () => new Date()) {
       let activeId = state.activeWorkspaceId;
       // El espacio abierto pudo borrarse en otra pestaña (o, sin espacios, otra pestaña pudo crear el primero).
       if (!activeId || !workspaces.some((w) => w.id === activeId)) activeId = pickActiveWorkspace(workspaces, profile)?.id ?? null;
-      const store = activeId ? (activeId === state.activeWorkspaceId ? dataStore : root.forWorkspace(activeId)) : NO_WORKSPACE;
+      const store = activeId ? (activeId === state.activeWorkspaceId ? dataStore : openStore(activeId)) : NO_WORKSPACE;
       const data = activeId ? await store.load() : emptyData();
       const next = { status: /** @type {const} */ ('ready'), error: '', data, workspaces, activeWorkspaceId: activeId, profile };
       const seen = (/** @type {AppState} */ x) => JSON.stringify([x.data, x.workspaces, x.activeWorkspaceId, x.profile.displayName]);
@@ -246,7 +272,7 @@ export function createStore(source, clock = () => new Date()) {
    */
   async function activateWorkspace(id) {
     try {
-      const store = root.forWorkspace(id);
+      const store = openStore(id);
       const data = await store.load();
       const [workspaces, saved] = await Promise.all([root.listWorkspaces(), root.getProfile()]);
       const profile = { ...saved, lastWorkspaceId: id };
@@ -333,7 +359,7 @@ export function createStore(source, clock = () => new Date()) {
         const active = pickActiveWorkspace(workspaces, profile);
         let data = emptyData();
         if (active) {
-          dataStore = root.forWorkspace(active.id);
+          dataStore = openStore(active.id);
           data = await dataStore.load();
         }
         state = { status: 'ready', error: '', data, workspaces, activeWorkspaceId: active?.id ?? null, profile };
@@ -356,6 +382,13 @@ export function createStore(source, clock = () => new Date()) {
 
     /** El espacio abierto en esta pestaña, o null si todavía no hay ninguno. */
     activeWorkspace: () => state.workspaces.find((w) => w.id === state.activeWorkspaceId) ?? null,
+
+    /** Tu rol en el espacio abierto (0.16.0): 'owner' si es tuyo. */
+    activeRole: () => roleOf(state.workspaces.find((w) => w.id === state.activeWorkspaceId)),
+    /** ¿Puedes registrar o cambiar datos en el espacio abierto? (el Contador, no). */
+    canEditData: () => canEditData(state.workspaces.find((w) => w.id === state.activeWorkspaceId)),
+    /** ¿Eres el dueño del espacio abierto? (solo el dueño cambia su nombre, organización y saldo inicial). */
+    canManageWorkspace: () => canManageWorkspace(state.workspaces.find((w) => w.id === state.activeWorkspaceId)),
 
     /**
      * Crea un espacio de trabajo y lo abre. La primera vez (pantalla de elegir modalidad) también sirve.
@@ -410,6 +443,7 @@ export function createStore(source, clock = () => new Date()) {
         if (stale) return stale;
         const current = state.workspaces.find((w) => w.id === id);
         if (!current) return formFail('Ese espacio ya no existe.');
+        if (!canManageWorkspace(current)) return formFail(OWNER_ONLY_MESSAGE);
         const named = validateWorkspaceName(rawName, { existing: state.workspaces, exceptId: id });
         if (!named.ok) return { ok: false, errors: { name: named.error } };
         const next = { ...current, name: named.name, updatedAt: nowISO() };
@@ -432,6 +466,7 @@ export function createStore(source, clock = () => new Date()) {
         if (stale) return stale;
         const current = state.workspaces.find((w) => w.id === id);
         if (!current) return formFail('Ese espacio ya no existe.');
+        if (!canManageWorkspace(current)) return formFail(OWNER_ONLY_MESSAGE);
         if (!kindHasOrganization(current.kind)) return formFail('Un espacio Personal no lleva datos de organización.');
         const checked = validateOrganization(raw);
         if (!checked.ok) return { ok: false, errors: /** @type {Record<string, string>} */ (checked.errors) };
@@ -467,7 +502,9 @@ export function createStore(source, clock = () => new Date()) {
       return enqueue(async () => {
         const stale = await reloadFromStorage({ lenient: true });
         if (stale) return stale;
-        if (!state.workspaces.some((w) => w.id === id)) return formFail('Ese espacio ya no existe.');
+        const target = state.workspaces.find((w) => w.id === id);
+        if (!target) return formFail('Ese espacio ya no existe.');
+        if (!canManageWorkspace(target)) return formFail(NOT_YOURS_TO_DELETE);
         if (state.workspaces.length <= 1) {
           return formFail('Debes conservar al menos un espacio. Para empezar de cero usa «Borrar todos mis datos» en Ajustes.');
         }
@@ -1655,6 +1692,19 @@ export function createStore(source, clock = () => new Date()) {
       return enqueue(async () => {
         const checked = validateSettings(input);
         if (!checked.ok) return checked;
+        const active = state.workspaces.find((w) => w.id === state.activeWorkspaceId);
+        if (active && !canManageWorkspace(active)) {
+          // En un espacio de otra persona solo cambias TU nombre (es de tu perfil); el saldo inicial es del dueño.
+          if (checked.value.openingBalanceCents !== state.data.settings.openingBalanceCents) {
+            return { ok: /** @type {const} */ (false), errors: { opening: 'Solo el dueño de este espacio puede cambiar su saldo inicial.' } };
+          }
+          const profile = { ...state.profile, displayName: checked.value.displayName };
+          const saved = await tryWrite(() => root.saveProfile(profile));
+          if (saved) return saved;
+          state = { ...state, data: { ...state.data, settings: checked.value }, profile };
+          emit();
+          return { ok: /** @type {const} */ (true) };
+        }
         const failure = await tryWrite(() => dataStore.saveSettings(checked.value));
         if (failure) return failure;
         // El nombre es de la persona (todos los espacios); el saldo inicial es del espacio abierto.
@@ -1936,6 +1986,9 @@ export function createStore(source, clock = () => new Date()) {
         }
 
         if (!state.activeWorkspaceId) return formFail('Primero elige o crea un espacio de trabajo.');
+        if (!canManageWorkspace(state.workspaces.find((w) => w.id === state.activeWorkspaceId))) {
+          return formFail('Esta copia reemplazaría todos los datos de un espacio que es de otra persona. Solo su dueño puede restaurar una copia sobre él.');
+        }
         // Si el respaldo no trae las categorías de fábrica, se añaden para que la app siga siendo usable.
         const data = { ...parsed.data, categories: [...parsed.data.categories, ...missingBuiltInCategories(parsed.data.categories)] };
         const failure = await tryWrite(() => dataStore.replaceAll(data));
@@ -1967,7 +2020,7 @@ export function createStore(source, clock = () => new Date()) {
         if (failure) return failure;
         const [workspaces, profile] = await Promise.all([root.listWorkspaces(), root.getProfile()]);
         const active = pickActiveWorkspace(workspaces, profile);
-        dataStore = active ? root.forWorkspace(active.id) : NO_WORKSPACE;
+        dataStore = active ? openStore(active.id) : NO_WORKSPACE;
         const data = active ? await dataStore.load() : { ...emptyData(), categories: defaultCategories() };
         state = { status: 'ready', error: '', data, workspaces, activeWorkspaceId: active?.id ?? null, profile };
         emit();

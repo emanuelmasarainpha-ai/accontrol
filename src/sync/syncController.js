@@ -36,7 +36,7 @@ import { withOutbox } from './trackedStore.js';
  * Lo que ven las pantallas.
  * @typedef {Object} SyncApi
  * @property {() => { enabled: boolean, asked: boolean, status: SyncStatus }} state
- * @property {() => Promise<{ ok: true, records: number, workspaces: number, downloaded: number, conflicts: number, addedWorkspaces: string[] } | { ok: false, reason: 'failed' | 'mismatch', message: string }>} enable
+ * @property {() => Promise<{ ok: true, records: number, workspaces: number, downloaded: number, conflicts: number, addedWorkspaces: string[], sharedAdded: string[] } | { ok: false, reason: 'failed' | 'mismatch', message: string }>} enable
  * @property {() => Promise<{ ok: true, workspaces: string[] } | { ok: false, message: string }>} inspectCloud  Nombres de los espacios vivos que la cuenta tiene en la nube.
  * @property {() => Promise<void>} syncNow
  * @property {() => void} markAsked
@@ -214,7 +214,7 @@ export function createSyncController(options) {
         startEngine();
         return {
           ok: true, records, workspaces: snapshot.workspaces.length,
-          downloaded: pulled.applied, conflicts: pulled.conflicts, addedWorkspaces: pulled.addedWorkspaces,
+          downloaded: pulled.applied, conflicts: pulled.conflicts, addedWorkspaces: pulled.addedWorkspaces, sharedAdded: pulled.sharedAdded ?? [],
         };
       } catch (error) {
         console.error('Error en la primera subida:', error);

@@ -1,5 +1,5 @@
 {
-  "version": "5ac7e66301a5",
+  "version": "70cc421a0c94",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -64,6 +64,7 @@
     "src/domain/netWorth.js",
     "src/domain/notices.js",
     "src/domain/organization.js",
+    "src/domain/roles.js",
     "src/domain/settings.js",
     "src/domain/summaries.js",
     "src/domain/types.js",
@@ -87,6 +88,7 @@
     "src/styles/fonts/barlow-semi-condensed-700-latin.woff2",
     "src/styles/layout.css",
     "src/styles/motion.css",
+    "src/styles/roles.css",
     "src/styles/tokens.css",
     "src/styles/views.css",
     "src/sync/outbox.js",

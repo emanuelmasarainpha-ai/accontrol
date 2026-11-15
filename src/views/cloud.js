@@ -7,6 +7,7 @@
 // y los avisos de lo que llega de otros dispositivos. No sabe nada del servidor: habla con SyncApi.
 // =============================================================================
 
+import { ROLE_NAMES } from '../domain/roles.js';
 import { confirmDialog } from '../ui/dialog.js';
 import { html } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
@@ -138,8 +139,11 @@ async function enableCloud(sync, ctx) {
   if (result.ok) {
     const down = result.downloaded > 0 ? ` ${result.downloaded === 1 ? 'Llegó 1 registro' : `Llegaron ${result.downloaded} registros`} de la nube.` : '';
     const both = result.conflicts > 0 ? ` ${conflictText(result.conflicts)}` : '';
-    toast(`Copia en la nube activada: ${result.records === 1 ? '1 registro subido' : `${result.records} registros subidos`} y comprobados.${down}${both}`);
-    if (result.downloaded + result.addedWorkspaces.length > 0) await ctx.store.refresh();
+    const shared = result.sharedAdded.length > 0
+      ? ` ${result.sharedAdded.length === 1 ? 'Ya tienes acceso al espacio compartido' : 'Ya tienes acceso a los espacios compartidos'} ${quoteList(result.sharedAdded)}: lo verás en tu lista de espacios.`
+      : '';
+    toast(`Copia en la nube activada: ${result.records === 1 ? '1 registro subido' : `${result.records} registros subidos`} y comprobados.${down}${shared}${both}`);
+    if (result.downloaded + result.addedWorkspaces.length + result.sharedAdded.length > 0) await ctx.store.refresh();
   } else {
     toast(result.message, 'error');
   }
@@ -163,11 +167,21 @@ async function clearDevice(sync, store) {
   else toast(result.errors.form ?? 'No se pudo borrar.', 'error');
 }
 
+/**
+ * Aviso para los espacios que otras personas comparten contigo: no son tuyos, así que no se borran en la nube.
+ * @param {Store} store
+ */
+function sharedNote(store) {
+  const shared = store.getState().workspaces.filter((w) => w.role);
+  if (shared.length === 0) return '';
+  return ` Los espacios que otras personas comparten contigo (${shared.map((w) => `«${w.name}»`).join(', ')}) NO se borran: son de su dueño y volverán a aparecer mientras sigas siendo miembro.`;
+}
+
 /** @param {SyncApi} sync @param {Store} store */
 async function clearEverywhere(sync, store) {
   const ok = await confirmDialog({
     title: '¿Borrar tus datos de TODOS tus dispositivos?',
-    message: 'Se eliminarán todos tus espacios y lo que contienen, en este dispositivo y en la nube (y por lo tanto en tus otros dispositivos). Necesitas conexión a internet. No se puede deshacer.',
+    message: `Se eliminarán todos tus espacios y lo que contienen, en este dispositivo y en la nube (y por lo tanto en tus otros dispositivos). Necesitas conexión a internet. No se puede deshacer.${sharedNote(store)}`,
     confirmLabel: 'Borrar de todos mis dispositivos',
     danger: true,
     requireText: 'BORRAR',
@@ -261,8 +275,8 @@ export function remoteNotice(result) {
   return parts.length > 0 ? parts.join(' ') : null;
 }
 
-/** Nombre de cada rol para mostrar (0.16.0). */
-export const ROLE_NAMES = { owner: 'Dueño', admin: 'Administrador', accountant: 'Contador' };
+/** Nombre de cada rol para mostrar (0.16.0). Vive en domain/roles.js; se reexporta para quien ya lo importaba de aquí. */
+export { ROLE_NAMES };
 
 /**
  * En un dispositivo SIN espacios y con la copia apagada: si la cuenta tiene espacios en la nube, ofrece traerlos

@@ -35,6 +35,8 @@ import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { countUp } from '../ui/countUp.js';
 import { hideTip } from '../ui/tooltip.js';
+import { canEditData, canManageWorkspace, OWNER_ACTIONS, OWNER_ONLY_MESSAGE, READ_ONLY_MESSAGE, ROLE_NAMES, roleOf, WRITE_ACTIONS } from '../domain/roles.js';
+import { toast } from '../ui/toast.js';
 import { runCommonAction } from './actions.js';
 import { ROUTES, routeById, routeFromHash, routeParams } from './router.js';
 import { watchCelebrations } from './celebrations.js';
@@ -131,6 +133,11 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     const onboarding = state.status === 'ready' && state.activeWorkspaceId === null;
     document.body.classList.toggle('is-onboarding', onboarding);
     updateWorkspaceSwitchers(state);
+    // Roles (0.16.0): marcas para los estilos de src/styles/roles.css, que esconden lo que tu rol no permite.
+    const activeWs = state.workspaces.find((w) => w.id === state.activeWorkspaceId) ?? null;
+    const readOnly = !onboarding && activeWs !== null && !canEditData(activeWs);
+    document.documentElement.toggleAttribute('data-read-only', readOnly);
+    document.documentElement.toggleAttribute('data-not-owner', !onboarding && activeWs !== null && !canManageWorkspace(activeWs));
     paintWorkspaceKind(state.workspaces.find((w) => w.id === state.activeWorkspaceId)?.kind ?? null);
 
     markActiveRoute(routeId);
@@ -153,7 +160,7 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     else delete view.dataset.enter;
     const context = { rerender: () => render(false), params: routeParams(window.location.hash), account, tour };
     const rendered = onboarding ? renderOnboarding(store, context) : VIEWS[routeId](store, context);
-    setHtml(view, rendered.html);
+    setHtml(view, readOnly && activeWs ? html`${roleBanner(activeWs)}${rendered.html}` : rendered.html);
     cleanup = rendered.mount?.(view, controller.signal);
     revealActiveSubtab();
     // Los montos grandes «cuentan» al llegar a la pantalla (no al guardar; nunca durante el recorrido guiado).
@@ -172,6 +179,23 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
   window.addEventListener('hashchange', () => render(true));
   store.subscribe(() => render(false));
 
+  // Roles (0.16.0): un botón que tu rol no permite no hace nada más que explicar por qué. Se escucha en la fase de
+  // «captura» (antes que la pantalla), así ningún formulario llega a abrirse. Es la segunda defensa: los botones ya
+  // están escondidos, y el almacén tampoco guardaría.
+  document.addEventListener('click', (event) => {
+    const element = actionTarget(event.target);
+    const name = element?.dataset.action;
+    if (!name) return;
+    const active = store.activeWorkspace();
+    const blocked = WRITE_ACTIONS.includes(name) && !canEditData(active)
+      ? READ_ONLY_MESSAGE
+      : OWNER_ACTIONS.includes(name) && !canManageWorkspace(active) ? OWNER_ONLY_MESSAGE : null;
+    if (!blocked) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    toast(blocked, 'info');
+  }, { capture: true });
+
   // Un solo oyente para los botones comunes (añadir, editar, demostración...),
   // estén en la pantalla, en el menú lateral o en el botón flotante.
   document.addEventListener('click', (event) => {
@@ -182,6 +206,16 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
   });
 
   render(true);
+}
+
+/**
+ * Aviso arriba de cada pantalla cuando el espacio abierto es de solo lectura para ti (Contador).
+ * @param {import('../domain/types.js').Workspace} workspace
+ */
+function roleBanner(workspace) {
+  return html`<div class="banner banner--role" role="note" data-role-banner>
+    <p class="banner__text"><strong>Solo lectura.</strong> Estás en «${workspace.name}» como ${ROLE_NAMES[roleOf(workspace)]}: puedes ver todo y descargar reportes, pero no registrar ni cambiar nada.</p>
+  </div>`;
 }
 
 /**

@@ -2227,3 +2227,11 @@ a.row:active {
     border: 1px solid ButtonText;
   }
 }
+
+/* ---- Roles en espacios compartidos (0.16.0) ---------------------------------- */
+.banner--role {
+  margin-bottom: var(--space-4);
+}
+.chip--role {
+  border-style: dashed;
+}
