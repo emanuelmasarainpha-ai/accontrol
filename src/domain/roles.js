@@ -12,8 +12,9 @@
 /** @typedef {import('./types.js').Workspace} Workspace */
 /** @typedef {import('./types.js').WorkspaceRole} WorkspaceRole */
 /** @typedef {import('./permissions.js').Permissions} Permissions */
+/** @typedef {import('./permissions.js').ModuleId} ModuleId */
 
-import { allAt, atLeast, MODULE_IDS, normalizePermissions } from './permissions.js';
+import { allAt, atLeast, MODULE_IDS, MODULE_OF_KIND, MODULES, normalizePermissions } from './permissions.js';
 
 /** @type {Record<WorkspaceRole, string>} */
 export const ROLE_NAMES = { owner: 'Dueño', admin: 'Administrador', accountant: 'Contador', custom: 'Rol a medida' };
@@ -73,12 +74,105 @@ export const WRITE_ACTIONS = Object.freeze([
 export const OWNER_ACTIONS = Object.freeze(['org-edit']);
 
 /**
+ * A qué módulo pertenece cada botón de escritura (0.16.1). Para verlo hay que poder «Registrar» en ese módulo; «all» =
+ * escribe en todos (la demostración). Los que CAMBIAN un registro que ya existe están además en EDIT_ACTION_KIND.
+ * @type {Readonly<Record<string, ModuleId | 'all'>>}
+ */
+export const ACTION_MODULE = Object.freeze({
+  'add-menu': 'movements', 'add-income': 'movements', 'add-expense': 'movements', 'edit-movement': 'movements',
+  'cat-new': 'movements', 'cat-edit': 'movements', 'cat-delete': 'movements', 'add-business-categories': 'movements',
+  'add-saving': 'goals', 'edit-contribution': 'goals', 'new-goal': 'goals', 'goal-deposit': 'goals', 'goal-withdraw': 'goals', 'goal-edit': 'goals',
+  'new-asset': 'assets', 'asset-edit': 'assets', 'asset-value': 'assets',
+  'new-debt': 'debts', 'debt-pay': 'debts', 'debt-edit': 'debts', 'debt-payment-edit': 'debts',
+  'new-client': 'clients', 'client-edit': 'clients', 'client-archive': 'clients', 'client-delete': 'clients',
+  'new-service': 'clients', 'service-edit': 'clients', 'service-delete': 'clients',
+  'client-pay': 'movements', 'client-expense': 'movements',
+  'new-product': 'inventory', 'product-edit': 'inventory', 'product-archive': 'inventory', 'product-delete': 'inventory',
+  'new-supplier': 'inventory', 'supplier-edit': 'inventory', 'stock-buy': 'inventory', 'stock-sell': 'inventory',
+  'stock-adjust': 'inventory', 'stock-delete': 'inventory',
+  'new-department': 'departments', 'department-edit': 'departments',
+  'new-invoice': 'invoices', 'invoice-edit': 'invoices', 'invoice-pay': 'invoices', 'invoice-void': 'invoices', 'invoice-payment-delete': 'invoices',
+  'load-demo': 'all', 'remove-demo': 'all',
+});
+
+/**
+ * Botones que cambian un registro que YA existe, y de qué tipo es (data-id = su id). Con solo «Registrar» solo valen
+ * para lo que creaste tú.
+ * @type {Readonly<Record<string, string>>}
+ */
+export const EDIT_ACTION_KIND = Object.freeze({
+  'edit-movement': 'movements', 'cat-edit': 'categories', 'cat-delete': 'categories',
+  'edit-contribution': 'contributions', 'goal-edit': 'goals',
+  'asset-edit': 'assets', 'asset-value': 'assets',
+  'debt-edit': 'debts', 'debt-payment-edit': 'debtPayments',
+  'client-edit': 'clients', 'client-archive': 'clients', 'client-delete': 'clients', 'service-edit': 'services', 'service-delete': 'services',
+  'product-edit': 'products', 'product-archive': 'products', 'product-delete': 'products', 'supplier-edit': 'suppliers', 'stock-delete': 'stockEntries',
+  'department-edit': 'departments',
+  'invoice-edit': 'invoices', 'invoice-void': 'invoices', 'invoice-payment-delete': 'invoicePayments',
+});
+
+/** Pantallas propias de un módulo: sin acceso a él, no se muestran en el menú ni en las pestañas. @type {Readonly<Record<string, ModuleId>>} */
+export const ROUTE_MODULE = Object.freeze({
+  metas: 'goals', deudas: 'debts', patrimonio: 'assets', clientes: 'clients', inventario: 'inventory', facturas: 'invoices', departamentos: 'departments',
+});
+
+/**
+ * Lo que NO puedes hacer en un espacio, como palabras para el atributo `<html data-locked>`: «assets:view» (no ves
+ * Patrimonio), «assets:create» (no registras en Patrimonio), «all:create» (no registras en todos: sin demostración).
+ * @param {Workspace | null | undefined} w @returns {string[]}
+ */
+export function lockedTokens(w) {
+  const p = permissionsOf(w);
+  /** @type {string[]} */
+  const out = [];
+  for (const id of MODULE_IDS) {
+    if (!atLeast(p[id], 'view')) out.push(`${id}:view`);
+    if (!atLeast(p[id], 'create')) out.push(`${id}:create`);
+  }
+  if (!MODULE_IDS.every((id) => atLeast(p[id], 'create'))) out.push('all:create');
+  return out;
+}
+
+/** ¿Es tuyo este registro? (sin «createdBy» = creado en este dispositivo). @param {any} record @param {string | null} me */
+export const isMine = (record, me) => !record || !('createdBy' in record) || (me !== null && record.createdBy === me);
+
+/**
+ * ¿Te deja tu rol crear (sin `existing`) o cambiar/borrar (`existing`) un registro de este tipo?
+ * @param {Workspace | null | undefined} w @param {string} kind @param {any} existing @param {string | null} me
+ */
+export function allowsWrite(w, kind, existing, me) {
+  const level = permissionsOf(w)[MODULE_OF_KIND[kind]] ?? 'none';
+  if (level === 'edit') return true;
+  if (level !== 'create') return false;
+  return !existing || isMine(existing, me);
+}
+
+/** Mensaje de solo lectura con el nombre del rol. @param {Workspace | null | undefined} w */
+export const readOnlyMessage = (w) => (roleOf(w) === 'accountant'
+  ? READ_ONLY_MESSAGE
+  : `Estás en este espacio como ${roleLabel(w)}: puedes ver, pero tu rol no te deja registrar ni cambiar nada. Si lo necesitas, pídeselo al dueño.`);
+
+/** Tu rol no te deja registrar en un módulo. @param {Workspace | null | undefined} w @param {ModuleId | 'all'} module */
+export function noPermissionMessage(w, module) {
+  const what = module === 'all' ? 'cargar o borrar los datos de demostración' : `registrar en «${MODULES.find((m) => m.id === module)?.label ?? module}»`;
+  return `Tu rol («${roleLabel(w)}») no te deja ${what}. Si lo necesitas, pídeselo al dueño del espacio.`;
+}
+
+export const NOT_YOURS_MESSAGE =
+  'Con tu rol solo puedes corregir o borrar lo que registraste tú. Si hay que cambiar esto, pídeselo al dueño o a un administrador.';
+
+/**
  * Reglas de estilo que esconden los botones de escritura cuando la página está marcada como de solo lectura
- * (`<html data-read-only>`), y los del dueño cuando no lo eres (`<html data-not-owner>`).
+ * (`<html data-read-only>`), los del dueño cuando no lo eres (`<html data-not-owner>`) y, con un rol a medida, los de
+ * cada módulo según tus permisos (`<html data-locked="assets:create …">`) y las pantallas de los módulos que no ves.
  */
 export function roleCss() {
   const hide = (/** @type {string} */ flag, /** @type {readonly string[]} */ names) =>
     names.map((n) => `[${flag}] [data-action="${n}"]`).join(',\n');
+  const byModule = Object.entries(ACTION_MODULE).map(([action, module]) => `[data-locked~="${module}:create"] [data-action="${action}"]`).join(',\n');
+  const routes = Object.entries(ROUTE_MODULE).map(([route, module]) => `[data-locked~="${module}:view"] a[href="#/${route}"]`).join(',\n');
   return `${hide('data-read-only', WRITE_ACTIONS)},\n[data-read-only] [data-write-only] { display: none !important; }\n` +
-    `${hide('data-not-owner', OWNER_ACTIONS)},\n[data-not-owner] [data-owner-only] { display: none !important; }\n`;
+    `${hide('data-not-owner', OWNER_ACTIONS)},\n[data-not-owner] [data-owner-only] { display: none !important; }\n` +
+    `${byModule} { display: none !important; }\n` +
+    `${routes} { display: none !important; }\n`;
 }

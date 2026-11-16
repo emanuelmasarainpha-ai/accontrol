@@ -224,7 +224,7 @@ async function main() {
       },
     }
     : null;
-  const store = createStore(sync ? sync.store : local);
+  const store = createStore(sync ? sync.store : local, undefined, { userId: session ? session.user.id : null });
   // El recorrido guiado se recuerda por cuenta (y por tipo de espacio) en este dispositivo.
   const tourMemory = createTourMemory(localStorageOrNull(), session ? session.user.id : LOCAL_ACCOUNT);
   startApp(store, { account, tourMemory });

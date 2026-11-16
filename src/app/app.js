@@ -35,7 +35,11 @@ import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { countUp } from '../ui/countUp.js';
 import { hideTip } from '../ui/tooltip.js';
-import { canEditData, canManageWorkspace, OWNER_ACTIONS, OWNER_ONLY_MESSAGE, READ_ONLY_MESSAGE, ROLE_NAMES, roleLabel, roleOf, WRITE_ACTIONS } from '../domain/roles.js';
+import {
+  ACTION_MODULE, canEditData, canManageWorkspace, EDIT_ACTION_KIND, isMine, lockedTokens, noPermissionMessage, NOT_YOURS_MESSAGE, OWNER_ACTIONS,
+  OWNER_ONLY_MESSAGE, permissionsOf, readOnlyMessage, roleLabel,
+} from '../domain/roles.js';
+import { atLeast, MODULE_IDS } from '../domain/permissions.js';
 import { toast } from '../ui/toast.js';
 import { runCommonAction } from './actions.js';
 import { ROUTES, routeById, routeFromHash, routeParams } from './router.js';
@@ -138,6 +142,10 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     const readOnly = !onboarding && activeWs !== null && !canEditData(activeWs);
     document.documentElement.toggleAttribute('data-read-only', readOnly);
     document.documentElement.toggleAttribute('data-not-owner', !onboarding && activeWs !== null && !canManageWorkspace(activeWs));
+    // Roles a medida (0.16.1): lo que tu rol no permite en cada módulo («assets:create»…), para los mismos estilos.
+    const locks = !onboarding && activeWs ? lockedTokens(activeWs).join(' ') : '';
+    if (locks) document.documentElement.setAttribute('data-locked', locks);
+    else document.documentElement.removeAttribute('data-locked');
     paintWorkspaceKind(state.workspaces.find((w) => w.id === state.activeWorkspaceId)?.kind ?? null);
 
     markActiveRoute(routeId);
@@ -187,9 +195,7 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     const name = element?.dataset.action;
     if (!name) return;
     const active = store.activeWorkspace();
-    const blocked = WRITE_ACTIONS.includes(name) && !canEditData(active)
-      ? READ_ONLY_MESSAGE
-      : OWNER_ACTIONS.includes(name) && !canManageWorkspace(active) ? OWNER_ONLY_MESSAGE : null;
+    const blocked = OWNER_ACTIONS.includes(name) && !canManageWorkspace(active) ? OWNER_ONLY_MESSAGE : writeRefusal(store, name, element);
     if (!blocked) return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -206,6 +212,27 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
   });
 
   render(true);
+}
+
+/**
+ * ¿Te deja tu rol usar este botón de escritura? (0.16.1) Devuelve el motivo si no, o null. Sin permiso de «Registrar» en
+ * su módulo, nada; con solo «Registrar», los que cambian algo que ya existe solo valen para lo que creaste tú.
+ * @param {Store} store @param {string} name @param {HTMLElement} element @returns {string | null}
+ */
+function writeRefusal(store, name, element) {
+  const module = ACTION_MODULE[name];
+  if (!module) return null;
+  const active = store.activeWorkspace();
+  if (!canEditData(active)) return readOnlyMessage(active);
+  const perms = permissionsOf(active);
+  const allowed = module === 'all' ? MODULE_IDS.every((m) => atLeast(perms[m], 'create')) : atLeast(perms[module], 'create');
+  if (!allowed) return noPermissionMessage(active, module);
+  const kind = EDIT_ACTION_KIND[name];
+  if (kind && module !== 'all' && perms[module] === 'create') {
+    const record = (/** @type {any} */ (store.getState().data))[kind]?.find((/** @type {any} */ r) => r.id === element.dataset.id);
+    if (record && !isMine(record, store.me())) return NOT_YOURS_MESSAGE;
+  }
+  return null;
 }
 
 /**

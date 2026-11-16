@@ -48,7 +48,12 @@ import { CLASSIFICATIONS_BY_TYPE, LIMITS } from '../domain/types.js';
 import {
   buildWorkspace, defaultProfile, isWorkspaceKind, pickActiveWorkspace, validateWorkspaceName, withDefault,
 } from '../domain/workspaces.js';
-import { canEditData, canManageWorkspace, NOT_YOURS_TO_DELETE, OWNER_ONLY_MESSAGE, READ_ONLY_MESSAGE, roleOf } from '../domain/roles.js';
+import {
+  allowsWrite, canEditData, canManageWorkspace, NOT_YOURS_MESSAGE, NOT_YOURS_TO_DELETE, noPermissionMessage, OWNER_ONLY_MESSAGE, permissionsOf,
+  readOnlyMessage, roleOf,
+} from '../domain/roles.js';
+import { MODULE_IDS, MODULE_OF_KIND } from '../domain/permissions.js';
+import { CLOUD_KINDS } from '../data/cloudRows.js';
 import { singleWorkspace } from '../data/singleWorkspace.js';
 import { WORKSPACE_ERRORS } from '../data/workspaceScope.js';
 
@@ -97,11 +102,7 @@ const SAVE_FAILED =
   'No se pudo guardar en este dispositivo. Tus datos no cambiaron. Si el problema continúa, exporta una copia de seguridad.';
 
 /** Fallos que tienen una explicación propia (en vez del mensaje general de «no se pudo guardar»). */
-/** Lo lanza el candado de solo lectura (Contador) cuando algo intenta guardar en su espacio. */
-const READ_ONLY_ERROR = 'accontrol:espacio-de-solo-lectura';
-
 const KNOWN_PROBLEMS = new Map([
-  [READ_ONLY_ERROR, READ_ONLY_MESSAGE],
   [WORKSPACE_ERRORS.collision, 'Esta copia trae registros que ya existen en otro de tus espacios y no se pueden mezclar. Impórtala en el espacio donde se creó, o usa una copia completa.'],
   [WORKSPACE_ERRORS.gone, 'Este espacio de trabajo ya no existe (quizá se borró en otra pestaña). Cambia de espacio e inténtalo de nuevo.'],
 ]);
@@ -149,8 +150,9 @@ const formFail = (message) => ({ ok: false, errors: { form: message } });
  * @param {WorkspaceStore | DataStore} source  El almacén de espacios de trabajo. (Un almacén suelto también vale:
  *   se trata como una app con un solo espacio. Así se prueban las acciones sin montar espacios.)
  * @param {() => Date} [clock]  Reloj (se puede reemplazar en las pruebas).
+ * @param {{ userId?: string | null }} [options]  userId: tu cuenta (0.16.1), para saber qué registros creaste tú.
  */
-export function createStore(source, clock = () => new Date()) {
+export function createStore(source, clock = () => new Date(), { userId = null } = {}) {
   /** @type {WorkspaceStore} */
   const root = 'forWorkspace' in source ? source : singleWorkspace(source);
   /** El almacén del espacio abierto: cambia cuando la persona cambia de espacio. @type {DataStore} */
@@ -179,16 +181,49 @@ export function createStore(source, clock = () => new Date()) {
    */
   function openStore(id) {
     const inner = root.forWorkspace(id);
-    const locked = () => !canEditData(state.workspaces.find((w) => w.id === id));
-    /** @template {any[]} A @template R @param {(...args: A) => Promise<R>} fn */
-    const guard = (fn) => (/** @type {A} */ ...args) => (locked() ? Promise.reject(new Error(READ_ONLY_ERROR)) : fn(...args));
+    const ws = () => state.workspaces.find((w) => w.id === id);
+    const locked = () => !canEditData(ws());
+    /** Un rechazo con un mensaje ya listo para la persona. @param {string} text */
+    const deny = (text) => Promise.reject(Object.assign(new Error(text), { friendly: true }));
+    /**
+     * Roles a medida (0.16.1): ¿te deja tu rol crear, cambiar o borrar CADA registro de este guardado? Con «Registrar»
+     * solo cambias o borras lo que creaste tú. Devuelve el motivo si no, o null. (Los datos DEMO nunca viajan: no cuentan.)
+     * @param {Record<string, any> | undefined} changes @param {Record<string, any> | undefined} deletions
+     */
+    const refusal = (changes, deletions) => {
+      const w = ws();
+      if (locked()) return readOnlyMessage(w);
+      const perms = permissionsOf(w);
+      if (MODULE_IDS.every((m) => perms[m] === 'edit')) return null;
+      const here = id === state.activeWorkspaceId ? state.data : null;
+      for (const kind of CLOUD_KINDS) {
+        const existing = new Map(((/** @type {any} */ (here))?.[kind.key] ?? []).map((/** @type {any} */ r) => [String(r.id), r]));
+        /** @param {any} before */
+        const why = (before) => (before && allowsWrite(w, kind.key, null, userId) ? NOT_YOURS_MESSAGE : noPermissionMessage(w, MODULE_OF_KIND[kind.key]));
+        // También los DEMO: cargar la demostración en un espacio compartido pide poder registrar en todo, igual que la
+        // pantalla (al quitarla, en cambio, borrar lo DEMO de aquí siempre se puede).
+        for (const r of changes?.[kind.key] ?? []) {
+          if (!r || r.builtIn === true) continue;
+          const before = existing.get(String(r.id));
+          if (!allowsWrite(w, kind.key, before, userId)) return why(before);
+        }
+        for (const gone of deletions?.[kind.idsKey] ?? []) {
+          const before = existing.get(String(gone));
+          if (before?.isDemo === true || before?.builtIn === true) continue;
+          if (!allowsWrite(w, kind.key, before ?? {}, userId)) return why(before ?? {});
+        }
+      }
+      return null;
+    };
+    /** Restaurar o vaciar el espacio entero: solo quien puede editar todo (Dueño o Administrador). */
+    const whole = () => (MODULE_IDS.every((m) => permissionsOf(ws())[m] === 'edit') ? null : readOnlyMessage(ws()));
     return {
       load: () => inner.load(),
-      putMany: guard((changes, deletions) => inner.putMany(changes, deletions)),
-      deleteMany: guard((deletions) => inner.deleteMany(deletions)),
-      saveSettings: guard((settings) => inner.saveSettings(settings)),
-      replaceAll: guard((data) => inner.replaceAll(data)),
-      clearAll: guard(() => inner.clearAll()),
+      putMany: (changes, deletions) => { const no = refusal(/** @type {any} */ (changes), /** @type {any} */ (deletions)); return no ? deny(no) : inner.putMany(changes, deletions); },
+      deleteMany: (deletions) => { const no = refusal(undefined, /** @type {any} */ (deletions)); return no ? deny(no) : inner.deleteMany(deletions); },
+      saveSettings: (settings) => (locked() ? deny(readOnlyMessage(ws())) : inner.saveSettings(settings)),
+      replaceAll: (data) => { const no = whole(); return no ? deny(no) : inner.replaceAll(data); },
+      clearAll: () => { const no = whole(); return no ? deny(no) : inner.clearAll(); },
     };
   }
 
@@ -222,7 +257,7 @@ export function createStore(source, clock = () => new Date()) {
       return null;
     } catch (error) {
       console.error('Error de almacenamiento:', error);
-      return formFail((error instanceof Error && KNOWN_PROBLEMS.get(error.message)) || SAVE_FAILED);
+      return formFail(error instanceof Error && /** @type {any} */ (error).friendly ? error.message : (error instanceof Error && KNOWN_PROBLEMS.get(error.message)) || SAVE_FAILED);
     }
   }
 
@@ -260,7 +295,7 @@ export function createStore(source, clock = () => new Date()) {
       return null;
     } catch (error) {
       console.error('No se pudo releer el almacenamiento:', error);
-      return formFail((error instanceof Error && KNOWN_PROBLEMS.get(error.message)) || SAVE_FAILED);
+      return formFail(error instanceof Error && /** @type {any} */ (error).friendly ? error.message : (error instanceof Error && KNOWN_PROBLEMS.get(error.message)) || SAVE_FAILED);
     }
   }
 
@@ -287,7 +322,7 @@ export function createStore(source, clock = () => new Date()) {
       return null;
     } catch (error) {
       console.error('No se pudo abrir el espacio de trabajo:', error);
-      return formFail((error instanceof Error && KNOWN_PROBLEMS.get(error.message)) || SAVE_FAILED);
+      return formFail(error instanceof Error && /** @type {any} */ (error).friendly ? error.message : (error instanceof Error && KNOWN_PROBLEMS.get(error.message)) || SAVE_FAILED);
     }
   }
 
@@ -389,6 +424,8 @@ export function createStore(source, clock = () => new Date()) {
     canEditData: () => canEditData(state.workspaces.find((w) => w.id === state.activeWorkspaceId)),
     /** ¿Eres el dueño del espacio abierto? (solo el dueño cambia su nombre, organización y saldo inicial). */
     canManageWorkspace: () => canManageWorkspace(state.workspaces.find((w) => w.id === state.activeWorkspaceId)),
+    /** Tu cuenta (0.16.1): para saber qué registros creaste tú. */
+    me: () => userId,
 
     /**
      * Crea un espacio de trabajo y lo abre. La primera vez (pantalla de elegir modalidad) también sirve.
