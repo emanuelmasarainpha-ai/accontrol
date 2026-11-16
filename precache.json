@@ -1,5 +1,5 @@
 {
-  "version": "2bf6881c994d",
+  "version": "49f758f4f49e",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -52,6 +52,7 @@
     "src/domain/departments.js",
     "src/domain/diagnosis.js",
     "src/domain/diagnosisCards.js",
+    "src/domain/fiado.js",
     "src/domain/finmath.js",
     "src/domain/freelance.js",
     "src/domain/gamification.js",
@@ -132,6 +133,8 @@
     "src/views/department-forms.js",
     "src/views/departments.js",
     "src/views/diagnosis.js",
+    "src/views/fiado-forms.js",
+    "src/views/fiado.js",
     "src/views/finances.js",
     "src/views/form-parts.js",
     "src/views/forms.js",

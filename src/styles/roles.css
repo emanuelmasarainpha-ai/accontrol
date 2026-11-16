@@ -43,6 +43,8 @@
 [data-read-only] [data-action="invoice-pay"],
 [data-read-only] [data-action="invoice-void"],
 [data-read-only] [data-action="invoice-payment-delete"],
+[data-read-only] [data-action="credit-new"],
+[data-read-only] [data-action="credit-pay"],
 [data-read-only] [data-action="cat-new"],
 [data-read-only] [data-action="cat-edit"],
 [data-read-only] [data-action="cat-delete"],
@@ -99,6 +101,8 @@
 [data-locked~="invoices:create"] [data-action="invoice-pay"],
 [data-locked~="invoices:create"] [data-action="invoice-void"],
 [data-locked~="invoices:create"] [data-action="invoice-payment-delete"],
+[data-locked~="invoices:create"] [data-action="credit-new"],
+[data-locked~="invoices:create"] [data-action="credit-pay"],
 [data-locked~="all:create"] [data-action="load-demo"],
 [data-locked~="all:create"] [data-action="remove-demo"] { display: none !important; }
 [data-locked~="goals:view"] a[href="#/metas"],
@@ -107,4 +111,5 @@
 [data-locked~="clients:view"] a[href="#/clientes"],
 [data-locked~="inventory:view"] a[href="#/inventario"],
 [data-locked~="invoices:view"] a[href="#/facturas"],
+[data-locked~="invoices:view"] a[href="#/fiado"],
 [data-locked~="departments:view"] a[href="#/departamentos"] { display: none !important; }

@@ -38,6 +38,7 @@ import {
   buildInvoice, buildInvoicePayment, buildPaymentMovement, invoiceLabel, invoicesEnabled, nextInvoiceNumber, stockEntriesFromLines,
   billedByService, validateInvoice, validateInvoiceEdit, validateInvoicePayment, voidProblem,
 } from '../domain/invoices.js';
+import { creditErrors, creditInvoiceInput, customerKey, customerLedger, fiadoEnabled, validateCustomerPayment } from '../domain/fiado.js';
 import { formatMoney } from '../domain/money.js';
 import { newId } from '../domain/ids.js';
 import { isOrganizationEmpty, kindHasOrganization, validateOrganization } from '../domain/organization.js';
@@ -352,6 +353,8 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
     inventoryEnabled: () => inventoryEnabled(activeKind(), state.data),
     /** ¿Se muestran las facturas internas? Emprendedor y Empresa; en otros, solo si ya hay facturas. */
     invoicesEnabled: () => invoicesEnabled(activeKind(), state.data),
+    /** ¿Se muestra «Fiado» (quién me debe)? Donde hay facturas, menos en Freelancer (0.16.3). */
+    fiadoEnabled: () => fiadoEnabled(activeKind(), state.data),
     /** ¿Se muestran los departamentos y sus presupuestos? Solo el espacio Empresa; en otros, solo si ya hay departamentos. */
     departmentsEnabled: () => departmentsEnabled(activeKind(), state.data),
 
@@ -1497,6 +1500,61 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         if (failure) return failure;
         updateData((d) => ({ ...d, movements: upsert(d.movements, movement), invoicePayments: upsert(d.invoicePayments, payment) }));
         return { ok: true, payment, movement };
+      });
+    },
+
+    // ---------------------------------------------------------------- fiado (quién me debe, 0.16.3)
+
+    /**
+     * Fía algo a un cliente: es una factura interna de una línea con la nota «Fiado», validada con las mismas reglas que
+     * cualquier factura. Los errores vuelven con los nombres del formulario «Fiar».
+     * @param {import('../domain/fiado.js').CreditInput} input
+     * @returns {Promise<{ ok: true, invoice: Invoice } | Failure>}
+     */
+    async createCredit(input) {
+      // Si ya le fiaste a esa persona (escrita con o sin tildes o mayúsculas), se conserva el nombre con que ya la tenías.
+      const known = customerLedger(state.data, customerKey({ customerName: String(input.customerName ?? '') }), today());
+      const result = await this.createInvoice(creditInvoiceInput(known ? { ...input, customerName: known.name } : input));
+      return result.ok ? { ok: true, invoice: result.invoice } : { ok: false, errors: creditErrors(result.errors) };
+    },
+
+    /**
+     * Registra un abono de un cliente: se reparte empezando por su deuda más vieja y crea, en la MISMA operación, un cobro por
+     * cada factura que toca, cada uno con su ingreso (se guardan todos o ninguno).
+     * @param {string} key Quién es (customerKey). @param {import('../domain/fiado.js').CustomerPaymentInput} input
+     * @returns {Promise<{ ok: true, payments: InvoicePayment[], movements: Movement[], amountCents: number } | Failure>}
+     */
+    addCustomerPayment(key, input) {
+      return enqueue(async () => {
+        const stale = await reloadFromStorage();
+        if (stale) return stale;
+        const data = state.data;
+        const checked = validateCustomerPayment(input, { ledger: customerLedger(data, key, today()), categories: data.categories, today: today() });
+        if (!checked.ok) return checked;
+        const category = data.categories.find((c) => c.id === checked.value.categoryId);
+        if (!category) return formFail('Esa categoría ya no existe.');
+        const now = nowISO();
+        const time = currentTime(clock());
+        /** @type {Movement[]} */
+        const movements = [];
+        /** @type {InvoicePayment[]} */
+        const payments = [];
+        for (const { invoiceId, amountCents } of checked.value.allocations) {
+          const invoice = /** @type {Invoice} */ (data.invoices.find((x) => x.id === invoiceId));
+          const isDemo = invoice.isDemo === true;
+          const value = { amountCents, date: checked.value.date, categoryId: category.id, note: checked.value.note };
+          const movement = buildPaymentMovement(value, invoice, category, { id: newId(), time, nowISO: now, isDemo });
+          movements.push(movement);
+          payments.push(buildInvoicePayment(value, { id: newId(), invoiceId, time, nowISO: now, movementId: movement.id, isDemo }));
+        }
+        const failure = await tryWrite(() => dataStore.putMany({ movements, invoicePayments: payments }));
+        if (failure) return failure;
+        updateData((d) => ({
+          ...d,
+          movements: movements.reduce((list, m) => upsert(list, m), d.movements),
+          invoicePayments: payments.reduce((list, p) => upsert(list, p), d.invoicePayments),
+        }));
+        return { ok: true, payments, movements, amountCents: checked.value.amountCents };
       });
     },
 

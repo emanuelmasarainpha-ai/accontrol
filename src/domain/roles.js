@@ -66,6 +66,7 @@ export const WRITE_ACTIONS = Object.freeze([
   'new-supplier', 'supplier-edit', 'stock-buy', 'stock-sell', 'stock-adjust', 'stock-delete',
   'new-department', 'department-edit',
   'new-invoice', 'invoice-edit', 'invoice-pay', 'invoice-void', 'invoice-payment-delete',
+  'credit-new', 'credit-pay',
   'cat-new', 'cat-edit', 'cat-delete', 'add-business-categories',
   'load-demo', 'remove-demo',
 ]);
@@ -92,6 +93,7 @@ export const ACTION_MODULE = Object.freeze({
   'stock-adjust': 'inventory', 'stock-delete': 'inventory',
   'new-department': 'departments', 'department-edit': 'departments',
   'new-invoice': 'invoices', 'invoice-edit': 'invoices', 'invoice-pay': 'invoices', 'invoice-void': 'invoices', 'invoice-payment-delete': 'invoices',
+  'credit-new': 'invoices', 'credit-pay': 'invoices',
   'load-demo': 'all', 'remove-demo': 'all',
 });
 
@@ -113,7 +115,7 @@ export const EDIT_ACTION_KIND = Object.freeze({
 
 /** Pantallas propias de un módulo: sin acceso a él, no se muestran en el menú ni en las pestañas. @type {Readonly<Record<string, ModuleId>>} */
 export const ROUTE_MODULE = Object.freeze({
-  metas: 'goals', deudas: 'debts', patrimonio: 'assets', clientes: 'clients', inventario: 'inventory', facturas: 'invoices', departamentos: 'departments',
+  metas: 'goals', deudas: 'debts', patrimonio: 'assets', clientes: 'clients', inventario: 'inventory', facturas: 'invoices', fiado: 'invoices', departamentos: 'departments',
 });
 
 /**

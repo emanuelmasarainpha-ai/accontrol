@@ -18,6 +18,7 @@ import { renderHealth } from '../views/health.js';
 import { renderInventory } from '../views/inventory.js';
 import { renderDepartments } from '../views/departments.js';
 import { renderInvoices } from '../views/invoices.js';
+import { renderFiado } from '../views/fiado.js';
 import { renderResults } from '../views/results.js';
 import { renderDebts } from '../views/debts.js';
 import { renderFinances } from '../views/finances.js';
@@ -84,6 +85,7 @@ const VIEWS = {
   salud: renderHealth,
   inventario: renderInventory,
   facturas: renderInvoices,
+  fiado: renderFiado,
   departamentos: renderDepartments,
   deudas: renderDebts,
   patrimonio: renderNetWorth,

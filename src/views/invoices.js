@@ -200,12 +200,14 @@ function listPage(store, today) {
 
         <section class="panel" aria-labelledby="owing-title">
           <div class="panel__head"><h2 class="panel__title" id="owing-title">Quién te debe</h2></div>
-          <ul class="rows">${receivables.customers.slice(0, 6).map(
-            (c) => html`<li class="row-item"><div class="row row--static">
-              <span class="row__main"><span class="row__title">${c.customerName}</span><span class="row__meta"><span>${plural(c.invoices, 'factura', 'facturas')}</span>${c.oldestDaysOverdue > 0 ? html`<span>la más atrasada, ${plural(c.oldestDaysOverdue, 'día', 'días')}</span>` : html`<span>al día</span>`}</span></span>
-              <span class="row__side"><span class="row__amount">${formatMoney(c.balanceCents)}</span>${c.overdueCents > 0 ? html`<span class="row__time">${formatMoney(c.overdueCents)} vencido</span>` : ''}</span>
-            </div></li>`,
-          )}</ul>
+          <ul class="rows">${receivables.customers.slice(0, 6).map((c) => {
+            const inner = html`<span class="row__main"><span class="row__title">${c.customerName}</span><span class="row__meta"><span>${plural(c.invoices, 'factura', 'facturas')}</span>${c.oldestDaysOverdue > 0 ? html`<span>la más atrasada, ${plural(c.oldestDaysOverdue, 'día', 'días')}</span>` : html`<span>al día</span>`}</span></span>
+              <span class="row__side"><span class="row__amount">${formatMoney(c.balanceCents)}</span>${c.overdueCents > 0 ? html`<span class="row__time">${formatMoney(c.overdueCents)} vencido</span>` : ''}</span>`;
+            // Con «Fiado» (0.16.3), cada cliente abre su estado de cuenta.
+            return html`<li class="row-item">${store.fiadoEnabled()
+              ? html`<a class="row" href="#/fiado/${encodeURIComponent(c.key)}" aria-label="${c.customerName}. Ver estado de cuenta">${inner}</a>`
+              : html`<div class="row row--static">${inner}</div>`}</li>`;
+          })}</ul>
           ${receivables.customers.length > 6 ? html`<p class="panel__foot">Y ${receivables.customers.length - 6} clientes más con saldo.</p>` : ''}
         </section>`
       : ''}

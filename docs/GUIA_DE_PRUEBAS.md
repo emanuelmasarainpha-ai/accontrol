@@ -273,6 +273,12 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     3. Con B, toca un movimiento que registró A: no se abre y explica «solo puedes corregir lo que registraste tú». El gasto que registró B sí se abre para corregir, y le llega a A al sincronizar.
     4. Con A, edita el rol y dale **Patrimonio: Ver**. Con B, sincroniza: sale «Tu rol… ahora es Cajero» y ya ve el patrimonio.
 
+40. **Filtros del inventario y fiado (0.16.2 y 0.16.3).** En un espacio **Emprendedor**:
+    1. *Finanzas → Inventario*: toca **Stock bajo**, **Agotados** y **Con stock** y comprueba que cada producto cumple lo que dice el botón; escribe parte de un nombre sin tildes (por ejemplo «cafe») o un código completo en el buscador.
+    2. *Finanzas → Fiado → Fiar*: anota «José Pérez», «Pan y leche», RD$ 150. Vuelve a fiar a «jose perez» RD$ 100: debe salir **una sola persona** con RD$ 250, con el nombre «José Pérez».
+    3. Abre a José → **Cobrar abono** de RD$ 300: debe decir que debe RD$ 250 y no guardar nada. Cobra RD$ 200: queda debiendo RD$ 50, y en *Movimientos* aparecen dos ingresos «Cobro F-0001» y «Cobro F-0002».
+    4. **Copiar estado de cuenta** y pégalo en una nota: debe terminar en «Saldo pendiente: RD$ 50.00».
+
 ## 3. Probar en el teléfono Android
 
 ### Opción A — Misma red Wi-Fi (la más rápida)

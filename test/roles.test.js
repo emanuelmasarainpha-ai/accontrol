@@ -82,7 +82,7 @@ test('estilos: toda acción común que abre un formulario o guarda está en la l
   const actions = readFileSync(new URL('../src/app/actions.js', import.meta.url), 'utf8');
   const handled = [...actions.matchAll(/case '([a-z-]+)':/g)].map((m) => m[1]);
   // Las únicas acciones comunes que NO cambian datos: navegar, recargar, exportar, copiar un texto y abrir el selector.
-  const readOnly = new Set(['workspace-menu', 'export', 'go', 'reload', 'invoice-reminder']);
+  const readOnly = new Set(['workspace-menu', 'export', 'go', 'reload', 'invoice-reminder', 'credit-statement']);
   const missing = handled.filter((name) => !readOnly.has(name) && !WRITE_ACTIONS.includes(name));
   assert.deepEqual(missing, [], 'acciones que cambian datos y un Contador podría pulsar');
 });

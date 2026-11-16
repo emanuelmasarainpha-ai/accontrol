@@ -287,20 +287,20 @@ export function progress(percent, label) {
   return html`<span class="progress-wrap"><progress class="progress" max="100" value="${value}" aria-label="${label}">${value}%</progress></span>`;
 }
 
-/** @typedef {'movimientos' | 'resultados' | 'salud' | 'clientes' | 'departamentos' | 'inventario' | 'facturas' | 'deudas' | 'patrimonio'} FinanceTab */
+/** @typedef {'movimientos' | 'resultados' | 'salud' | 'clientes' | 'departamentos' | 'inventario' | 'facturas' | 'fiado' | 'deudas' | 'patrimonio'} FinanceTab */
 
 /**
- * Pestañas dentro de Finanzas: Movimientos | Resultados | Salud | Clientes | Departamentos | Inventario | Facturas (cada una solo si el
+ * Pestañas dentro de Finanzas: Movimientos | Resultados | Salud | Clientes | Departamentos | Inventario | Facturas | Fiado (cada una solo si el
  * espacio la usa) | Deudas | Patrimonio. Qué pestañas hay lo decide el espacio abierto (`store`), así cada pantalla de Finanzas muestra las
  * mismas y una pestaña nueva se añade aquí una sola vez.
  * @param {FinanceTab} active
- * @param {{ clientsEnabled: () => boolean, resultsEnabled: () => boolean, healthEnabled: () => boolean, departmentsEnabled: () => boolean, inventoryEnabled: () => boolean, invoicesEnabled: () => boolean }} store
+ * @param {{ clientsEnabled: () => boolean, resultsEnabled: () => boolean, healthEnabled: () => boolean, departmentsEnabled: () => boolean, inventoryEnabled: () => boolean, invoicesEnabled: () => boolean, fiadoEnabled?: () => boolean }} store
  */
 export function financeTabs(active, store) {
   /** @param {FinanceTab} id @param {string} label */
   const tab = (id, label) =>
     html`<a class="subtab" href="#/${id === 'movimientos' ? 'finanzas' : id}" aria-current="${active === id ? 'page' : 'false'}">${label}</a>`;
-  return html`<nav class="subtabs" aria-label="Secciones de Finanzas">${tab('movimientos', 'Movimientos')}${store.resultsEnabled() ? tab('resultados', 'Resultados') : ''}${store.healthEnabled() ? tab('salud', 'Salud') : ''}${store.clientsEnabled() ? tab('clientes', 'Clientes') : ''}${store.departmentsEnabled() ? tab('departamentos', 'Departamentos') : ''}${store.inventoryEnabled() ? tab('inventario', 'Inventario') : ''}${store.invoicesEnabled() ? tab('facturas', 'Facturas') : ''}${tab('deudas', 'Deudas')}${tab('patrimonio', 'Patrimonio')}</nav>`;
+  return html`<nav class="subtabs" aria-label="Secciones de Finanzas">${tab('movimientos', 'Movimientos')}${store.resultsEnabled() ? tab('resultados', 'Resultados') : ''}${store.healthEnabled() ? tab('salud', 'Salud') : ''}${store.clientsEnabled() ? tab('clientes', 'Clientes') : ''}${store.departmentsEnabled() ? tab('departamentos', 'Departamentos') : ''}${store.inventoryEnabled() ? tab('inventario', 'Inventario') : ''}${store.invoicesEnabled() ? tab('facturas', 'Facturas') : ''}${store.fiadoEnabled?.() ? tab('fiado', 'Fiado') : ''}${tab('deudas', 'Deudas')}${tab('patrimonio', 'Patrimonio')}</nav>`;
 }
 
 /**

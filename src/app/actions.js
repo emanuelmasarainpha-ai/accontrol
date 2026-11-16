@@ -23,6 +23,7 @@ import { openDepartmentForm } from '../views/department-forms.js';
 import { openDebtForm, openPaymentForm } from '../views/debt-forms.js';
 import { openProductForm, openStockForm, openSupplierForm } from '../views/inventory-forms.js';
 import { copyInvoiceReminder, openInvoiceEditForm, openInvoiceForm, openInvoicePaymentForm } from '../views/invoice-forms.js';
+import { copyStatement, openCreditForm, openCustomerPaymentForm } from '../views/fiado-forms.js';
 import { openWorkspaceMenu } from '../views/workspaces.js';
 import {
   openAddMenu, openAddSaving, openContributionForm, openGoalForm, openMovementForm,
@@ -163,6 +164,16 @@ export function runCommonAction(store, name, element) {
     case 'new-invoice':
       // Desde la ficha de un cliente o de un servicio (Freelancer), la factura se abre ya con ellos elegidos.
       openInvoiceForm(store, { clientId: element.dataset.clientId ?? '', serviceId: element.dataset.serviceId ?? '' });
+      return true;
+    case 'credit-new':
+      // Desde la ficha de un cliente del fiado, ya con su nombre y su teléfono.
+      openCreditForm(store, { customerName: element.dataset.name ?? '', customerContact: element.dataset.contact ?? '' });
+      return true;
+    case 'credit-pay':
+      openCustomerPaymentForm(store, { key: element.dataset.key ?? '' });
+      return true;
+    case 'credit-statement':
+      void copyStatement(store, element.dataset.key ?? '');
       return true;
     case 'invoice-reminder':
       void copyInvoiceReminder(store, element.dataset.id ?? '');

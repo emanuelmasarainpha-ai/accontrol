@@ -234,7 +234,7 @@ ${cloudPanel(sync)}
       <ol class="roadmap">${ROADMAP.map(
         (r) => html`<li class="roadmap__item${r.current ? ' roadmap__item--current' : ''}${r.done ? ' roadmap__item--done' : ''}"><span class="roadmap__stage">${r.stage}</span><span>${r.text}</span></li>`,
       )}</ol>
-      <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · Filtros del inventario (camino a la caja)</p>
+      <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · Fiado: quién me debe (camino a la caja)</p>
     </section>
   `;
 

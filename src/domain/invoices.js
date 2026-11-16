@@ -163,8 +163,22 @@ export function invoicePositions(data, today) {
 
 // ---- Cuentas por cobrar ----------------------------------------------------------------------------------
 
+/** Nombre sin tildes, en minúsculas y con un solo espacio entre palabras (0.16.3). @param {string} name */
+export function foldName(name) {
+  return name.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Quién es el cliente de una factura (0.16.3): su ficha, si la lleva; si no, su nombre sin tildes, mayúsculas ni espacios de más
+ * («José  Pérez» y «jose perez» son la misma persona). @param {Pick<Invoice, 'clientId' | 'customerName'>} invoice
+ */
+export function customerKey(invoice) {
+  return invoice.clientId ? `c:${invoice.clientId}` : `n:${foldName(invoice.customerName)}`;
+}
+
 /**
  * @typedef {Object} CustomerReceivable
+ * @property {string} key             Quién es (customerKey): sirve para abrir su ficha en «Fiado».
  * @property {string} customerName
  * @property {number} invoices        Facturas con saldo.
  * @property {number} balanceCents
@@ -187,8 +201,8 @@ export function invoiceReceivables(data, today) {
     else if (p.daysOverdue <= 30) aging.d1to30 += p.balanceCents;
     else if (p.daysOverdue <= 60) aging.d31to60 += p.balanceCents;
     else aging.d61plus += p.balanceCents;
-    const key = p.invoice.customerName.toLocaleLowerCase('es');
-    const row = byCustomer.get(key) ?? { customerName: p.invoice.customerName, invoices: 0, balanceCents: 0, overdueCents: 0, oldestDaysOverdue: 0 };
+    const key = customerKey(p.invoice);
+    const row = byCustomer.get(key) ?? { key, customerName: p.invoice.customerName, invoices: 0, balanceCents: 0, overdueCents: 0, oldestDaysOverdue: 0 };
     row.invoices += 1;
     row.balanceCents += p.balanceCents;
     if (p.daysOverdue > 0) row.overdueCents += p.balanceCents;
