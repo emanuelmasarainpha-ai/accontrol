@@ -669,7 +669,7 @@ export function dueText(invoice) {
 
 /**
  * Facturas vencidas con saldo, de la más atrasada a la menos. ACCONTROL NO envía recordatorios: esta lista sirve para que
- * la persona copie el mensaje y lo mande ella (los envíos automáticos llegan con las notificaciones, etapa 0.17).
+ * la persona copie el mensaje y lo mande ella (los envíos automáticos llegan con las notificaciones, etapa 0.18).
  * @param {Pick<AppData, 'invoices' | 'invoicePayments'>} data @param {string} today
  */
 export function overdueInvoices(data, today) {

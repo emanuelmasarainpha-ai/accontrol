@@ -11,17 +11,25 @@
 
 import { formatDate, monthKeyOf, monthLabel, plural } from '../domain/dates.js';
 import {
-  STOCK_KIND_LABELS, inventorySummary, productUsage, replayProduct, salesAnalysis, sortEntriesNewestFirst, stockPositions, supplierTotals,
+  PRODUCT_FILTERS, STOCK_KIND_LABELS, filterStockPositions, inventorySummary, isProductFilter, productFilterCounts, productUsage, replayProduct, salesAnalysis, sortEntriesNewestFirst, stockPositions, supplierTotals,
 } from '../domain/inventory.js';
 import { invoiceLabel } from '../domain/invoices.js';
 import { formatMoney, formatPercent } from '../domain/money.js';
 import { demoBadge, demoBanner, emptyState, exportButtons, financeTabs, money } from '../ui/components.js';
-import { html } from '../ui/html.js';
+import { actionTarget } from '../ui/dom.js';
+import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 /** @typedef {import('../domain/inventory.js').StockPosition} StockPosition */
 /** @typedef {import('../domain/types.js').StockEntry} StockEntry */
+
+/** Estado propio de la lista (se conserva mientras no recargues la página). */
+const view = {
+  /** @type {import('../domain/inventory.js').ProductFilter} */
+  filter: 'active',
+  query: '',
+};
 
 /** Cantidad con separador de miles. @param {number} n */
 const qty = (n) => n.toLocaleString('en-US');
@@ -42,7 +50,29 @@ export function renderInventory(store, ctx) {
   if (!store.inventoryEnabled()) return { html: notAvailablePage(store) };
   const today = store.today();
   const detailId = ctx.params[0];
-  return { html: detailId ? detailPage(store, detailId) : listPage(store, today) };
+  if (detailId) return { html: detailPage(store, detailId) };
+  const list = listPage(store, today);
+  return {
+    html: list.html,
+    mount(root, signal) {
+      root.addEventListener(
+        'click',
+        (event) => {
+          const el = actionTarget(event.target);
+          if (el?.dataset.action !== 'product-filter' || !isProductFilter(el.dataset.value)) return;
+          view.filter = el.dataset.value;
+          ctx.rerender();
+        },
+        { signal },
+      );
+      // La búsqueda solo redibuja la lista, para no perder el cursor al escribir.
+      const search = root.querySelector('#product-search');
+      const results = root.querySelector('#product-results');
+      if (search instanceof HTMLInputElement && results instanceof HTMLElement) {
+        search.addEventListener('input', () => { view.query = search.value; setHtml(results, list.results()); }, { signal });
+      }
+    },
+  };
 }
 
 // =============================================================================
@@ -86,7 +116,8 @@ function listPage(store, today) {
   const invoiceById = new Map(data.invoices.map((i) => [i.id, i]));
   const hasMovements = new Set(data.stockEntries.map((e) => e.productId));
   const active = summary.positions.filter((p) => !p.product.archived);
-  const archived = summary.positions.filter((p) => p.product.archived);
+  const counts = productFilterCounts(summary.positions);
+  if (view.filter === 'archived' && counts.archived === 0) view.filter = 'active';
   const recent = sortEntriesNewestFirst(data.stockEntries).slice(0, 8);
   // Lo que costó la mercancía que salió en cada venta o merma (costo promedio del momento).
   /** @type {Map<string, number>} */
@@ -122,7 +153,24 @@ function listPage(store, today) {
     </li>`;
   };
 
-  return html`
+  const results = () => {
+    const found = filterStockPositions(summary.positions, view);
+    if (found.length > 0) {
+      return html`<p class="muted count-line" role="status">${found.length === 1 ? '1 producto' : `${found.length} productos`}</p><ul class="rows">${found.map(productRow)}</ul>`;
+    }
+    if (view.query.trim()) return html`<p class="muted empty-line" role="status">Ningún producto coincide con «${view.query.trim()}»${view.filter === 'active' ? '' : ' en este filtro'}.</p>`;
+    /** @type {Record<string, string>} */
+    const empty = {
+      active: 'Todos tus productos están archivados.',
+      low: 'Ningún producto está en stock bajo. Para recibir el aviso, ponle un «stock mínimo» al producto.',
+      out: 'No tienes productos agotados.',
+      in_stock: 'Ningún producto tiene unidades en este momento.',
+      archived: 'No tienes productos archivados.',
+    };
+    return html`<p class="muted empty-line" role="status">${empty[view.filter]}</p>`;
+  };
+
+  const page = html`
     <header class="page-header page-header--wrap">
       <div>
         <h1 class="page-title">Finanzas</h1>
@@ -159,7 +207,7 @@ function listPage(store, today) {
     </section>
 
     ${summary.alerts.length > 0
-      ? html`<p class="notice" role="status">${icon('alert', 18)}<span>${summary.alerts.length === 1 ? 'Stock bajo en un producto' : `Stock bajo en ${summary.alerts.length} productos`}: ${summary.alerts.slice(0, 4).map((a) => `«${a.product.name}» (${qty(a.stock)})`).join(', ')}${summary.alerts.length > 4 ? ` y ${summary.alerts.length - 4} más` : ''}.</span></p>`
+      ? html`<p class="notice" role="status">${icon('alert', 18)}<span>${summary.alerts.length === 1 ? 'Stock bajo en un producto' : `Stock bajo en ${summary.alerts.length} productos`}: ${summary.alerts.slice(0, 4).map((a) => `«${a.product.name}» (${qty(a.stock)})`).join(', ')}${summary.alerts.length > 4 ? ` y ${summary.alerts.length - 4} más` : ''}. <button type="button" class="link-btn" data-action="product-filter" data-value="low">Ver cuáles</button></span></p>`
       : ''}
 
     <section class="panel" aria-labelledby="products-title">
@@ -167,10 +215,18 @@ function listPage(store, today) {
         <h2 class="panel__title" id="products-title">Productos (${active.length})</h2>
         <button type="button" class="link-btn" data-action="new-product">Nuevo producto</button>
       </div>
-      ${active.length === 0 ? html`<p class="muted">Todos tus productos están archivados.</p>` : html`<ul class="rows">${active.map(productRow)}</ul>`}
-      ${archived.length > 0
-        ? html`<details class="table-view"><summary>Archivados (${archived.length})</summary><ul class="rows">${archived.map(productRow)}</ul></details>`
-        : ''}
+      <div class="toolbar">
+        <div class="filter-group" role="group" aria-label="Filtrar productos">
+          ${PRODUCT_FILTERS.filter((f) => f.id !== 'archived' || counts.archived > 0).map(
+            (f) => html`<button type="button" class="filter-chip" data-action="product-filter" data-value="${f.id}" aria-pressed="${view.filter === f.id ? 'true' : 'false'}">${f.label} (${counts[f.id]})</button>`,
+          )}
+        </div>
+        <div class="search">
+          <label for="product-search" class="sr-only">Buscar producto por nombre o código</label>
+          <input id="product-search" class="input" type="search" placeholder="Buscar por nombre o código…" value="${view.query}" autocomplete="off" maxlength="80" />
+        </div>
+      </div>
+      <div id="product-results">${results()}</div>
     </section>
 
     ${sales.byProduct.length > 0
@@ -211,6 +267,7 @@ function listPage(store, today) {
       ${exportButtons({ kind: 'inventory', label: 'Exportar inventario' })}
     </section>`}
   `;
+  return { html: page, results };
 }
 
 /** @param {ReturnType<typeof supplierTotals>[number]} t */

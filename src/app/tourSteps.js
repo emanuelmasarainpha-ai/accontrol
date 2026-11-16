@@ -14,7 +14,7 @@
 //   · Un paso nuevo: añadirlo a la lista del tipo y, si apunta a algo nuevo, poner `data-tour="nombre"` en ese
 //     elemento de la pantalla.
 //   · Roles (0.16): añadir a un paso `roles: ['dueño', …]` y filtrar en `stepsFor` según el rol de la cuenta.
-//   · IA real (0.17): un paso nuevo que apunte a la pantalla de IA, SOLO cuando esa función exista de verdad.
+//   · IA real (0.18): un paso nuevo que apunte a la pantalla de IA, SOLO cuando esa función exista de verdad.
 // =============================================================================
 
 /** @typedef {import('../domain/types.js').WorkspaceKind} WorkspaceKind */

@@ -8,7 +8,7 @@
 // (app/actions.js) que abren los formularios de views/invoice-forms.js.
 // Las facturas son documentos INTERNOS de control: no son comprobantes fiscales ni se envían a ninguna autoridad.
 // Recordatorios de cobro: la app solo COPIA un mensaje para que la persona lo envíe; no envía nada (eso llega con las
-// notificaciones, etapa 0.17).
+// notificaciones, etapa 0.18).
 // =============================================================================
 
 import { formatDate, monthKeyOf, monthLabel, plural } from '../domain/dates.js';

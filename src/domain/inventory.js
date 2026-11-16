@@ -309,6 +309,62 @@ export function stockPositions(data) {
   });
 }
 
+// ---- Filtros de la lista de productos (0.16.2) ---------------------------------------------------
+
+/** @typedef {'active' | 'low' | 'out' | 'in_stock' | 'archived'} ProductFilter */
+
+/** @type {readonly { id: ProductFilter, label: string }[]} */
+export const PRODUCT_FILTERS = [
+  { id: 'active', label: 'Todos' },
+  { id: 'low', label: 'Stock bajo' },
+  { id: 'out', label: 'Agotados' },
+  { id: 'in_stock', label: 'Con stock' },
+  { id: 'archived', label: 'Archivados' },
+];
+
+/** @param {unknown} value @returns {value is ProductFilter} */
+export function isProductFilter(value) {
+  return PRODUCT_FILTERS.some((f) => f.id === value);
+}
+
+/** Texto sin tildes y en minúsculas, para buscar «cafe» y encontrar «Café». @param {string} text */
+export const searchable = (text) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es');
+
+/**
+ * ¿Entra esta posición en el filtro? Los productos archivados solo aparecen en «Archivados».
+ *  - Stock bajo: productos con aviso (stock mínimo > 0) que están en el aviso o por debajo, incluidos los agotados (igual que el aviso de arriba).
+ *  - Agotados: sin unidades (0 o menos), tengan aviso o no.
+ *  - Con stock: al menos una unidad.
+ * @param {StockPosition} p @param {ProductFilter} filter
+ */
+export function matchesProductFilter(p, filter) {
+  if (filter === 'archived') return p.product.archived;
+  if (p.product.archived) return false;
+  if (filter === 'low') return p.product.minStock > 0 && p.stock <= p.product.minStock;
+  if (filter === 'out') return p.stock <= 0;
+  if (filter === 'in_stock') return p.stock > 0;
+  return true;
+}
+
+/**
+ * Filtra y busca (por nombre, código o notas, sin mirar tildes ni mayúsculas). Conserva el orden recibido.
+ * @param {StockPosition[]} positions @param {{ filter: ProductFilter, query: string }} options
+ */
+export function filterStockPositions(positions, { filter, query }) {
+  const needle = searchable(query.trim());
+  return positions.filter(
+    (p) => matchesProductFilter(p, filter) && (!needle || searchable(`${p.product.name} ${p.product.sku} ${p.product.notes}`).includes(needle)),
+  );
+}
+
+/** Cuántos productos hay en cada filtro (para mostrarlo en los botones). @param {StockPosition[]} positions */
+export function productFilterCounts(positions) {
+  /** @type {Record<ProductFilter, number>} */
+  const counts = { active: 0, low: 0, out: 0, in_stock: 0, archived: 0 };
+  for (const p of positions) for (const f of PRODUCT_FILTERS) if (matchesProductFilter(p, f.id)) counts[f.id] += 1;
+  return counts;
+}
+
 /**
  * Resumen general del inventario (los productos archivados con stock siguen contando en el valor).
  * @param {Pick<AppData, 'products' | 'stockEntries'>} data
