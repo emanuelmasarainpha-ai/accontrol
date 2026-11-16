@@ -19,6 +19,8 @@
 // dispositivo. Además se revisa la nube al arrancar, al volver la conexión y cada `pollMs`.
 // =============================================================================
 
+import { atLeast, MODULE_OF_KIND } from '../domain/permissions.js';
+import { permissionsOf } from '../domain/roles.js';
 import { CLOUD_KINDS, cloudKind } from '../data/cloudRows.js';
 import { pullAll } from './pull.js';
 
@@ -114,8 +116,10 @@ export function createSyncEngine(options) {
     const owned = workspaces.filter((w) => !w.role);
     const toSave = owned.filter((w) => changedWs.has(w.id));
     const toEnsure = owned.filter((w) => !changedWs.has(w.id));
-    /** Espacios donde solo puedes ver (Contador). */
-    const readOnly = new Set(workspaces.filter((w) => w.role === 'accountant').map((w) => w.id));
+    /** Permisos en cada espacio (0.16.1): Contador = «Ver» en todo; rol a medida = los suyos. */
+    const permsOf = new Map(workspaces.map((w) => [w.id, permissionsOf(w)]));
+    /** Tu cuenta: para saber qué registros creaste tú (un rol con «Registrar» solo cambia lo suyo). */
+    const me = typeof cloud.me === 'function' ? cloud.me() : null;
     if (toSave.length > 0) {
       const saved = await cloud.saveWorkspaces(toSave);
       if (!saved.ok) return saved;
@@ -130,18 +134,32 @@ export function createSyncEngine(options) {
     /** @type {Map<string, OutboxEntry[]>} */
     const byWs = new Map();
     for (const e of entries) if (e.type === 'put' || e.type === 'del') byWs.set(e.ws, [...(byWs.get(e.ws) ?? []), e]);
-    for (const [ws, group] of byWs) {
+    for (let [ws, group] of byWs) {
       if (!here.has(ws)) {
         outbox.settle(group); // el espacio ya no existe aquí: lo cubre el borrado del espacio
         continue;
       }
-      if (readOnly.has(ws)) {
-        // Contador: la nube no lo aceptaría. No se sube y se baja todo otra vez, para que aquí quede igual que la nube.
-        outbox.settle(group);
-        options.cursors?.remove(ws);
-        continue;
-      }
       const data = /** @type {any} */ (await local.forWorkspace(ws).load());
+      // Lo que tu rol no permite (0.16.1) no se sube: la nube lo rechazaría y atascaría todo el envío. Se descarta y se
+      // baja todo otra vez, para que aquí quede igual que la nube. (Contador: todo; rol a medida: los módulos donde no
+      // puedes registrar y, con «Registrar», lo que no creaste tú.)
+      const perms = permsOf.get(ws);
+      /** @param {OutboxEntry} e */
+      const allowed = (e) => {
+        if (!perms) return true;
+        const level = perms[/** @type {import('../domain/permissions.js').ModuleId} */ (MODULE_OF_KIND[e.kind])] ?? 'none';
+        if (!atLeast(level, 'create')) return false;
+        if (level === 'edit' || e.type !== 'put') return true;
+        const record = (data[e.kind] ?? []).find((/** @type {any} */ r) => String(r.id) === e.id);
+        return !record || !('createdBy' in record) || record.createdBy === me;
+      };
+      const refused = group.filter((e) => !allowed(e));
+      if (refused.length > 0) {
+        outbox.settle(refused);
+        options.cursors?.remove(ws);
+        group = group.filter((e) => allowed(e));
+        if (group.length === 0) continue;
+      }
       /** @type {Record<string, any[]>} */
       const changes = {};
       /** @type {Record<string, string[]>} */

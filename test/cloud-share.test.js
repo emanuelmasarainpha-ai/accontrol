@@ -120,7 +120,8 @@ describe('compartir: invitaciones', () => {
     await ana.store.createInvite(shop.id, 'accountant');
     const forAna = await ana.store.listInvites(shop.id);
     assert.equal(forAna.ok && forAna.invites.length, 3);
-    if (forAna.ok) for (const inv of forAna.invites) assert.deepEqual(Object.keys(inv).sort(), ['createdAt', 'expiresAt', 'id', 'revokedAt', 'role', 'usedAt']);
+    if (forAna.ok) for (const inv of forAna.invites) assert.deepEqual(Object.keys(inv).sort(), ['createdAt', 'customRoleId', 'expiresAt', 'id', 'revokedAt', 'role', 'usedAt']);
+    if (forAna.ok) for (const inv of forAna.invites) assert.equal(inv.customRoleId, null, 'sin rol a medida');
     const forBeto = await beto.store.listInvites(shop.id);
     assert.equal(forBeto.ok && forBeto.invites.length, 3);
     const forCarla = await carla.store.listInvites(shop.id);

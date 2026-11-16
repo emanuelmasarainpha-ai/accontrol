@@ -56,7 +56,7 @@ test('reglas: sin rol eres el dueño; el Contador no edita; solo el dueño admin
   assert.equal(canManageWorkspace({ ...mine, role: 'admin' }), false);
   assert.equal(canEditData({ ...mine, role: 'accountant' }), false);
   assert.equal(canManageWorkspace({ ...mine, role: 'accountant' }), false);
-  assert.deepEqual(ROLE_NAMES, { owner: 'Dueño', admin: 'Administrador', accountant: 'Contador' });
+  assert.deepEqual(ROLE_NAMES, { owner: 'Dueño', admin: 'Administrador', accountant: 'Contador', custom: 'Rol a medida' });
 });
 
 test('estilos: src/styles/roles.css está al día con las reglas (npm run roles-css) y lo carga index.html', () => {

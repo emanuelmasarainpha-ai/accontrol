@@ -8,7 +8,7 @@
 // =============================================================================
 
 import { todayISO, formatDate } from '../domain/dates.js';
-import { ROLE_NAMES, roleOf } from '../domain/roles.js';
+import { ROLE_NAMES, roleLabel, roleOf } from '../domain/roles.js';
 import { canRevoke, invitableRoles, inviteMessage, isShareable, memberActions, normalizeInviteCode, ROLE_HELP } from '../domain/sharing.js';
 import { confirmDialog, openSheet } from '../ui/dialog.js';
 import { $ } from '../ui/dom.js';
@@ -67,7 +67,7 @@ export function membersPanel(store, sync) {
     </div>
     <p class="panel__sub">${roleOf(workspace) === 'owner'
       ? 'Eres el dueño. Invita con un código que copias y envías tú (ACCONTROL no envía mensajes). Cada código sirve una vez y vence en 7 días.'
-      : `Estás aquí como ${ROLE_NAMES[roleOf(workspace)]}. El espacio es de su dueño.`}</p>
+      : `Estás aquí como ${roleLabel(workspace)}. El espacio es de su dueño.`}</p>
     <div data-members-body aria-live="polite">${cachedBody(workspace)}</div>
   </section>`;
 }
@@ -99,7 +99,7 @@ function listBody(workspace, members, invites) {
                   <option value="admin" ${m.role === 'admin' ? 'selected' : ''}>Administrador</option>
                   <option value="accountant" ${m.role === 'accountant' ? 'selected' : ''}>Contador</option>
                 </select>`
-              : html`<span class="chip${m.role === 'owner' ? ' chip--good' : ''}">${ROLE_NAMES[m.role]}</span>`}
+              : html`<span class="chip${m.role === 'owner' ? ' chip--good' : ''}">${m.role === 'custom' ? m.customRoleName ?? ROLE_NAMES.custom : ROLE_NAMES[m.role]}</span>`}
             ${can.remove ? html`<button type="button" class="btn btn--danger-ghost btn--small" data-action="member-remove" data-user="${m.userId}" data-name="${name}">Quitar</button>` : ''}
           </span>
         </li>`;
@@ -363,8 +363,8 @@ function openJoin(store, sync, root) {
         setBusy(form, false);
         close();
         toast(opened.ok
-          ? `Te uniste a «${result.workspaceName}» como ${ROLE_NAMES[result.role]}. Ya lo tienes abierto.`
-          : `Te uniste a «${result.workspaceName}» como ${ROLE_NAMES[result.role]}. Aparecerá en tu lista de espacios en cuanto termine de llegar.`);
+          ? `Te uniste a «${result.workspaceName}» como ${result.roleName}. Ya lo tienes abierto.`
+          : `Te uniste a «${result.workspaceName}» como ${result.roleName}. Aparecerá en tu lista de espacios en cuanto termine de llegar.`);
       });
     },
   });

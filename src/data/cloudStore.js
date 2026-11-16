@@ -17,6 +17,7 @@
 // =============================================================================
 
 import { CLOUD_KINDS, cloudKind, fromRow, toRow, workspaceFromRow, workspaceToRow } from './cloudRows.js';
+import { normalizePermissions } from '../domain/permissions.js';
 
 /** @typedef {import('../domain/types.js').Workspace} Workspace */
 /** @typedef {import('./dataStore.js').Changes} Changes */
@@ -62,8 +63,9 @@ export function withServerReason(failure) {
 }
 
 /** @typedef {import('../domain/types.js').WorkspaceRole} WorkspaceRole */
-/** @typedef {{ userId: string, role: WorkspaceRole, displayName: string, email: string | null, isMe: boolean, joinedAt: string }} Member */
-/** @typedef {{ id: string, role: 'admin' | 'accountant', createdAt: string, expiresAt: string, usedAt: string | null, revokedAt: string | null }} Invite */
+/** @typedef {{ userId: string, role: WorkspaceRole, customRoleId: string | null, customRoleName: string | null, displayName: string, email: string | null, isMe: boolean, joinedAt: string }} Member */
+/** @typedef {{ id: string, role: 'admin' | 'accountant' | 'custom', customRoleId: string | null, createdAt: string, expiresAt: string, usedAt: string | null, revokedAt: string | null }} Invite */
+/** @typedef {{ id: string, name: string, permissions: import('../domain/permissions.js').Permissions, updatedAt: string }} RoleDefinition */
 
 /** Qué tipo de error es una respuesta de la API. @param {number} status @param {any} body @returns {CloudErrorCode} */
 function classify(status, body) {
@@ -143,6 +145,9 @@ export function createCloudStore(options) {
   const chunks = (list) => Array.from({ length: Math.ceil(list.length / batchSize) }, (_, i) => list.slice(i * batchSize, (i + 1) * batchSize));
 
   return {
+    /** La cuenta con la que se habla con la nube (para saber qué registros creaste tú). @returns {string | null} */
+    me: () => options.getUserId() || null,
+
     // ------------------------------------------------------------------ espacios
     /**
      * Los espacios de la persona en la nube (también los borrados, con su marca).
@@ -153,15 +158,32 @@ export function createCloudStore(options) {
       if (!userId) return fail('session', 401);
       const [rows, mine] = await Promise.all([
         call('GET', '/rest/v1/workspaces', { query: { select: '*', order: 'created_at.asc,id.asc' } }),
-        call('GET', '/rest/v1/workspace_members', { query: { select: 'workspace_id,is_default,role', user_id: `eq.${userId}` } }),
+        call('GET', '/rest/v1/workspace_members', { query: { select: 'workspace_id,is_default,role,custom_role_id', user_id: `eq.${userId}` } }),
       ]);
       if (!rows.ok) return rows;
       if (!mine.ok) return mine;
+      // Roles a medida (0.16.1): sus permisos se leen aparte (cada miembro puede leer los roles de sus espacios).
+      const customIds = [...new Set((mine.body ?? []).map((/** @type {any} */ m) => m.custom_role_id).filter((id) => typeof id === 'string'))];
+      /** @type {Map<string, any>} */
+      const customRoles = new Map();
+      if (customIds.length > 0) {
+        const roleRows = await call('GET', '/rest/v1/workspace_roles', { query: { select: 'id,name,permissions', id: `in.(${customIds.join(',')})` } });
+        if (!roleRows.ok) return roleRows;
+        for (const r of roleRows.body ?? []) customRoles.set(String(r.id), r);
+      }
+      /** @type {Map<string, string | null>} */
+      const customOf = new Map((mine.body ?? []).map((/** @type {any} */ m) => [m.workspace_id, m.custom_role_id ?? null]));
       const defaults = new Set((mine.body ?? []).filter((m) => m.is_default).map((m) => m.workspace_id));
       /** @type {Map<string, string>} */
       const roles = new Map((mine.body ?? []).map((/** @type {any} */ m) => [m.workspace_id, m.role]));
       try {
-        return { ok: true, workspaces: (rows.body ?? []).map((/** @type {any} */ r) => workspaceFromRow(r, defaults.has(r.id), roles.get(r.id) ?? 'owner')) };
+        return {
+          ok: true,
+          workspaces: (rows.body ?? []).map((/** @type {any} */ r) => {
+            const custom = customOf.get(r.id);
+            return workspaceFromRow(r, defaults.has(r.id), roles.get(r.id) ?? 'owner', custom ? customRoles.get(custom) ?? { id: custom } : null);
+          }),
+        };
       } catch (error) {
         return fail('rejected', 0, String(/** @type {Error} */ (error).message));
       }
@@ -355,11 +377,13 @@ export function createCloudStore(options) {
     // ------------------------------------------------------------ compartir (0.16.0)
     /**
      * Crea una invitación y devuelve el código UNA sola vez (la nube solo guarda su huella).
-     * @param {string} workspaceId @param {'admin' | 'accountant'} role
+     * @param {string} workspaceId @param {'admin' | 'accountant' | 'custom'} role
+     * @param {string | null} [customRoleId]  Con role = custom: el rol a medida (solo el Dueño).
      * @returns {Promise<{ ok: true, code: string, expiresAt: string } | CloudFailure>}
      */
-    async createInvite(workspaceId, role) {
-      const reply = await call('POST', '/rest/v1/rpc/create_workspace_invite', { body: { ws: workspaceId, invite_role: role } });
+    async createInvite(workspaceId, role, customRoleId = null) {
+      const body = role === 'custom' ? { ws: workspaceId, invite_role: role, custom_role: customRoleId } : { ws: workspaceId, invite_role: role };
+      const reply = await call('POST', '/rest/v1/rpc/create_workspace_invite', { body });
       if (!reply.ok) return withServerReason(reply);
       const row = Array.isArray(reply.body) ? reply.body[0] : reply.body;
       if (!row || typeof row.code !== 'string') return fail('rejected', 0, 'La nube no devolvió el código.');
@@ -369,14 +393,14 @@ export function createCloudStore(options) {
     /**
      * Acepta un código: quien llama pasa a ser miembro del espacio.
      * @param {string} code
-     * @returns {Promise<{ ok: true, workspaceId: string, workspaceName: string, role: WorkspaceRole } | CloudFailure>}
+     * @returns {Promise<{ ok: true, workspaceId: string, workspaceName: string, role: WorkspaceRole, customRoleName: string | null } | CloudFailure>}
      */
     async acceptInvite(code) {
       const reply = await call('POST', '/rest/v1/rpc/accept_workspace_invite', { body: { invite_code: String(code ?? '') } });
       if (!reply.ok) return withServerReason(reply);
       const row = Array.isArray(reply.body) ? reply.body[0] : reply.body;
       if (!row || typeof row.workspace_id !== 'string') return fail('rejected', 0, 'La nube no devolvió el espacio.');
-      return { ok: true, workspaceId: row.workspace_id, workspaceName: String(row.workspace_name ?? ''), role: row.role };
+      return { ok: true, workspaceId: row.workspace_id, workspaceName: String(row.workspace_name ?? ''), role: row.role, customRoleName: typeof row.custom_role_name === 'string' ? row.custom_role_name : null };
     },
 
     /** Anula una invitación pendiente. @param {string} inviteId @returns {Promise<{ ok: true } | CloudFailure>} */
@@ -391,11 +415,11 @@ export function createCloudStore(options) {
      */
     async listInvites(workspaceId) {
       const reply = await call('GET', '/rest/v1/workspace_invites', {
-        query: { select: 'id,role,created_at,expires_at,used_at,revoked_at', workspace_id: `eq.${workspaceId}`, order: 'created_at.desc' },
+        query: { select: 'id,role,custom_role_id,created_at,expires_at,used_at,revoked_at', workspace_id: `eq.${workspaceId}`, order: 'created_at.desc' },
       });
       if (!reply.ok) return withServerReason(reply);
       const invites = (Array.isArray(reply.body) ? reply.body : []).map((/** @type {any} */ r) => ({
-        id: String(r.id), role: r.role, createdAt: String(r.created_at), expiresAt: String(r.expires_at),
+        id: String(r.id), role: r.role, customRoleId: typeof r.custom_role_id === 'string' ? r.custom_role_id : null, createdAt: String(r.created_at), expiresAt: String(r.expires_at),
         usedAt: r.used_at ? String(r.used_at) : null, revokedAt: r.revoked_at ? String(r.revoked_at) : null,
       }));
       return { ok: true, invites };
@@ -406,7 +430,8 @@ export function createCloudStore(options) {
       const reply = await call('POST', '/rest/v1/rpc/list_workspace_members', { body: { ws: workspaceId } });
       if (!reply.ok) return withServerReason(reply);
       const members = (Array.isArray(reply.body) ? reply.body : []).map((/** @type {any} */ r) => ({
-        userId: String(r.user_id), role: r.role, displayName: String(r.display_name ?? ''),
+        userId: String(r.user_id), role: r.role, customRoleId: typeof r.custom_role_id === 'string' ? r.custom_role_id : null,
+        customRoleName: typeof r.custom_role_name === 'string' ? r.custom_role_name : null, displayName: String(r.display_name ?? ''),
         email: typeof r.email === 'string' ? r.email : null, isMe: r.is_me === true, joinedAt: String(r.joined_at),
       }));
       return { ok: true, members };
@@ -414,17 +439,54 @@ export function createCloudStore(options) {
 
     /**
      * Cambia el rol de un miembro (solo el Dueño).
-     * @param {string} workspaceId @param {string} userId @param {'admin' | 'accountant'} role
+     * @param {string} workspaceId @param {string} userId @param {'admin' | 'accountant' | 'custom'} role
+     * @param {string | null} [customRoleId]  Con role = custom: el rol a medida.
      * @returns {Promise<{ ok: true } | CloudFailure>}
      */
-    async setMemberRole(workspaceId, userId, role) {
-      const reply = await call('POST', '/rest/v1/rpc/set_workspace_member_role', { body: { ws: workspaceId, member: userId, new_role: role } });
+    async setMemberRole(workspaceId, userId, role, customRoleId = null) {
+      const body = role === 'custom' ? { ws: workspaceId, member: userId, new_role: role, custom_role: customRoleId } : { ws: workspaceId, member: userId, new_role: role };
+      const reply = await call('POST', '/rest/v1/rpc/set_workspace_member_role', { body });
       return reply.ok ? { ok: true } : withServerReason(reply);
     },
 
     /** Quita a un miembro. @param {string} workspaceId @param {string} userId @returns {Promise<{ ok: true } | CloudFailure>} */
     async removeMember(workspaceId, userId) {
       const reply = await call('POST', '/rest/v1/rpc/remove_workspace_member', { body: { ws: workspaceId, member: userId } });
+      return reply.ok ? { ok: true } : withServerReason(reply);
+    },
+
+    // ------------------------------------------------------------ roles a medida (0.16.1)
+    /** Los roles a medida de un espacio (cualquier miembro puede verlos). @param {string} workspaceId @returns {Promise<{ ok: true, roles: RoleDefinition[] } | CloudFailure>} */
+    async listRoles(workspaceId) {
+      const reply = await call('GET', '/rest/v1/workspace_roles', { query: { select: 'id,name,permissions,updated_at', workspace_id: `eq.${workspaceId}`, order: 'name.asc' } });
+      if (!reply.ok) return withServerReason(reply);
+      const roles = (Array.isArray(reply.body) ? reply.body : []).map((/** @type {any} */ r) => ({
+        id: String(r.id), name: String(r.name), permissions: normalizePermissions(r.permissions).permissions, updatedAt: String(r.updated_at ?? ''),
+      }));
+      return { ok: true, roles };
+    },
+
+    /**
+     * Crea un rol a medida (solo el Dueño). Los permisos se mandan ya normalizados (con sus dependencias).
+     * @param {string} workspaceId @param {string} name @param {import('../domain/permissions.js').Permissions} permissions
+     * @returns {Promise<{ ok: true, id: string } | CloudFailure>}
+     */
+    async createRole(workspaceId, name, permissions) {
+      const reply = await call('POST', '/rest/v1/rpc/create_workspace_role', { body: { ws: workspaceId, role_name: name, perms: permissions } });
+      if (!reply.ok) return withServerReason(reply);
+      const id = Array.isArray(reply.body) ? reply.body[0] : reply.body;
+      return typeof id === 'string' ? { ok: true, id } : fail('rejected', 0, 'La nube no devolvió el rol.');
+    },
+
+    /** Cambia el nombre y los permisos de un rol a medida. @param {string} roleId @param {string} name @param {import('../domain/permissions.js').Permissions} permissions @returns {Promise<{ ok: true } | CloudFailure>} */
+    async updateRole(roleId, name, permissions) {
+      const reply = await call('POST', '/rest/v1/rpc/update_workspace_role', { body: { role_id: roleId, role_name: name, perms: permissions } });
+      return reply.ok ? { ok: true } : withServerReason(reply);
+    },
+
+    /** Borra un rol a medida (no si alguien lo tiene). @param {string} roleId @returns {Promise<{ ok: true } | CloudFailure>} */
+    async deleteRole(roleId) {
+      const reply = await call('POST', '/rest/v1/rpc/delete_workspace_role', { body: { role_id: roleId } });
       return reply.ok ? { ok: true } : withServerReason(reply);
     },
 

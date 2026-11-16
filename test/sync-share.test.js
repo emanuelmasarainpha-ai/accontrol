@@ -122,7 +122,7 @@ describe('sincronización con espacios compartidos', () => {
     assert.equal((await ana.cloud.setMemberRole(shop.id, beto.userId, 'accountant')).ok, true);
     await beto.api.syncNow();
     assert.equal((await wsOf(beto, shop.id))?.role, 'accountant');
-    assert.deepEqual(beto.remote.at(-1).roleChanges, [{ name: 'Empresa ABC', role: 'accountant' }]);
+    assert.deepEqual(beto.remote.at(-1).roleChanges, [{ name: 'Empresa ABC', role: 'accountant', label: 'Contador' }]);
   });
 
   it('si te quitan, el espacio se quita de tu dispositivo (con aviso) y tus espacios no se tocan', async () => {

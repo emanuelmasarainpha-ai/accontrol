@@ -15,6 +15,8 @@
 //  · Las categorías de fábrica NO se suben (ya están en la tabla builtin_categories).
 // =============================================================================
 
+import { normalizePermissions } from '../domain/permissions.js';
+
 /** @typedef {import('../domain/types.js').AppData} AppData */
 
 /**
@@ -168,9 +170,11 @@ export function workspaceToRow(workspace) {
  * Fila de `workspaces` (+ si es el predeterminado de esta persona) → espacio de la app.
  * @param {Record<string, any>} row
  * @param {boolean} isDefault
+ * @param {string} [role]  Tu rol en ese espacio (owner, admin, accountant o custom).
+ * @param {{ id?: string, name?: string, permissions?: unknown } | null} [customRole]  Con role = custom: el rol a medida.
  * @returns {{ workspace: import('../domain/types.js').Workspace, deletedAt: string | null }}
  */
-export function workspaceFromRow(row, isDefault, role = 'owner') {
+export function workspaceFromRow(row, isDefault, role = 'owner', customRole = null) {
   for (const col of ['id', 'kind', 'name', 'currency', 'created_at', 'updated_at']) {
     if (typeof row[col] !== 'string' || row[col] === '') throw new Error(`La nube devolvió un espacio sin «${col}».`);
   }
@@ -192,6 +196,15 @@ export function workspaceFromRow(row, isDefault, role = 'owner') {
   }
   // El rol solo se guarda si NO eres el dueño (ausente = dueño, como en todos los espacios de antes de la 0.16.0).
   if (role === 'admin' || role === 'accountant') workspace.role = role;
+  // Rol a medida (0.16.1): con sus permisos. Si la nube no los mandó (no debería pasar), sin acceso: nunca se inventa.
+  else if (role === 'custom') {
+    workspace.role = 'custom';
+    workspace.customRole = {
+      id: String(customRole?.id ?? ''),
+      name: String(customRole?.name ?? ''),
+      permissions: normalizePermissions(customRole?.permissions).permissions,
+    };
+  }
   return { workspace, deletedAt: row.deleted_at ? toIso(row.deleted_at, 'deleted_at') : null };
 }
 
@@ -219,6 +232,9 @@ export function fromRow(key, row) {
   }
   if (key === 'categories') record.builtIn = false;
   if (!kind.noDemo && row.is_demo === true) record.isDemo = true;
+  // Quién lo creó (0.16.1): lo pone la nube y solo se usa para saber si es «tuyo» (un rol con «Registrar» corrige solo lo
+  // suyo). Nunca se sube. null = lo guardado antes de la 0.16.1 (no es de nadie); sin la clave = creado en este dispositivo.
+  if ('created_by' in row) record.createdBy = typeof row.created_by === 'string' ? row.created_by : null;
   return {
     record,
     deletedAt: row.deleted_at ? toIso(row.deleted_at, 'deleted_at') : null,

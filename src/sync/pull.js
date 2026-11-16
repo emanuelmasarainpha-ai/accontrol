@@ -23,6 +23,8 @@
 // =============================================================================
 
 import { CLOUD_KINDS } from '../data/cloudRows.js';
+import { atLeast, MODULE_OF_KIND } from '../domain/permissions.js';
+import { permissionsOf, roleLabel } from '../domain/roles.js';
 
 /** @typedef {import('../data/workspaceStore.js').WorkspaceStore} WorkspaceStore */
 /** @typedef {import('../domain/types.js').Workspace} Workspace */
@@ -42,7 +44,8 @@ import { CLOUD_KINDS } from '../data/cloudRows.js';
  * @property {string[]} removedWorkspaces Nombres de los espacios que se quitaron porque se borraron en otro dispositivo.
  * @property {string[]} [sharedAdded]   Espacios compartidos contigo que llegaron (0.16.0).
  * @property {string[]} [lostAccess]    Espacios compartidos a los que ya no tienes acceso (te quitaron o su dueño lo borró).
- * @property {Array<{ name: string, role: import('../domain/types.js').WorkspaceRole }>} [roleChanges] Tu rol cambió en esos espacios.
+ * @property {Array<{ name: string, role: import('../domain/types.js').WorkspaceRole, label?: string }>} [roleChanges] Tu rol (o los
+ *   permisos de tu rol a medida) cambió en esos espacios. `label`: el nombre para mostrar («Cajero»).
  */
 
 const CURSOR_VERSION = 'v1';
@@ -207,6 +210,12 @@ export async function pullAll({ cloud, local, outbox, cursors, merge = false }) 
   const pendingWs = outbox.snapshot().filter((e) => e.type === 'ws');
   /** Rol en cada espacio según la nube (ausente = dueño). @type {Map<string, string>} */
   const roleIn = new Map(remote.workspaces.map((w) => [w.workspace.id, w.workspace.role ?? 'owner']));
+  /** El espacio tal como lo ve la nube (con tu rol a medida y sus permisos, 0.16.1). @type {Map<string, Workspace>} */
+  const remoteWs = new Map(remote.workspaces.map((w) => [w.workspace.id, w.workspace]));
+  /** Tu cuenta: para saber qué registros creaste tú. */
+  const me = typeof cloud.me === 'function' ? cloud.me() : null;
+  /** Firma del rol: si cambia el rol o los permisos del rol a medida, hay que aplicarlo aquí. @param {Workspace | undefined} w */
+  const roleSig = (w) => JSON.stringify([w?.role ?? 'owner', w?.customRole ?? null]);
   /** @type {string[]} */
   const toPull = [];
   /** Quita de este dispositivo un espacio compartido al que ya no tienes acceso. @param {import('../domain/types.js').Workspace} w */
@@ -259,11 +268,11 @@ export async function pullAll({ cloud, local, outbox, cursors, merge = false }) 
     }
     toPull.push(mine.id);
     // Tu rol cambió (no cambia la fecha del espacio): se aplica siempre, sin tocar lo demás.
-    if ((mine.role ?? 'owner') !== (workspace.role ?? 'owner')) {
-      const { role: _old, ...rest } = mine;
-      mine = workspace.role ? { ...rest, role: workspace.role } : rest;
+    if (roleSig(mine) !== roleSig(workspace)) {
+      const { role: _old, customRole: _oldCustom, ...rest } = mine;
+      mine = workspace.role ? { ...rest, role: workspace.role, ...(workspace.customRole ? { customRole: workspace.customRole } : {}) } : rest;
       await local.updateWorkspace(mine);
-      result.roleChanges?.push({ name: mine.name, role: workspace.role ?? 'owner' });
+      result.roleChanges?.push({ name: mine.name, role: workspace.role ?? 'owner', label: roleLabel(workspace) });
     }
     if (sameWorkspace(mine, workspace)) continue;
     const cloudNewer = (ms(workspace.updatedAt) ?? 0) > (ms(mine.updatedAt) ?? 0);
@@ -282,10 +291,16 @@ export async function pullAll({ cloud, local, outbox, cursors, merge = false }) 
 
   // ------------------------------------------------------------ datos de cada espacio
   for (const ws of toPull) {
-    // Contador = solo lectura: lo pendiente de aquí nunca se sube, así que no cuenta; la nube manda siempre.
-    const readOnly = roleIn.get(ws) === 'accountant';
-    // Si aquí hay cambios (que nunca se subirán), se baja TODO otra vez para que este dispositivo quede igual que la nube.
-    const localEdits = readOnly && outbox.snapshot().some((e) => e.ws === ws && (e.type === 'put' || e.type === 'del'));
+    // Permisos en cada módulo (0.16.1). Contador = «Ver» en todo; rol a medida = los suyos; dueño y administrador = todo.
+    const perms = permissionsOf(remoteWs.get(ws) ?? byId.get(ws));
+    /** Nivel del módulo de un tipo de registro. @param {string} key */
+    const levelOf = (key) => perms[/** @type {import('../domain/permissions.js').ModuleId} */ (MODULE_OF_KIND[key])] ?? 'none';
+    /** Tipos en los que no puedes registrar: lo de aquí nunca se sube, así que no cuenta; la nube manda siempre. */
+    const lockedKinds = new Set(CLOUD_KINDS.filter((k) => !atLeast(levelOf(k.key), 'create')).map((k) => k.key));
+    const readOnly = lockedKinds.size === CLOUD_KINDS.length;
+    // Si aquí hay cambios en lo que no puedes registrar (que nunca se subirán), se baja TODO otra vez para que este
+    // dispositivo quede igual que la nube.
+    const localEdits = outbox.snapshot().some((e) => e.ws === ws && (e.type === 'put' || e.type === 'del') && lockedKinds.has(e.kind ?? ''));
     const from = merge || localEdits ? {} : cursors.get(ws);
     const pulled = await cloud.pull(ws, from);
     if (!pulled.ok) return pulled;
@@ -314,13 +329,27 @@ export async function pullAll({ cloud, local, outbox, cursors, merge = false }) 
     const settle = [];
     let touched = 0;
     for (const kind of CLOUD_KINDS) {
+      const level = levelOf(kind.key);
+      // Un módulo que no puedes ver: lo que hubiera en este dispositivo se quita (la nube ya no te lo manda).
+      if (level === 'none') {
+        const gone = (data[kind.key] ?? []).filter((/** @type {any} */ r) => r && r.isDemo !== true && r.builtIn !== true).map((/** @type {any} */ r) => String(r.id));
+        if (gone.length > 0) {
+          (deletions[kind.idsKey] ??= []).push(...gone);
+          touched += gone.length;
+        }
+        settle.push(...before.filter((e) => e.kind === kind.key));
+        continue;
+      }
       const localById = new Map((data[kind.key] ?? []).map((/** @type {any} */ r) => [String(r.id), r]));
       // Si la misma fila llegó dos veces (cambió durante la bajada), vale la última.
       /** @type {Map<string, { record: Record<string, any>, deletedAt: string | null }>} */
       const latest = new Map();
       for (const row of pulled.changes[kind.key] ?? []) latest.set(String(row.record.id), row);
       for (const [id, row] of latest) {
-        const d = readOnly
+        // Solo lectura para este registro: el módulo no te deja registrar, o solo «Registrar» y no lo creaste tú.
+        const createdBy = /** @type {any} */ (row.record).createdBy;
+        const locked = lockedKinds.has(kind.key) || (level === 'create' && createdBy !== undefined && createdBy !== me);
+        const d = locked
           ? decide({ kind, remote: row, local: localById.get(id), merge: false })
           : decide({
             kind, remote: row, local: localById.get(id), merge,

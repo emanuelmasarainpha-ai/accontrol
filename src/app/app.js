@@ -35,7 +35,7 @@ import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { countUp } from '../ui/countUp.js';
 import { hideTip } from '../ui/tooltip.js';
-import { canEditData, canManageWorkspace, OWNER_ACTIONS, OWNER_ONLY_MESSAGE, READ_ONLY_MESSAGE, ROLE_NAMES, roleOf, WRITE_ACTIONS } from '../domain/roles.js';
+import { canEditData, canManageWorkspace, OWNER_ACTIONS, OWNER_ONLY_MESSAGE, READ_ONLY_MESSAGE, ROLE_NAMES, roleLabel, roleOf, WRITE_ACTIONS } from '../domain/roles.js';
 import { toast } from '../ui/toast.js';
 import { runCommonAction } from './actions.js';
 import { ROUTES, routeById, routeFromHash, routeParams } from './router.js';
@@ -214,7 +214,7 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
  */
 function roleBanner(workspace) {
   return html`<div class="banner banner--role" role="note" data-role-banner>
-    <p class="banner__text"><strong>Solo lectura.</strong> Estás en «${workspace.name}» como ${ROLE_NAMES[roleOf(workspace)]}: puedes ver todo y descargar reportes, pero no registrar ni cambiar nada.</p>
+    <p class="banner__text"><strong>Solo lectura.</strong> Estás en «${workspace.name}» como ${roleLabel(workspace)}: puedes ver todo y descargar reportes, pero no registrar ni cambiar nada.</p>
   </div>`;
 }
 

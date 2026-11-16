@@ -11,15 +11,33 @@
 
 /** @typedef {import('./types.js').Workspace} Workspace */
 /** @typedef {import('./types.js').WorkspaceRole} WorkspaceRole */
+/** @typedef {import('./permissions.js').Permissions} Permissions */
+
+import { allAt, atLeast, MODULE_IDS, normalizePermissions } from './permissions.js';
 
 /** @type {Record<WorkspaceRole, string>} */
-export const ROLE_NAMES = { owner: 'Dueño', admin: 'Administrador', accountant: 'Contador' };
+export const ROLE_NAMES = { owner: 'Dueño', admin: 'Administrador', accountant: 'Contador', custom: 'Rol a medida' };
 
 /** Tu rol en un espacio. Sin rol guardado = es tuyo. @param {Workspace | null | undefined} w @returns {WorkspaceRole} */
 export const roleOf = (w) => w?.role ?? 'owner';
 
-/** ¿Puedes registrar, editar o borrar datos en este espacio? @param {Workspace | null | undefined} w */
-export const canEditData = (w) => roleOf(w) !== 'accountant';
+/**
+ * Tus permisos en cada módulo de un espacio (0.16.1). Dueño y Administrador: «Editar y borrar» en todo; Contador: «Ver» en
+ * todo; rol a medida: los suyos (normalizados, por si llegaran incompletos). Un rol a medida sin datos = sin acceso.
+ * @param {Workspace | null | undefined} w @returns {Permissions}
+ */
+export function permissionsOf(w) {
+  const role = roleOf(w);
+  if (role === 'owner' || role === 'admin') return allAt('edit');
+  if (role === 'accountant') return allAt('view');
+  return normalizePermissions(w?.customRole?.permissions).permissions;
+}
+
+/** El nombre de tu rol para mostrar: «Dueño», «Contador»… o el del rol a medida («Cajero»). @param {Workspace | null | undefined} w */
+export const roleLabel = (w) => (roleOf(w) === 'custom' ? w?.customRole?.name || ROLE_NAMES.custom : ROLE_NAMES[roleOf(w)]);
+
+/** ¿Puedes registrar algo en este espacio? (en al menos un módulo). El Contador, no. @param {Workspace | null | undefined} w */
+export const canEditData = (w) => { const p = permissionsOf(w); return MODULE_IDS.some((id) => atLeast(p[id], 'create')); };
 
 /** ¿Puedes cambiar el espacio en sí (nombre, organización, saldo inicial) o borrarlo? Solo el dueño. @param {Workspace | null | undefined} w */
 export const canManageWorkspace = (w) => roleOf(w) === 'owner';

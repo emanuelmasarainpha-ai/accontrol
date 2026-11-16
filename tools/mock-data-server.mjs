@@ -12,6 +12,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { normalizePermissions, MODULE_IDS } from '../src/domain/permissions.js';
 
 const MIGRATIONS = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
 
@@ -26,6 +27,21 @@ function readColumns() {
   }
   for (const m of sql.matchAll(/alter table public\.(\w+) add column (\w+)/g)) columns[m[1]].push(m[2]);
   return columns;
+}
+
+/** Módulo de cada tabla de datos (igual que 20261118000100_custom_roles.sql). */
+const MODULE_OF_TABLE = {
+  categories: 'movements', movements: 'movements', goals: 'goals', contributions: 'goals', debts: 'debts', debt_payments: 'debts',
+  assets: 'assets', clients: 'clients', services: 'clients', products: 'inventory', suppliers: 'inventory', stock_entries: 'inventory',
+  invoices: 'invoices', invoice_payments: 'invoices', departments: 'departments',
+};
+/** @type {Record<string, number>} */
+const RANK = { none: 0, view: 1, create: 2, edit: 3 };
+/** Como private.valid_permissions: los 8 módulos, niveles conocidos y dependencias cumplidas. @param {any} p */
+function validPermissions(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return false;
+  if (Object.keys(p).length !== 8 || !MODULE_IDS.every((m) => typeof p[m] === 'string' && p[m] in RANK)) return false;
+  return normalizePermissions(p).raised.length === 0;
 }
 
 const ENTITY_TABLES = ['categories', 'departments', 'clients', 'services', 'movements', 'goals', 'contributions', 'debts', 'debt_payments',
@@ -50,8 +66,10 @@ export function createMockDataServer(options = {}) {
   const COLUMNS = readColumns();
   /** @type {Map<string, Record<string, any>>} */
   const workspaces = new Map();
-  /** @type {Array<{ workspace_id: string, user_id: string, role: string, is_default: boolean, created_at: string }>} */
+  /** @type {Array<{ workspace_id: string, user_id: string, role: string, custom_role_id?: string | null, is_default: boolean, created_at: string }>} */
   const members = [];
+  /** Roles a medida (0.16.1). @type {Array<{ id: string, workspace_id: string, name: string, permissions: Record<string, string>, created_at: string, updated_at: string }>} */
+  const workspaceRoles = [];
   /** @type {Map<string, { user_id: string, display_name: string, last_workspace_id: string | null }>} */
   const profiles = new Map();
   /** Invitaciones (0.16.0): como en la base real, solo la huella del código. */
@@ -62,6 +80,25 @@ export function createMockDataServer(options = {}) {
   const hashCode = (/** @type {string} */ c) => createHash('sha256').update(c).digest('hex');
   const normalize = (/** @type {unknown} */ c) => String(c ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
   const roleOf = (/** @type {string} */ userId, /** @type {string} */ ws) => members.find((m) => m.user_id === userId && m.workspace_id === ws)?.role ?? null;
+  /** Como private.module_level: 0 sin acceso · 1 ver · 2 registrar · 3 editar y borrar. */
+  const levelOf = (/** @type {string} */ userId, /** @type {string} */ ws, /** @type {string} */ table) => {
+    const m = members.find((x) => x.user_id === userId && x.workspace_id === ws);
+    if (!m) return 0;
+    if (m.role === 'owner' || m.role === 'admin') return 3;
+    if (m.role === 'accountant') return 1;
+    const role = workspaceRoles.find((r) => r.id === m.custom_role_id);
+    return role ? RANK[role.permissions[/** @type {keyof typeof MODULE_OF_TABLE} */ (table) in MODULE_OF_TABLE ? MODULE_OF_TABLE[/** @type {keyof typeof MODULE_OF_TABLE} */ (table)] : '']] ?? 0 : 0;
+  };
+  const roleName = (/** @type {string | null | undefined} */ id) => workspaceRoles.find((r) => r.id === id)?.name ?? null;
+  /** Nombre de rol limpio y válido, o un error (como private.clean_role_name). @returns {{ name?: string, error?: string }} */
+  const cleanRoleName = (/** @type {string} */ ws, /** @type {unknown} */ raw, /** @type {string | null} */ exceptId) => {
+    const n = String(raw ?? '').trim().replace(/\s+/g, ' ');
+    if (!n) return { error: 'Escribe un nombre para el rol, por ejemplo «Cajero».' };
+    if (n.length > 30) return { error: 'El nombre del rol puede tener hasta 30 caracteres.' };
+    if (['dueño', 'dueno', 'administrador', 'contador'].includes(n.toLowerCase())) return { error: '«' + n + '» ya existe como rol fijo. Elige otro nombre.' };
+    if (workspaceRoles.some((r) => r.workspace_id === ws && r.name.toLowerCase() === n.toLowerCase() && r.id !== exceptId)) return { error: 'Ya hay un rol con ese nombre en este espacio.' };
+    return { name: n };
+  };
   const P0001 = (/** @type {string} */ message) => ({ status: 400, body: { code: 'P0001', message } });
   const DENIED = (/** @type {string} */ message) => ({ status: 403, body: { code: '42501', message } });
   const INVALID = 'El código no es válido o ya venció. Pide uno nuevo.';
@@ -75,8 +112,13 @@ export function createMockDataServer(options = {}) {
       const want = body?.invite_role;
       const mine = roleOf(uid, ws);
       if (mine !== 'owner' && mine !== 'admin') return DENIED('Solo el dueño o un administrador del espacio puede invitar.');
-      if (want !== 'admin' && want !== 'accountant') return { status: 400, body: { code: '22023', message: 'Rol no válido.' } };
+      if (want !== 'admin' && want !== 'accountant' && want !== 'custom') return { status: 400, body: { code: '22023', message: 'Rol no válido.' } };
       if (want === 'admin' && mine !== 'owner') return DENIED('Solo el dueño puede invitar administradores.');
+      const custom = body?.custom_role ?? null;
+      if (want === 'custom') {
+        if (mine !== 'owner') return DENIED('Solo el dueño puede invitar con un rol a medida.');
+        if (!workspaceRoles.some((r) => r.id === custom && r.workspace_id === ws)) return P0001('Ese rol no existe en este espacio.');
+      } else if (custom) return { status: 400, body: { code: '22023', message: 'Rol no válido.' } };
       const w = workspaces.get(ws);
       if (w?.kind === 'personal') return P0001('El espacio Personal no se comparte.');
       if (w?.deleted_at) return P0001('Ese espacio está borrado.');
@@ -86,7 +128,7 @@ export function createMockDataServer(options = {}) {
       const bytes = randomBytes(12);
       const plain = [...bytes].map((b) => ALPHABET[b % ALPHABET.length]).join('');
       const expires = new Date(now + 7 * 86_400_000).toISOString();
-      invites.push({ id: randomUUID(), workspace_id: ws, code_hash: hashCode(plain), role: want, created_by: uid, created_at: iso, expires_at: expires, used_by: null, used_at: null, revoked_at: null });
+      invites.push({ id: randomUUID(), workspace_id: ws, code_hash: hashCode(plain), role: want, custom_role_id: custom, created_by: uid, created_at: iso, expires_at: expires, used_by: null, used_at: null, revoked_at: null });
       return reply(200, [{ code: plain.slice(0, 4) + '-' + plain.slice(4, 8) + '-' + plain.slice(8), expires_at: expires }]);
     }
     if (name === 'accept_workspace_invite') {
@@ -95,10 +137,10 @@ export function createMockDataServer(options = {}) {
       const w = workspaces.get(inv.workspace_id);
       if (!w || w.deleted_at) return P0001(INVALID);
       if (roleOf(uid, inv.workspace_id)) return P0001('Ya perteneces a ese espacio.');
-      members.push({ workspace_id: inv.workspace_id, user_id: uid, role: inv.role, is_default: false, created_at: iso });
+      members.push({ workspace_id: inv.workspace_id, user_id: uid, role: inv.role, custom_role_id: inv.custom_role_id ?? null, is_default: false, created_at: iso });
       inv.used_by = uid;
       inv.used_at = iso;
-      return reply(200, [{ workspace_id: inv.workspace_id, workspace_name: w.name, role: inv.role }]);
+      return reply(200, [{ workspace_id: inv.workspace_id, workspace_name: w.name, role: inv.role, custom_role_id: inv.custom_role_id ?? null, custom_role_name: roleName(inv.custom_role_id) }]);
     }
     if (name === 'revoke_workspace_invite') {
       const inv = invites.find((x) => x.id === body?.invite);
@@ -113,22 +155,26 @@ export function createMockDataServer(options = {}) {
       const mine = roleOf(uid, ws);
       if (!mine) return DENIED('No perteneces a ese espacio.');
       const manager = mine === 'owner' || mine === 'admin';
-      const order = { owner: 0, admin: 1, accountant: 2 };
+      const order = { owner: 0, admin: 1, custom: 2, accountant: 3 };
       const list = members.filter((m) => m.workspace_id === ws)
         .sort((a, b) => (order[a.role] ?? 3) - (order[b.role] ?? 3) || a.created_at.localeCompare(b.created_at))
         .map((m) => ({
-          user_id: m.user_id, role: m.role, display_name: profiles.get(m.user_id)?.display_name ?? '',
+          user_id: m.user_id, role: m.role, custom_role_id: m.custom_role_id ?? null, custom_role_name: roleName(m.custom_role_id), display_name: profiles.get(m.user_id)?.display_name ?? '',
           email: manager || m.user_id === uid ? emailOf(m.user_id) : null, is_me: m.user_id === uid, joined_at: m.created_at,
         }));
       return reply(200, list);
     }
     if (name === 'set_workspace_member_role') {
       if (roleOf(uid, body?.ws) !== 'owner') return DENIED('Solo el dueño puede cambiar roles.');
-      if (body?.new_role !== 'admin' && body?.new_role !== 'accountant') return { status: 400, body: { code: '22023', message: 'Rol no válido.' } };
+      if (!['admin', 'accountant', 'custom'].includes(body?.new_role)) return { status: 400, body: { code: '22023', message: 'Rol no válido.' } };
+      const custom = body?.custom_role ?? null;
+      if (body.new_role === 'custom' && !workspaceRoles.some((r) => r.id === custom && r.workspace_id === body?.ws)) return P0001('Ese rol no existe en este espacio.');
+      if (body.new_role !== 'custom' && custom) return { status: 400, body: { code: '22023', message: 'Rol no válido.' } };
       if (body?.member === uid) return P0001('No puedes cambiar tu propio rol.');
       const m = members.find((x) => x.workspace_id === body?.ws && x.user_id === body?.member && x.role !== 'owner');
       if (!m) return P0001('Esa persona no es miembro del espacio.');
       m.role = body.new_role;
+      m.custom_role_id = body.new_role === 'custom' ? custom : null;
       return reply(204, null);
     }
     if (name === 'remove_workspace_member') {
@@ -140,6 +186,40 @@ export function createMockDataServer(options = {}) {
       members.splice(members.findIndex((x) => x.workspace_id === body.ws && x.user_id === body.member), 1);
       const prof = profiles.get(body.member);
       if (prof?.last_workspace_id === body.ws) prof.last_workspace_id = null;
+      return reply(204, null);
+    }
+    if (name === 'create_workspace_role') {
+      const ws = body?.ws;
+      if (roleOf(uid, ws) !== 'owner') return DENIED('Solo el dueño puede crear roles.');
+      const w = workspaces.get(ws);
+      if (w?.kind === 'personal') return P0001('El espacio Personal no se comparte.');
+      if (w?.deleted_at) return P0001('Ese espacio está borrado.');
+      if (!validPermissions(body?.perms)) return { status: 400, body: { code: '22023', message: 'Los permisos del rol no son válidos.' } };
+      if (workspaceRoles.filter((r) => r.workspace_id === ws).length >= 10) return P0001('Puedes tener hasta 10 roles a medida por espacio.');
+      const clean = cleanRoleName(ws, body?.role_name, null);
+      if (clean.error) return P0001(clean.error);
+      const id = randomUUID();
+      workspaceRoles.push({ id, workspace_id: ws, name: String(clean.name), permissions: { ...body.perms }, created_at: iso, updated_at: iso });
+      return reply(200, id);
+    }
+    if (name === 'update_workspace_role') {
+      const role = workspaceRoles.find((r) => r.id === body?.role_id);
+      if (!role) return P0001('Ese rol no existe.');
+      if (roleOf(uid, role.workspace_id) !== 'owner') return DENIED('Solo el dueño puede cambiar roles.');
+      if (!validPermissions(body?.perms)) return { status: 400, body: { code: '22023', message: 'Los permisos del rol no son válidos.' } };
+      const clean = cleanRoleName(role.workspace_id, body?.role_name, role.id);
+      if (clean.error) return P0001(clean.error);
+      Object.assign(role, { name: String(clean.name), permissions: { ...body.perms }, updated_at: iso });
+      return reply(204, null);
+    }
+    if (name === 'delete_workspace_role') {
+      const role = workspaceRoles.find((r) => r.id === body?.role_id);
+      if (!role) return P0001('Ese rol no existe.');
+      if (roleOf(uid, role.workspace_id) !== 'owner') return DENIED('Solo el dueño puede borrar roles.');
+      const n = members.filter((m) => m.custom_role_id === role.id).length;
+      if (n > 0) return P0001('Ese rol lo tiene' + (n === 1 ? '' : 'n') + ' ' + n + ' persona' + (n === 1 ? '' : 's') + '. Cámbiale' + (n === 1 ? '' : 's') + ' el rol antes de borrarlo.');
+      for (const x of invites) if (/** @type {any} */ (x).custom_role_id === role.id) Object.assign(x, { revoked_at: x.revoked_at ?? iso, role: 'accountant', custom_role_id: null });
+      workspaceRoles.splice(workspaceRoles.indexOf(role), 1);
       return reply(204, null);
     }
     if (name === 'leave_workspace') {
@@ -167,7 +247,6 @@ export function createMockDataServer(options = {}) {
 
   const reply = (status, body) => ({ status, body });
   const isMember = (userId, ws) => members.some((m) => m.user_id === userId && m.workspace_id === ws);
-  const canWrite = (userId, ws) => members.some((m) => m.user_id === userId && m.workspace_id === ws && ['owner', 'admin'].includes(m.role));
   const RLS = (table) => reply(403, { code: '42501', message: `new row violates row-level security policy for table "${table}"` });
 
   /** Filtros de PostgREST que usa la app: col=eq.x, gt, in.(a,b), is.null, y el or=(…) del cursor. */
@@ -248,7 +327,7 @@ export function createMockDataServer(options = {}) {
       if (owned >= 20) return reply(400, { code: 'P0001', message: 'Máximo 20 espacios de trabajo por cuenta.' });
       workspaces.set(row.id, { currency: 'DOP', opening_balance_cents: 0, organization: null, deleted_at: null, ...row, created_by: user.id, synced_at: now });
       const hasDefault = members.some((m) => m.user_id === user.id && m.is_default);
-      members.push({ workspace_id: row.id, user_id: user.id, role: 'owner', is_default: !hasDefault, created_at: now });
+      members.push({ workspace_id: row.id, user_id: user.id, role: 'owner', custom_role_id: null, is_default: !hasDefault, created_at: now });
     }
     return reply(201, null);
   }
@@ -259,7 +338,10 @@ export function createMockDataServer(options = {}) {
       const bad = unknownColumn(table, row);
       if (bad) return bad;
       if (!row.workspace_id || !row.id) return reply(400, { code: '23502', message: 'null value in column "id" or "workspace_id"' });
-      if (!canWrite(user.id, row.workspace_id)) return RLS(table);
+      // Como las reglas de 20261118000100_custom_roles: crear ≥ 2; cambiar ≥ 3, o ≥ 2 si lo creó esa persona.
+      const old = tables[table].get(row.workspace_id + '|' + row.id);
+      const level = levelOf(user.id, row.workspace_id, table);
+      if (old ? !(level >= 3 || (level >= 2 && old.created_by === user.id)) : level < 2) return RLS(table);
     }
     // Llaves foráneas: el destino debe existir en el mismo espacio (ya guardado o en esta misma petición).
     const pending = new Set(rows.map((r) => `${r.workspace_id}|${r.id}`));
@@ -276,7 +358,8 @@ export function createMockDataServer(options = {}) {
     for (const row of rows) {
       const key = `${row.workspace_id}|${row.id}`;
       const old = tables[table].get(key);
-      tables[table].set(key, old ? { ...noRevive(table, old, { ...old, ...row }), synced_at: now } : { deleted_at: null, ...row, synced_at: now });
+      // created_by lo pone el servidor al crear y no cambia (trigger entity_guard).
+      tables[table].set(key, old ? { ...noRevive(table, old, { ...old, ...row }), created_by: old.created_by, synced_at: now } : { deleted_at: null, ...row, created_by: user.id, synced_at: now });
     }
     return reply(201, null);
   }
@@ -286,14 +369,14 @@ export function createMockDataServer(options = {}) {
     if (bad) return bad;
     const match = parseFilters(params);
     const rows = [...tables[table].values()].filter(match);
-    if (rows.some((r) => !canWrite(user.id, r.workspace_id))) return RLS(table);
+    if (rows.some((r) => { const level = levelOf(user.id, r.workspace_id, table); return !(level >= 3 || (level >= 2 && r.created_by === user.id)); })) return RLS(table);
     const now = stamp();
-    for (const r of rows) Object.assign(r, body, { synced_at: now });
+    for (const r of rows) Object.assign(r, body, { created_by: r.created_by, synced_at: now });
     return reply(204, null);
   }
 
   const server = {
-    workspaces, members, profiles, tables, invites,
+    workspaces, members, profiles, tables, invites, workspaceRoles,
     /** ¿Es dueño de un espacio vivo con otros miembros? (delete_my_account se niega). @param {string} userId */
     ownsSharedWorkspace(userId) {
       return members.some((mine) => mine.user_id === userId && mine.role === 'owner' && !workspaces.get(mine.workspace_id)?.deleted_at
@@ -363,6 +446,10 @@ export function createMockDataServer(options = {}) {
             return reply(204, null);
           }
         }
+        if (table === 'workspace_roles' && method === 'GET') {
+          const match = parseFilters(params);
+          return reply(200, sortAndLimit(workspaceRoles.filter((r) => isMember(user.id, r.workspace_id) && match(r)).map((r) => ({ ...r, permissions: { ...r.permissions } })), params));
+        }
         if (table === 'workspace_members' && method === 'GET') {
           const match = parseFilters(params);
           return reply(200, members.filter((m) => m.user_id === user.id && match(m)).map((m) => ({ ...m })));
@@ -381,7 +468,7 @@ export function createMockDataServer(options = {}) {
         if (ENTITY_TABLES.includes(table)) {
           if (method === 'GET') {
             const match = parseFilters(params);
-            const visible = [...tables[table].values()].filter((r) => isMember(user.id, r.workspace_id) && match(r)).map((r) => ({ ...r }));
+            const visible = [...tables[table].values()].filter((r) => levelOf(user.id, r.workspace_id, table) >= 1 && match(r)).map((r) => ({ ...r }));
             return reply(200, sortAndLimit(visible, params));
           }
           if (method === 'POST') {

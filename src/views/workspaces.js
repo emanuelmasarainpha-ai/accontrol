@@ -9,7 +9,7 @@
 
 import { routeParams } from '../app/router.js';
 import { plural } from '../domain/dates.js';
-import { canManageWorkspace, ROLE_NAMES, roleOf } from '../domain/roles.js';
+import { canManageWorkspace, roleLabel, roleOf } from '../domain/roles.js';
 import { KIND_INFO, suggestWorkspaceName, WORKSPACE_KINDS } from '../domain/workspaces.js';
 import { confirmDialog, openSheet } from '../ui/dialog.js';
 import { $, $$ } from '../ui/dom.js';
@@ -23,7 +23,7 @@ import { toast } from '../ui/toast.js';
 /** @typedef {import('../domain/types.js').WorkspaceKind} WorkspaceKind */
 
 /** «Compartido · Contador»: tu rol en un espacio de otra persona (vacío si es tuyo). @param {Workspace} w */
-export const sharedLabel = (w) => (roleOf(w) === 'owner' ? '' : `Compartido · ${ROLE_NAMES[roleOf(w)]}`);
+export const sharedLabel = (w) => (roleOf(w) === 'owner' ? '' : `Compartido · ${roleLabel(w)}`);
 
 /** @param {WorkspaceKind} kind @param {number} [size] */
 export const kindIcon = (kind, size = 20) => icon(KIND_INFO[kind].icon, size);
@@ -47,7 +47,7 @@ export function updateWorkspaceSwitchers(state) {
     setHtml(
       button,
       html`<span class="ws-switch__icon">${kindIcon(active.kind, 18)}</span>
-        <span class="ws-switch__text"><span class="ws-switch__name">${active.name}</span><span class="ws-switch__kind">${KIND_INFO[active.kind].label}${shared ? ` · ${ROLE_NAMES[roleOf(active)]}` : ''}</span></span>
+        <span class="ws-switch__text"><span class="ws-switch__name">${active.name}</span><span class="ws-switch__kind">${KIND_INFO[active.kind].label}${shared ? ` · ${roleLabel(active)}` : ''}</span></span>
         <span class="ws-switch__chev">${icon('chevronsUpDown', 16)}</span>`,
     );
   }

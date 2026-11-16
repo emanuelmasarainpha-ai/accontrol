@@ -194,7 +194,7 @@ describe('almacén de la nube: subir y contar', () => {
 });
 
 describe('almacén de la nube: bajar', () => {
-  it('baja todo un espacio y cada registro llega igual a como se subió', async () => {
+  it('baja todo un espacio y cada registro llega igual a como se subió (más quién lo creó, que pone la nube)', async () => {
     const { ana } = await setup();
     const ws = workspace('company', 'E');
     await ana.store.saveWorkspaces([ws]);
@@ -205,7 +205,8 @@ describe('almacén de la nube: bajar', () => {
     for (const kind of CLOUD_KINDS) {
       const got = new Map(pulled.changes[kind.key].map((c) => [c.record.id, c.record]));
       assert.equal(got.size, data[kind.key].length, kind.key);
-      for (const r of data[kind.key]) assert.deepEqual(got.get(r.id), canonical(r), `${kind.key} ${r.id}`);
+      // 0.16.1: cada registro trae createdBy (la cuenta que lo subió); lo demás, igual que se subió.
+      for (const r of data[kind.key]) assert.deepEqual(got.get(r.id), { ...canonical(r), createdBy: ana.userId }, `${kind.key} ${r.id}`);
       assert.ok(pulled.changes[kind.key].every((c) => c.deletedAt === null));
     }
   });

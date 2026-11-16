@@ -270,7 +270,7 @@ export function remoteNotice(result) {
   if (lost.length > 0) {
     parts.push(`Ya no tienes acceso ${lost.length === 1 ? 'al espacio' : 'a los espacios'} ${quoteList(lost)} (te quitaron o su dueño lo borró): se quitó de este dispositivo.`);
   }
-  for (const change of result.roleChanges ?? []) parts.push(`Tu rol en «${change.name}» ahora es ${ROLE_NAMES[change.role]}.`);
+  for (const change of result.roleChanges ?? []) parts.push(`Tu rol en «${change.name}» ahora es ${change.label ?? ROLE_NAMES[change.role]}.`);
   if (result.conflicts > 0) parts.push(conflictText(result.conflicts));
   return parts.length > 0 ? parts.join(' ') : null;
 }

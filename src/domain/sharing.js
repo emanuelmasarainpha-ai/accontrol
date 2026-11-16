@@ -42,7 +42,7 @@ export function memberActions(myRole, member) {
   };
 }
 
-/** ¿Puedes anular esta invitación? @param {WorkspaceRole} myRole @param {{ role: InviteRole }} invite */
+/** ¿Puedes anular esta invitación? (las de un rol a medida, solo el dueño) @param {WorkspaceRole} myRole @param {{ role: string }} invite */
 export const canRevoke = (myRole, invite) => myRole === 'owner' || (myRole === 'admin' && invite.role === 'accountant');
 
 /** Qué puede hacer cada rol, en una frase (para elegir al invitar). */

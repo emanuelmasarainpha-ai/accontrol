@@ -319,8 +319,13 @@
 
 /**
  * Rol de una persona en un espacio compartido (0.16.0): Dueño (todo), Administrador (registra y edita, invita
- * contadores) y Contador (solo ve y exporta).
- * @typedef {'owner' | 'admin' | 'accountant'} WorkspaceRole
+ * contadores) y Contador (solo ve y exporta). Desde la 0.16.1, 'custom' = un rol a medida que armó el dueño (customRole).
+ * @typedef {'owner' | 'admin' | 'accountant' | 'custom'} WorkspaceRole
+ */
+
+/**
+ * Un rol a medida (0.16.1): nombre y nivel en cada módulo (ver src/domain/permissions.js).
+ * @typedef {{ id: string, name: string, permissions: import('./permissions.js').Permissions }} CustomRole
  */
 
 /**
@@ -335,6 +340,7 @@
  * @property {boolean} isDefault          El que se abre primero si no hay un "último usado".
  * @property {Organization} [organization] Datos del negocio u organización (solo espacios que no son Personal). Ausente = sin completar.
  * @property {WorkspaceRole} [role]        Tu rol en un espacio COMPARTIDO contigo (0.16.0). Ausente = eres el dueño. Solo vive en el dispositivo: no se sube.
+ * @property {CustomRole} [customRole]    Con role = 'custom': el rol a medida y sus permisos (0.16.1). Solo vive en el dispositivo.
  * @property {string} createdAt
  * @property {string} updatedAt
  */

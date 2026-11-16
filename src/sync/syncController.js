@@ -19,6 +19,8 @@
 //    dispositivos» marca como borrados en la nube todos los espacios de la cuenta, y solo si hay conexión.
 // =============================================================================
 
+import { atLeast, MODULE_OF_KIND } from '../domain/permissions.js';
+import { canEditData, permissionsOf } from '../domain/roles.js';
 import { CLOUD_KINDS } from '../data/cloudRows.js';
 import { createOutbox } from './outbox.js';
 import { createCursorStore, pullAll } from './pull.js';
@@ -53,18 +55,24 @@ import { withOutbox } from './trackedStore.js';
 /** @typedef {{ ok: false, message: string }} ShareFailure */
 /**
  * @typedef {Object} ShareApi
- * @property {(workspaceId: string, role: 'admin' | 'accountant') => Promise<{ ok: true, code: string, expiresAt: string } | ShareFailure>} invite
- *   Crea una invitación. El código se ve UNA sola vez (la nube solo guarda su huella).
+ * @property {(workspaceId: string, role: 'admin' | 'accountant' | 'custom', customRoleId?: string | null) => Promise<{ ok: true, code: string, expiresAt: string } | ShareFailure>} invite
+ *   Crea una invitación. El código se ve UNA sola vez (la nube solo guarda su huella). Con un rol a medida, solo el dueño.
  * @property {(workspaceId: string) => Promise<{ ok: true, members: Member[], invites: Invite[] } | ShareFailure>} list
  *   Miembros e invitaciones PENDIENTES (sin usar, sin anular y sin vencer). Las invitaciones solo las ve quien puede invitar.
- * @property {(workspaceId: string, userId: string, role: 'admin' | 'accountant') => Promise<{ ok: true } | ShareFailure>} setRole
+ * @property {(workspaceId: string, userId: string, role: 'admin' | 'accountant' | 'custom', customRoleId?: string | null) => Promise<{ ok: true } | ShareFailure>} setRole
  * @property {(workspaceId: string, userId: string) => Promise<{ ok: true } | ShareFailure>} remove
  * @property {(inviteId: string) => Promise<{ ok: true } | ShareFailure>} revoke
- * @property {(code: string) => Promise<{ ok: true, workspaceId: string, workspaceName: string, role: 'admin' | 'accountant' } | ShareFailure>} join
+ * @property {(code: string) => Promise<{ ok: true, workspaceId: string, workspaceName: string, role: 'admin' | 'accountant' | 'custom', roleName: string } | ShareFailure>} join
  *   Acepta un código y trae el espacio a este dispositivo.
  * @property {(workspaceId: string) => Promise<{ ok: true } | ShareFailure>} leave
  *   Sale de un espacio compartido contigo y lo quita de este dispositivo (en la nube sigue siendo de su dueño).
+ * @property {(workspaceId: string) => Promise<{ ok: true, roles: RoleDefinition[] } | ShareFailure>} roles  Roles a medida del espacio (0.16.1).
+ * @property {(workspaceId: string, name: string, permissions: Permissions) => Promise<{ ok: true, id: string } | ShareFailure>} createRole
+ * @property {(roleId: string, name: string, permissions: Permissions) => Promise<{ ok: true } | ShareFailure>} updateRole
+ * @property {(roleId: string) => Promise<{ ok: true } | ShareFailure>} deleteRole
  */
+/** @typedef {import('../data/cloudStore.js').RoleDefinition} RoleDefinition */
+/** @typedef {import('../domain/permissions.js').Permissions} Permissions */
 /** @typedef {import('./pull.js').PullResult} PullResult */
 
 /** @param {string} userId */
@@ -204,10 +212,10 @@ export function createSyncController(options) {
         // Solo se suben los espacios TUYOS; en los compartidos contigo, los datos solo si puedes escribir (no Contador).
         const saved = await cloud.saveWorkspaces(snapshot.workspaces.filter((w) => !w.workspace.role).map((w) => w.workspace));
         if (!saved.ok) return fail(saved.error.message);
-        const writable = snapshot.workspaces.filter((w) => w.workspace.role !== 'accountant');
+        const writable = snapshot.workspaces.filter((w) => canEditData(w.workspace));
         let records = 0;
         for (const { workspace, data } of writable) {
-          const pushed = await cloud.push(workspace.id, /** @type {any} */ (data));
+          const pushed = await cloud.push(workspace.id, /** @type {any} */ (allowedData(workspace, data)));
           if (!pushed.ok) return fail(pushed.error.message);
           records += pushed.sent;
         }
@@ -299,13 +307,13 @@ export function createSyncController(options) {
     },
 
     share: {
-      async invite(workspaceId, role) {
+      async invite(workspaceId, role, customRoleId = null) {
         const off = needsCloud();
         if (off) return off;
         // El espacio tiene que estar ya en la nube (uno recién creado puede estar todavía en la bandeja).
         await engine.flush();
         if (outbox.snapshot().some((e) => e.ws === workspaceId)) await engine.flush();
-        const made = await cloud.createInvite(workspaceId, role);
+        const made = await cloud.createInvite(workspaceId, role, customRoleId);
         return made.ok ? made : failed(made);
       },
       async list(workspaceId) {
@@ -323,10 +331,10 @@ export function createSyncController(options) {
         const pending = invites.invites.filter((i) => i.usedAt === null && i.revokedAt === null && Date.parse(i.expiresAt) > now);
         return { ok: true, members: members.members, invites: pending };
       },
-      async setRole(workspaceId, userId, role) {
+      async setRole(workspaceId, userId, role, customRoleId = null) {
         const off = needsCloud();
         if (off) return off;
-        const done = await cloud.setMemberRole(workspaceId, userId, role);
+        const done = await cloud.setMemberRole(workspaceId, userId, role, customRoleId);
         return done.ok ? done : failed(done);
       },
       async remove(workspaceId, userId) {
@@ -348,7 +356,33 @@ export function createSyncController(options) {
         if (!accepted.ok) return failed(accepted);
         // Trae el espacio (y sus datos) a este dispositivo ahora mismo.
         await engine.flush();
-        return { ok: true, workspaceId: accepted.workspaceId, workspaceName: accepted.workspaceName, role: accepted.role === 'admin' ? 'admin' : 'accountant' };
+        const role = accepted.role === 'admin' || accepted.role === 'custom' ? accepted.role : 'accountant';
+        const roleName = role === 'custom' ? accepted.customRoleName ?? 'un rol a medida' : role === 'admin' ? 'Administrador' : 'Contador';
+        return { ok: true, workspaceId: accepted.workspaceId, workspaceName: accepted.workspaceName, role, roleName };
+      },
+      async roles(workspaceId) {
+        const off = needsCloud();
+        if (off) return off;
+        const listed = await cloud.listRoles(workspaceId);
+        return listed.ok ? listed : failed(listed);
+      },
+      async createRole(workspaceId, name, permissions) {
+        const off = needsCloud();
+        if (off) return off;
+        const made = await cloud.createRole(workspaceId, name, permissions);
+        return made.ok ? made : failed(made);
+      },
+      async updateRole(roleId, name, permissions) {
+        const off = needsCloud();
+        if (off) return off;
+        const done = await cloud.updateRole(roleId, name, permissions);
+        return done.ok ? done : failed(done);
+      },
+      async deleteRole(roleId) {
+        const off = needsCloud();
+        if (off) return off;
+        const done = await cloud.deleteRole(roleId);
+        return done.ok ? done : failed(done);
       },
       async leave(workspaceId) {
         const off = needsCloud();
@@ -367,6 +401,26 @@ export function createSyncController(options) {
       },
     },
   };
+
+  /**
+   * Los datos de un espacio que tu rol te deja subir (0.16.1): tuyos o Administrador, todo; rol a medida, solo los módulos
+   * donde puedes registrar y, con «Registrar», solo lo que creaste tú (lo demás ya está en la nube y no puedes cambiarlo).
+   * @param {import('../domain/types.js').Workspace} workspace @param {AppData} data @returns {Partial<AppData>}
+   */
+  function allowedData(workspace, data) {
+    if (!workspace.role) return data;
+    const perms = permissionsOf(workspace);
+    const me = typeof cloud.me === 'function' ? cloud.me() : null;
+    /** @type {Record<string, any>} */
+    const out = {};
+    for (const kind of CLOUD_KINDS) {
+      const level = perms[/** @type {import('../domain/permissions.js').ModuleId} */ (MODULE_OF_KIND[kind.key])] ?? 'none';
+      if (!atLeast(level, 'create')) continue;
+      const list = /** @type {any[]} */ ((/** @type {any} */ (data))[kind.key] ?? []);
+      out[kind.key] = level === 'edit' ? list : list.filter((r) => !('createdBy' in r) || r.createdBy === me);
+    }
+    return /** @type {Partial<AppData>} */ (out);
+  }
 
   /** @returns {ShareFailure | null} */
   function needsCloud() {
