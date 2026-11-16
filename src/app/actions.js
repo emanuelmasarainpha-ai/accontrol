@@ -165,6 +165,9 @@ export function runCommonAction(store, name, element) {
       // Desde la ficha de un cliente o de un servicio (Freelancer), la factura se abre ya con ellos elegidos.
       openInvoiceForm(store, { clientId: element.dataset.clientId ?? '', serviceId: element.dataset.serviceId ?? '' });
       return true;
+    case 'pos-open':
+      window.location.hash = '#/caja';
+      return true;
     case 'credit-new':
       // Desde la ficha de un cliente del fiado, ya con su nombre y su teléfono.
       openCreditForm(store, { customerName: element.dataset.name ?? '', customerContact: element.dataset.contact ?? '' });

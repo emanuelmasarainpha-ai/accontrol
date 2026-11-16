@@ -161,6 +161,7 @@ function listPage(store, today) {
       </div>
       <div class="page-header__actions">
         <button type="button" class="btn btn--primary" data-action="new-invoice">${icon('plus', 18)}Nueva factura</button>
+        ${store.inventoryEnabled() ? html`<button type="button" class="btn btn--ghost" data-action="pos-open">${icon('receipt', 18)}Abrir caja</button>` : ''}
       </div>
     </header>
 

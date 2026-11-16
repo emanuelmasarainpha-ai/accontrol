@@ -19,6 +19,7 @@ import { renderInventory } from '../views/inventory.js';
 import { renderDepartments } from '../views/departments.js';
 import { renderInvoices } from '../views/invoices.js';
 import { renderFiado } from '../views/fiado.js';
+import { renderPos } from '../views/pos.js';
 import { renderResults } from '../views/results.js';
 import { renderDebts } from '../views/debts.js';
 import { renderFinances } from '../views/finances.js';
@@ -86,6 +87,7 @@ const VIEWS = {
   inventario: renderInventory,
   facturas: renderInvoices,
   fiado: renderFiado,
+  caja: renderPos,
   departamentos: renderDepartments,
   deudas: renderDebts,
   patrimonio: renderNetWorth,
@@ -151,6 +153,8 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     paintWorkspaceKind(state.workspaces.find((w) => w.id === state.activeWorkspaceId)?.kind ?? null);
 
     markActiveRoute(routeId);
+    // La caja (0.17.1) ocupa toda la pantalla: sin menú lateral, barra superior, pestañas ni botón flotante.
+    document.documentElement.toggleAttribute('data-pos', !onboarding && routeId === 'caja');
     document.title = onboarding ? `Bienvenido · ${APP_NAME}` : `${route.label} · ${APP_NAME}`;
 
     if (state.status === 'loading') {

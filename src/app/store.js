@@ -40,6 +40,7 @@ import {
 } from '../domain/invoices.js';
 import { creditErrors, creditInvoiceInput, customerKey, customerLedger, fiadoEnabled, validateCustomerPayment } from '../domain/fiado.js';
 import { formatMoney } from '../domain/money.js';
+import { prepareSale, salesCategory } from '../domain/pos.js';
 import { newId } from '../domain/ids.js';
 import { isOrganizationEmpty, kindHasOrganization, validateOrganization } from '../domain/organization.js';
 import { applyMovementEdit, buildMovement, validateMovement } from '../domain/movements.js';
@@ -339,6 +340,39 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
       d.products.some((x) => x.isDemo) || d.suppliers.some((x) => x.isDemo) || d.stockEntries.some((x) => x.isDemo) ||
       d.invoices.some((x) => x.isDemo) || d.invoicePayments.some((x) => x.isDemo) || d.departments.some((x) => x.isDemo)
     );
+  }
+
+  /**
+   * Prepara una factura nueva sin guardarla: la valida (stock, montos, cliente, servicios) y arma sus salidas de inventario.
+   * La usan «Nueva factura», «Fiar» y la caja, así las tres siguen las mismas reglas.
+   * @param {AppData} data @param {import('../domain/invoices.js').InvoiceInput} input @param {string} now @param {string} time
+   * @returns {{ ok: true, invoice: Invoice, entries: StockEntry[], isDemo: boolean } | Failure}
+   */
+  function draftInvoice(data, input, now, time) {
+    const checked = validateInvoice(input, {
+      products: data.products, entries: data.stockEntries, today: today(), time, nowISO: now,
+      // Freelancer (0.14.5): cliente de la lista y servicios con lo que les queda por facturar.
+      clients: data.clients, services: data.services, movements: data.movements, invoices: data.invoices, requireClient: activeKind() === 'freelancer',
+    });
+    if (!checked.ok) return checked;
+    const value = checked.value;
+    const invoiceClient = value.clientId ? data.clients.find((c) => c.id === value.clientId) : null;
+    const soldProducts = value.lines.flatMap((l) => (l.productId ? [data.products.find((p) => p.id === l.productId)] : []));
+    const demoCount = soldProducts.filter((p) => p?.isDemo === true).length;
+    if (demoCount > 0 && demoCount < soldProducts.length) {
+      return { ok: false, errors: { lines: 'No mezcles productos de demostración con productos tuyos en la misma factura: haz una factura para cada tipo.' } };
+    }
+    // Una factura a un cliente de demostración también es de demostración (DEMO-001…), como la de un producto de demostración.
+    if (invoiceClient?.isDemo === true && demoCount < soldProducts.length) {
+      return { ok: false, errors: { lines: 'No mezcles productos tuyos en la factura de un cliente de demostración.' } };
+    }
+    const isDemo = demoCount > 0 || invoiceClient?.isDemo === true;
+    const invoice = buildInvoice(value, { id: newId(), number: nextInvoiceNumber(data.invoices, isDemo), nowISO: now, isDemo });
+    const entries = stockEntriesFromLines(invoice.lines, {
+      invoiceId: invoice.id, ids: invoice.lines.map(() => newId()), issueDate: invoice.issueDate, time, nowISO: now,
+      label: `Factura ${invoiceLabel(invoice)}`, isDemo, products: data.products,
+    });
+    return { ok: true, invoice, entries, isDemo };
   }
 
   return {
@@ -1396,36 +1430,70 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
       return enqueue(async () => {
         const stale = await reloadFromStorage();
         if (stale) return stale;
-        const data = state.data;
         const now = nowISO();
         const time = currentTime(clock());
-        const checked = validateInvoice(input, {
-          products: data.products, entries: data.stockEntries, today: today(), time, nowISO: now,
-          // Freelancer (0.14.5): cliente de la lista y servicios con lo que les queda por facturar.
-          clients: data.clients, services: data.services, movements: data.movements, invoices: data.invoices, requireClient: activeKind() === 'freelancer',
-        });
-        if (!checked.ok) return checked;
-        const value = checked.value;
-        const invoiceClient = value.clientId ? data.clients.find((c) => c.id === value.clientId) : null;
-        const soldProducts = value.lines.flatMap((l) => (l.productId ? [data.products.find((p) => p.id === l.productId)] : []));
-        const demoCount = soldProducts.filter((p) => p?.isDemo === true).length;
-        if (demoCount > 0 && demoCount < soldProducts.length) {
-          return { ok: false, errors: { lines: 'No mezcles productos de demostración con productos tuyos en la misma factura: haz una factura para cada tipo.' } };
-        }
-        // Una factura a un cliente de demostración también es de demostración (DEMO-001…), como la de un producto de demostración.
-        if (invoiceClient?.isDemo === true && demoCount < soldProducts.length) {
-          return { ok: false, errors: { lines: 'No mezcles productos tuyos en la factura de un cliente de demostración.' } };
-        }
-        const isDemo = demoCount > 0 || invoiceClient?.isDemo === true;
-        const invoice = buildInvoice(value, { id: newId(), number: nextInvoiceNumber(data.invoices, isDemo), nowISO: now, isDemo });
-        const entries = stockEntriesFromLines(invoice.lines, {
-          invoiceId: invoice.id, ids: invoice.lines.map(() => newId()), issueDate: invoice.issueDate, time, nowISO: now,
-          label: `Factura ${invoiceLabel(invoice)}`, isDemo, products: data.products,
-        });
+        const draft = draftInvoice(state.data, input, now, time);
+        if (!draft.ok) return draft;
+        const { invoice, entries } = draft;
         const failure = await tryWrite(() => dataStore.putMany({ invoices: [invoice], stockEntries: entries }));
         if (failure) return failure;
         updateData((d) => ({ ...d, invoices: upsert(d.invoices, invoice), stockEntries: [...d.stockEntries, ...entries] }));
         return { ok: true, invoice, entries };
+      });
+    },
+
+    // ---------------------------------------------------------------- caja (punto de venta, 0.17.1)
+
+    /**
+     * Una venta de la caja: la factura, sus salidas de inventario y, si se cobra en el momento, su cobro con el ingreso, TODO
+     * en una sola operación (se guarda todo o nada). Si es fiado, la factura queda pendiente (aparece en «Fiado»).
+     * @param {import('../domain/pos.js').SaleInput} input
+     * @returns {Promise<{ ok: true, invoice: Invoice, entries: StockEntry[], payment: InvoicePayment | null, movement: Movement | null,
+     *   method: import('../domain/pos.js').PaymentMethod, totalCents: number, receivedCents: number, changeCents: number } | Failure>}
+     */
+    posSale(input) {
+      return enqueue(async () => {
+        const stale = await reloadFromStorage();
+        if (stale) return stale;
+        const data = state.data;
+        const sale = prepareSale(input, { products: data.products });
+        if (!sale.ok) return sale;
+        // Al fiar a alguien que ya debe, se conserva el nombre con que ya se le tenía (como en «Fiar»).
+        if (sale.method === 'credit') {
+          const known = customerLedger(data, customerKey({ customerName: sale.invoiceInput.customerName }), today());
+          if (known) sale.invoiceInput.customerName = known.name;
+        }
+        const now = nowISO();
+        const time = currentTime(clock());
+        const draft = draftInvoice(data, sale.invoiceInput, now, time);
+        if (!draft.ok) {
+          // Los errores de las líneas se dicen en palabras del carrito.
+          const first = Object.entries(draft.errors).find(([k]) => k.startsWith('line'));
+          return first ? formFail(first[1]) : draft;
+        }
+        const { invoice, entries, isDemo } = draft;
+        /** @type {InvoicePayment | null} */
+        let payment = null;
+        /** @type {Movement | null} */
+        let movement = null;
+        if (sale.method !== 'credit') {
+          const category = salesCategory(data.categories);
+          if (!category) return formFail('No tienes ninguna categoría de ingresos: crea una (por ejemplo «Ventas») en Ajustes.');
+          const value = { amountCents: sale.totalCents, date: invoice.issueDate, categoryId: category.id, note: sale.note };
+          movement = buildPaymentMovement(value, invoice, category, { id: newId(), time, nowISO: now, isDemo });
+          payment = buildInvoicePayment(value, { id: newId(), invoiceId: invoice.id, time, nowISO: now, movementId: movement.id, isDemo });
+        }
+        const failure = await tryWrite(() => dataStore.putMany({
+          invoices: [invoice], stockEntries: entries, ...(payment && movement ? { invoicePayments: [payment], movements: [movement] } : {}),
+        }));
+        if (failure) return failure;
+        updateData((d) => ({
+          ...d,
+          invoices: upsert(d.invoices, invoice),
+          stockEntries: [...d.stockEntries, ...entries],
+          ...(payment && movement ? { invoicePayments: upsert(d.invoicePayments, payment), movements: upsert(d.movements, movement) } : {}),
+        }));
+        return { ok: true, invoice, entries, payment, movement, method: sale.method, totalCents: sale.totalCents, receivedCents: sale.receivedCents, changeCents: sale.changeCents };
       });
     },
 

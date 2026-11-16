@@ -286,6 +286,14 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     4. A un producto con compras, la casilla «Sin control de stock» le sale bloqueada.
     5. Con la copia en la nube activa, abre el mismo espacio en otro dispositivo: la foto y el grupo llegan.
 
+42. **La caja (0.17.1).** En un espacio **Emprendedor** con productos (o con la demostración):
+    1. *Finanzas → Inventario → Abrir caja*: la pantalla ocupa todo, sin menús. Toca un grupo y luego **Todos**.
+    2. Toca un producto varias veces: sube su cantidad en «Venta actual». Un producto agotado no entra. Usa − y +.
+    3. Escribe un código (por ejemplo `CAM-001` de la demostración) y pulsa Enter: el producto entra (así funciona la pistola lectora).
+    4. Marca **ITBIS 18 %** y toca **Cobrar**: en **Efectivo**, toca un monto rápido y mira la **devuelta**; cobra. Debe decir «Venta cobrada» y en *Inventario* el stock baja; en *Facturas* aparece la factura cobrada.
+    5. Haz otra venta con **Fiado**: sin nombre no deja; con nombre, aparece en *Fiado*.
+    6. En el teléfono, la barra de abajo muestra el total y **Ver venta** baja hasta la venta.
+
 ## 3. Probar en el teléfono Android
 
 ### Opción A — Misma red Wi-Fi (la más rápida)

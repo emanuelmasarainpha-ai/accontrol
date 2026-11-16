@@ -185,7 +185,8 @@ function listPage(store, today) {
         <p class="page-subtitle">Tu mercancía: lo que tienes, lo que compras y lo que vendes.</p>
       </div>
       <div class="page-header__actions">
-        <button type="button" class="btn btn--primary" data-action="stock-sell">${icon('plus', 18)}Registrar venta</button>
+        <button type="button" class="btn btn--primary" data-action="pos-open">${icon('receipt', 18)}Abrir caja</button>
+        <button type="button" class="btn btn--ghost" data-action="stock-sell">Registrar venta</button>
         <button type="button" class="btn btn--ghost" data-action="stock-buy">Registrar compra</button>
         <button type="button" class="btn btn--ghost" data-action="new-product">Nuevo producto</button>
       </div>

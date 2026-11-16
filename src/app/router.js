@@ -43,6 +43,8 @@ export const ROUTES = [
   { id: 'facturas', label: 'Facturas', short: 'Facturas', icon: 'receipt', hidden: true, parent: 'finanzas' },
   // Fiado (quién me debe, 0.16.3; Emprendedor / Empresa) vive dentro de Finanzas, como pestaña.
   { id: 'fiado', label: 'Fiado', short: 'Fiado', icon: 'user', hidden: true, parent: 'finanzas' },
+  // Caja (modo facturación, 0.17.1; Emprendedor / Empresa): pantalla completa, se abre desde Inventario y Facturas.
+  { id: 'caja', label: 'Caja', short: 'Caja', icon: 'receipt', hidden: true, parent: 'finanzas' },
   { id: 'departamentos', label: 'Departamentos', short: 'Áreas', icon: 'building', hidden: true, parent: 'finanzas' },
   // Logros, rachas y niveles se abren desde la tarjeta «Tu nivel» de Inicio.
   { id: 'logros', label: 'Logros', short: 'Logros', icon: 'target', hidden: true, parent: 'inicio' },
