@@ -267,6 +267,12 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     4. **Anular:** con A crea otro código y luego toca *Anular*. Ese código ya no sirve.
     5. **Salir y quitar:** con B toca *Salir* en el espacio de A: desaparece de B, y A lo conserva con todos sus datos. Invítalo otra vez y, con A, toca *Quitar*: al sincronizar, B deja de verlo.
 
+39. **Roles a medida (0.16.1).** Con las mismas dos cuentas del punto 38 (A dueña de un espacio de negocio, B miembro).
+    1. Con A, en *Ajustes → Miembros → Roles a medida*, toca *Nuevo rol*, elige la plantilla **Cajero** y guarda. La lista dice qué permite.
+    2. Cambia a B a **Cajero** en su selector de rol (o invítalo con ese rol). Con B, *Copia en la nube → Sincronizar ahora*: el espacio dice «Cajero», no aparecen **Metas** ni **Patrimonio**, y sí puede registrar un gasto.
+    3. Con B, toca un movimiento que registró A: no se abre y explica «solo puedes corregir lo que registraste tú». El gasto que registró B sí se abre para corregir, y le llega a A al sincronizar.
+    4. Con A, edita el rol y dale **Patrimonio: Ver**. Con B, sincroniza: sale «Tu rol… ahora es Cajero» y ya ve el patrimonio.
+
 ## 3. Probar en el teléfono Android
 
 ### Opción A — Misma red Wi-Fi (la más rápida)

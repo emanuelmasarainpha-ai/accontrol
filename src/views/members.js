@@ -9,6 +9,9 @@
 
 import { todayISO, formatDate } from '../domain/dates.js';
 import { ROLE_NAMES, roleLabel, roleOf } from '../domain/roles.js';
+import {
+  hasAnyAccess, LEVEL_HELP, LEVEL_NAMES, LEVELS, MAX_CUSTOM_ROLES, MODULES, normalizePermissions, permissionSummary, TEMPLATES, validateRoleName,
+} from '../domain/permissions.js';
 import { canRevoke, invitableRoles, inviteMessage, isShareable, memberActions, normalizeInviteCode, ROLE_HELP } from '../domain/sharing.js';
 import { confirmDialog, openSheet } from '../ui/dialog.js';
 import { $ } from '../ui/dom.js';
@@ -22,6 +25,8 @@ import { toast } from '../ui/toast.js';
 /** @typedef {import('../sync/syncController.js').SyncApi} SyncApi */
 /** @typedef {import('../sync/syncController.js').Member} Member */
 /** @typedef {import('../sync/syncController.js').Invite} Invite */
+/** @typedef {import('../sync/syncController.js').RoleDefinition} RoleDefinition */
+/** @typedef {import('../domain/permissions.js').Permissions} Permissions */
 /** @typedef {import('../domain/types.js').Workspace} Workspace */
 
 /** Fecha y hora de la nube → «21 nov 2026» (en la hora de este dispositivo). @param {string} at */
@@ -32,7 +37,7 @@ const moment = (at) => `${day(at)}, ${new Date(at).toLocaleTimeString('es-DO', {
 /**
  * Lo último que se leyó de cada espacio: así, si la pantalla se vuelve a dibujar (pasa a menudo), la lista no parpadea
  * ni se pide otra vez a la nube cada vez.
- * @type {Map<string, { at: number, members: Member[], invites: Invite[] }>}
+ * @type {Map<string, { at: number, members: Member[], invites: Invite[], roles: RoleDefinition[] }>}
  */
 const cache = new Map();
 const FRESH_MS = 20_000;
@@ -75,14 +80,15 @@ export function membersPanel(store, sync) {
 /** @param {Workspace} workspace */
 function cachedBody(workspace) {
   const hit = cache.get(workspace.id);
-  return hit ? listBody(workspace, hit.members, hit.invites) : html`<p class="muted" role="status">Cargando miembros…</p>`;
+  return hit ? listBody(workspace, hit.members, hit.invites, hit.roles) : html`<p class="muted" role="status">Cargando miembros…</p>`;
 }
 
 /**
- * @param {Workspace} workspace @param {Member[]} members @param {Invite[]} invites
+ * @param {Workspace} workspace @param {Member[]} members @param {Invite[]} invites @param {RoleDefinition[]} roles
  */
-function listBody(workspace, members, invites) {
+function listBody(workspace, members, invites, roles) {
   const myRole = roleOf(workspace);
+  const roleName = (/** @type {string | null} */ id) => roles.find((r) => r.id === id)?.name ?? ROLE_NAMES.custom;
   return html`<ul class="member-list" role="list">
       ${members.map((m) => {
         const can = memberActions(myRole, m);
@@ -98,6 +104,7 @@ function listBody(workspace, members, invites) {
                 <select id="role-${m.userId}" class="input input--small" data-member-role data-user="${m.userId}" data-name="${name}">
                   <option value="admin" ${m.role === 'admin' ? 'selected' : ''}>Administrador</option>
                   <option value="accountant" ${m.role === 'accountant' ? 'selected' : ''}>Contador</option>
+                  ${roles.map((r) => html`<option value="custom:${r.id}" ${m.role === 'custom' && m.customRoleId === r.id ? 'selected' : ''}>${r.name}</option>`)}
                 </select>`
               : html`<span class="chip${m.role === 'owner' ? ' chip--good' : ''}">${m.role === 'custom' ? m.customRoleName ?? ROLE_NAMES.custom : ROLE_NAMES[m.role]}</span>`}
             ${can.remove ? html`<button type="button" class="btn btn--danger-ghost btn--small" data-action="member-remove" data-user="${m.userId}" data-name="${name}">Quitar</button>` : ''}
@@ -109,11 +116,35 @@ function listBody(workspace, members, invites) {
       ? html`<h3 class="indicator-group__title">Invitaciones pendientes</h3>
         <ul class="member-list" role="list">
           ${invites.map((i) => html`<li class="member" data-invite="${i.id}">
-            <span class="member__who"><span class="member__name">${ROLE_NAMES[i.role]}</span><span class="member__mail">Creada el ${moment(i.createdAt)} · vence el ${day(i.expiresAt)}</span></span>
+            <span class="member__who"><span class="member__name">${i.role === 'custom' ? roleName(i.customRoleId) : ROLE_NAMES[i.role]}</span><span class="member__mail">Creada el ${moment(i.createdAt)} · vence el ${day(i.expiresAt)}</span></span>
             <span class="member__actions">${canRevoke(myRole, i) ? html`<button type="button" class="btn btn--ghost btn--small" data-action="invite-revoke" data-id="${i.id}">Anular</button>` : ''}</span>
           </li>`)}
         </ul>`
-      : ''}`;
+      : ''}
+    ${myRole === 'owner' ? rolesSection(roles) : ''}`;
+}
+
+/**
+ * Los roles a medida del espacio (solo el dueño los ve y los cambia).
+ * @param {RoleDefinition[]} roles
+ */
+function rolesSection(roles) {
+  return html`<div class="panel__head roles-head">
+      <h3 class="indicator-group__title">Roles a medida</h3>
+      ${roles.length < MAX_CUSTOM_ROLES ? html`<button type="button" class="btn btn--ghost btn--small" data-action="role-new">${icon('plus', 16)}Nuevo rol</button>` : ''}
+    </div>
+    <p class="hint">Arma los roles de tu empresa (por ejemplo «Cajero») eligiendo qué puede hacer en cada parte de la app. Hasta ${MAX_CUSTOM_ROLES} roles.</p>
+    ${roles.length > 0
+      ? html`<ul class="member-list" role="list">
+        ${roles.map((r) => html`<li class="member" data-role="${r.id}">
+          <span class="member__who"><span class="member__name">${r.name}</span><span class="member__mail">${permissionSummary(r.permissions)}</span></span>
+          <span class="member__actions">
+            <button type="button" class="btn btn--ghost btn--small" data-action="role-edit" data-id="${r.id}">Editar</button>
+            <button type="button" class="btn btn--danger-ghost btn--small" data-action="role-delete" data-id="${r.id}" data-name="${r.name}">Borrar</button>
+          </span>
+        </li>`)}
+      </ul>`
+      : html`<p class="muted">Todavía no hay roles a medida.</p>`}`;
 }
 
 /**
@@ -144,18 +175,24 @@ async function reloadMembers(root, store, sync) {
     setHtml(body, html`<p class="field__error" role="alert">${result.message}</p>`);
     return;
   }
-  cache.set(workspace.id, { at: Date.now(), members: result.members, invites: result.invites });
-  setHtml(body, listBody(workspace, result.members, result.invites));
+  // Los roles a medida solo hacen falta para administrar (dueño); los demás no los ven aquí.
+  const listed = roleOf(workspace) === 'owner' ? await sync.share.roles(workspace.id) : { ok: true, roles: [] };
+  const roles = listed.ok ? listed.roles : [];
+  if (!body.isConnected || store.activeWorkspace()?.id !== workspace.id) return;
+  cache.set(workspace.id, { at: Date.now(), members: result.members, invites: result.invites, roles });
+  setHtml(body, listBody(workspace, result.members, result.invites, roles));
 }
 
 /** @param {HTMLElement} root @param {Store} store @param {SyncApi} sync @param {HTMLSelectElement} select */
 async function changeRole(root, store, sync, select) {
   const workspace = store.activeWorkspace();
-  const role = select.value === 'admin' ? 'admin' : 'accountant';
   if (!workspace) return;
+  const custom = select.value.startsWith('custom:') ? select.value.slice(7) : null;
+  const role = custom ? 'custom' : select.value === 'admin' ? 'admin' : 'accountant';
+  const label = custom ? select.selectedOptions[0]?.textContent ?? ROLE_NAMES.custom : ROLE_NAMES[role];
   select.disabled = true;
-  const result = await sync.share.setRole(workspace.id, select.dataset.user ?? '', role);
-  if (result.ok) toast(`Listo: ${select.dataset.name ?? 'esa persona'} ahora es ${ROLE_NAMES[role]}. Lo verá en cuanto su app se sincronice.`);
+  const result = await sync.share.setRole(workspace.id, select.dataset.user ?? '', role, custom);
+  if (result.ok) toast(`Listo: ${select.dataset.name ?? 'esa persona'} ahora es ${label}. Lo verá en cuanto su app se sincronice.`);
   else toast(result.message, 'error');
   await reloadMembers(root, store, sync);
 }
@@ -177,6 +214,15 @@ export function runShareAction({ store, sync, root }, el) {
     case 'invite-revoke':
       if (sync) void revokeInvite(root, store, sync, el.dataset.id ?? '');
       return true;
+    case 'role-new':
+      if (sync) openRoleEditor(store, sync, root, null);
+      return true;
+    case 'role-edit':
+      if (sync) openRoleEditor(store, sync, root, el.dataset.id ?? null);
+      return true;
+    case 'role-delete':
+      if (sync) void deleteRole(root, store, sync, el.dataset.id ?? '', el.dataset.name ?? 'este rol');
+      return true;
     case 'ws-join':
       openJoin(store, sync, root);
       return true;
@@ -193,6 +239,7 @@ function openInvite(store, sync, root) {
   const workspace = store.activeWorkspace();
   const roles = invitableRoles(workspace);
   if (!workspace || roles.length === 0) return;
+  const custom = roleOf(workspace) === 'owner' ? cache.get(workspace.id)?.roles ?? [] : [];
   openSheet({
     title: `Invitar a «${workspace.name}»`,
     content: html`<form class="stack" data-form="invite" novalidate>
@@ -202,6 +249,10 @@ function openInvite(store, sync, root) {
           ${roles.map((r, i) => html`<label class="kind-choice">
             <input type="radio" name="role" value="${r}" ${i === roles.length - 1 ? 'checked' : ''} />
             <span class="kind-choice__body"><span><strong>${ROLE_NAMES[r]}</strong><small>${ROLE_HELP[r]}</small></span></span>
+          </label>`)}
+          ${custom.map((r) => html`<label class="kind-choice">
+            <input type="radio" name="role" value="custom:${r.id}" />
+            <span class="kind-choice__body"><span><strong>${r.name}</strong><small>${permissionSummary(r.permissions)}</small></span></span>
           </label>`)}
         </div>
         ${roles.length === 1 ? html`<p class="hint">Como Administrador solo puedes invitar contadores; los administradores los invita el dueño.</p>` : ''}
@@ -220,8 +271,10 @@ function openInvite(store, sync, root) {
         event.preventDefault();
         clearErrors(form);
         setBusy(form, true);
-        const role = readForm(form).role === 'admin' ? 'admin' : 'accountant';
-        const result = await sync.share.invite(workspace.id, role);
+        const picked = readForm(form).role ?? '';
+        const customId = picked.startsWith('custom:') ? picked.slice(7) : null;
+        const role = customId ? 'custom' : picked === 'admin' ? 'admin' : 'accountant';
+        const result = await sync.share.invite(workspace.id, role, customId);
         setBusy(form, false);
         if (!result.ok) {
           showErrors(form, { form: result.message });
@@ -229,7 +282,7 @@ function openInvite(store, sync, root) {
         }
         close();
         void reloadMembers(root, store, sync);
-        showCode(workspace.name, role, result.code, day(result.expiresAt));
+        showCode(workspace.name, role, result.code, day(result.expiresAt), custom.find((r) => r.id === customId)?.name);
       });
     },
   });
@@ -237,14 +290,15 @@ function openInvite(store, sync, root) {
 
 /**
  * Muestra el código recién creado. Solo se ve AHORA: la nube guarda únicamente su huella.
- * @param {string} workspaceName @param {'admin' | 'accountant'} role @param {string} code @param {string} expires
+ * @param {string} workspaceName @param {'admin' | 'accountant' | 'custom'} role @param {string} code @param {string} expires
+ * @param {string} [roleName]  El nombre de un rol a medida.
  */
-function showCode(workspaceName, role, code, expires) {
-  const message = inviteMessage({ workspaceName, code, role, expires });
+function showCode(workspaceName, role, code, expires, roleName) {
+  const message = inviteMessage({ workspaceName, code, role, roleName, expires });
   openSheet({
     title: 'Código de invitación',
     content: html`<div class="stack">
-      <p>Invitación como <strong>${ROLE_NAMES[role]}</strong> a «${workspaceName}». Vence el ${expires} y sirve una sola vez.</p>
+      <p>Invitación como <strong>${roleName ?? ROLE_NAMES[role]}</strong> a «${workspaceName}». Vence el ${expires} y sirve una sola vez.</p>
       <p class="invite-code" data-invite-code>${code}</p>
       <p class="hint"><strong>Cópialo ahora:</strong> por seguridad, este código no se vuelve a mostrar. Si lo pierdes, anúlalo y crea otro.</p>
       <label for="invite-text">Mensaje para enviar</label>
@@ -389,4 +443,126 @@ async function leaveWorkspace(store, sync, id) {
   cache.delete(id);
   await store.refresh();
   toast(`Saliste de «${workspace.name}».`);
+}
+
+// ---- Roles a medida (0.16.1) ---------------------------------------------------------------------------------------
+
+/**
+ * Crear o editar un rol a medida: nombre, una plantilla para empezar y el nivel de cada módulo. Lo que un módulo necesita
+ * de otro se sube solo, y se explica.
+ * @param {Store} store @param {SyncApi} sync @param {HTMLElement} root @param {string | null} roleId  null = nuevo.
+ */
+function openRoleEditor(store, sync, root, roleId) {
+  const workspace = store.activeWorkspace();
+  if (!workspace) return;
+  const roles = cache.get(workspace.id)?.roles ?? [];
+  const current = roleId ? roles.find((r) => r.id === roleId) ?? null : null;
+  if (roleId && !current) return;
+  const start = current?.permissions ?? TEMPLATES[0].permissions;
+  /** @param {string} id @param {string} level */
+  const option = (id, level) => html`<option value="${level}" ${start[/** @type {import('../domain/permissions.js').ModuleId} */ (id)] === level ? 'selected' : ''}>${LEVEL_NAMES[/** @type {import('../domain/permissions.js').PermissionLevel} */ (level)]}</option>`;
+  openSheet({
+    title: current ? `Editar el rol «${current.name}»` : 'Nuevo rol',
+    content: html`<form class="stack" data-form="role" novalidate>
+      <div class="field" data-field="name">
+        <label for="role-name">Nombre del rol</label>
+        <input id="role-name" name="name" class="input" type="text" maxlength="30" autocomplete="off" value="${current?.name ?? ''}" placeholder="Por ejemplo: Cajero" data-autofocus aria-describedby="role-name-error" />
+        <p class="field__error" id="role-name-error" data-error-for="name" hidden></p>
+      </div>
+      ${current ? '' : html`<div class="field">
+        <span class="field__label">Empezar desde</span>
+        <div class="chips-row">${TEMPLATES.map((t) => html`<button type="button" class="chip chip--button" data-template="${t.id}" title="${t.help}">${t.name}</button>`)}</div>
+      </div>`}
+      <fieldset class="field role-grid">
+        <legend class="field__label">¿Qué puede hacer en cada parte?</legend>
+        ${MODULES.map((m) => html`<label class="role-grid__row" for="perm-${m.id}">
+          <span class="role-grid__module">${m.label}</span>
+          <select id="perm-${m.id}" name="perm-${m.id}" class="input input--small">${LEVELS.map((l) => option(m.id, l))}</select>
+        </label>`)}
+      </fieldset>
+      <p class="hint">${LEVELS.map((l) => html`<strong>${LEVEL_NAMES[l]}</strong>: ${LEVEL_HELP[l]} `)}</p>
+      <p class="hint role-raised" data-raised role="status" hidden></p>
+      <p class="hint">Cambiar el rol de alguien o borrar el espacio sigue siendo cosa del dueño. Los cambios le llegan a quien tenga el rol en cuanto su app se sincronice.</p>
+      <p class="field__error field__error--form" data-error-for="form" role="alert" hidden></p>
+      <div class="actions">
+        <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
+        <button type="submit" class="btn btn--primary">${current ? 'Guardar cambios' : 'Crear rol'}</button>
+      </div>
+    </form>`,
+    onMount: (sheet, close) => {
+      const form = $('form', sheet);
+      if (!(form instanceof HTMLFormElement)) return;
+      const raisedNote = /** @type {HTMLElement} */ ($('[data-raised]', sheet));
+      /** Lee las casillas, sube lo que haga falta y lo explica. @returns {Permissions} */
+      const sync_ = () => {
+        const values = readForm(form);
+        const raw = Object.fromEntries(MODULES.map((m) => [m.id, values[`perm-${m.id}`] ?? 'none']));
+        const { permissions, raised } = normalizePermissions(raw);
+        for (const m of MODULES) {
+          const select = /** @type {HTMLSelectElement | null} */ (form.querySelector(`#perm-${m.id}`));
+          if (select && select.value !== permissions[m.id]) select.value = permissions[m.id];
+        }
+        const label = (/** @type {string} */ id) => MODULES.find((m) => m.id === id)?.label ?? id;
+        raisedNote.hidden = raised.length === 0;
+        raisedNote.textContent = raised.length === 0 ? '' : raised
+          .map((r) => `«${label(r.module)}» pasó a «${LEVEL_NAMES[r.to]}» porque «${label(r.because)}» lo necesita.`).join(' ');
+        return permissions;
+      };
+      form.addEventListener('change', (event) => {
+        if (event.target instanceof HTMLSelectElement) sync_();
+      });
+      sheet.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => {
+        const t = TEMPLATES.find((x) => x.id === /** @type {HTMLElement} */ (button).dataset.template);
+        if (!t) return;
+        for (const m of MODULES) {
+          const select = /** @type {HTMLSelectElement | null} */ (form.querySelector(`#perm-${m.id}`));
+          if (select) select.value = t.permissions[m.id];
+        }
+        const name = /** @type {HTMLInputElement} */ (form.querySelector('#role-name'));
+        if (!name.value.trim() && !t.id.endsWith('-like')) name.value = t.name;
+        sync_();
+      }));
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        clearErrors(form);
+        const permissions = sync_();
+        const named = validateRoleName(readForm(form).name ?? '', { existing: roles, exceptId: current?.id });
+        if (!named.ok) {
+          showErrors(form, { name: named.error });
+          return;
+        }
+        if (!hasAnyAccess(permissions)) {
+          showErrors(form, { form: 'Elige al menos una parte de la app que este rol pueda ver.' });
+          return;
+        }
+        setBusy(form, true);
+        const result = current
+          ? await sync.share.updateRole(current.id, named.name, permissions)
+          : await sync.share.createRole(workspace.id, named.name, permissions);
+        setBusy(form, false);
+        if (!result.ok) {
+          showErrors(form, { form: result.message });
+          return;
+        }
+        close();
+        toast(current ? `Rol «${named.name}» guardado. Quien lo tenga lo verá en cuanto su app se sincronice.` : `Rol «${named.name}» creado. Ya puedes invitar con él o asignárselo a alguien.`);
+        await reloadMembers(root, store, sync);
+      });
+    },
+  });
+}
+
+/** @param {HTMLElement} root @param {Store} store @param {SyncApi} sync @param {string} roleId @param {string} name */
+async function deleteRole(root, store, sync, roleId, name) {
+  const ok = await confirmDialog({
+    title: `¿Borrar el rol «${name}»?`,
+    message: 'Las invitaciones pendientes con este rol dejarán de servir. Si alguien lo tiene, primero cámbiale el rol.',
+    confirmLabel: 'Borrar rol',
+    danger: true,
+  });
+  if (!ok) return;
+  const result = await sync.share.deleteRole(roleId);
+  if (result.ok) toast(`Rol «${name}» borrado.`);
+  else toast(result.message, 'error');
+  await reloadMembers(root, store, sync);
 }

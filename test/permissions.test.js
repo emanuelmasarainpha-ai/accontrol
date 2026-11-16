@@ -104,3 +104,17 @@ test('plantillas: un rol sin ningún acceso no sirve; las de Contador y Administ
   assert.deepEqual(TEMPLATES.find((t) => t.id === 'accountant-like')?.permissions, allAt('view'));
   assert.deepEqual(TEMPLATES.find((t) => t.id === 'admin-like')?.permissions, allAt('edit'));
 });
+
+test('resumen de un rol en palabras: solo los módulos con acceso, en el orden de la lista', async () => {
+  const { permissionSummary } = await import('../src/domain/permissions.js');
+  const cashier = TEMPLATES.find((t) => t.id === 'cashier')?.permissions ?? allAt('none');
+  assert.equal(permissionSummary(cashier), 'Movimientos y categorías: Registrar · Clientes y servicios: Ver · Inventario (productos, proveedores, compras y ventas): Registrar · Facturas y cobros: Registrar');
+  assert.equal(permissionSummary(allAt('none')), 'Sin acceso a ningún módulo');
+});
+
+test('el mensaje de invitación usa el nombre del rol a medida', async () => {
+  const { inviteMessage } = await import('../src/domain/sharing.js');
+  const text = inviteMessage({ workspaceName: 'Tienda', code: 'ABCD-EFGH-JKMN', role: 'custom', roleName: 'Cajero', expires: '23 nov 2026' });
+  assert.match(text, /como Cajero\./);
+  assert.match(inviteMessage({ workspaceName: 'Tienda', code: 'ABCD-EFGH-JKMN', role: 'accountant', expires: '23 nov 2026' }), /como Contador\./);
+});

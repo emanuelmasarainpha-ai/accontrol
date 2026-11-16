@@ -160,3 +160,13 @@ export const TEMPLATES = Object.freeze([
   { id: 'accountant-like', name: 'Como Contador', help: 'Ve todo, no registra nada.', permissions: allAt('view') },
   { id: 'admin-like', name: 'Como Administrador', help: 'Registra y edita todo.', permissions: allAt('edit') },
 ]);
+
+/**
+ * Resumen en palabras de lo que permite un rol: «Movimientos y categorías: Registrar · Clientes y servicios: Ver».
+ * Los módulos sin acceso no se nombran.
+ * @param {Permissions} permissions
+ */
+export function permissionSummary(permissions) {
+  const parts = MODULES.filter((m) => permissions[m.id] !== 'none').map((m) => `${m.label}: ${LEVEL_NAMES[permissions[m.id]]}`);
+  return parts.length > 0 ? parts.join(' · ') : 'Sin acceso a ningún módulo';
+}

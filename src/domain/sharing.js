@@ -64,11 +64,12 @@ export function normalizeInviteCode(text) {
 
 /**
  * El mensaje que la persona copia y envía ella misma (ACCONTROL no envía mensajes).
- * @param {{ workspaceName: string, code: string, role: InviteRole, expires: string }} input  `expires`: fecha ya escrita para leer.
+ * @param {{ workspaceName: string, code: string, role: InviteRole | 'custom', roleName?: string, expires: string }} input  `expires`: fecha ya escrita para
+ *   leer; `roleName`: el nombre de un rol a medida («Cajero»).
  */
-export function inviteMessage({ workspaceName, code, role, expires }) {
+export function inviteMessage({ workspaceName, code, role, roleName, expires }) {
   return [
-    `Te invito a «${workspaceName}» en ACCONTROL como ${ROLE_NAMES[role]}.`,
+    `Te invito a «${workspaceName}» en ACCONTROL como ${roleName ?? ROLE_NAMES[role]}.`,
     '',
     `1. Entra en ACCONTROL con tu cuenta y activa la copia en la nube (Ajustes → Copia en la nube).`,
     `2. En Ajustes → Espacios de trabajo, pulsa «Unirme con un código» y escribe:`,
