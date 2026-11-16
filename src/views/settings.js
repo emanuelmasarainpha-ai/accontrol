@@ -30,7 +30,7 @@ import { runWorkspaceAction, workspacesPanel } from './workspaces.js';
 
 const ROADMAP = [
   { stage: 'Etapa 1', text: 'Prototipo funcional en este dispositivo: ingresos, gastos, metas y estadísticas (hecha).', done: true },
-  { stage: 'Etapa 2', text: 'Cuenta personal con correo y contraseña, base de datos en la nube con seguridad por usuario, copia en la nube y sincronización entre tus dispositivos y compartir un espacio con otras personas, con roles (Dueño, Administrador, Contador) e invitaciones por código (hechas); faltan los roles a medida (0.16.1).', current: true },
+  { stage: 'Etapa 2', text: 'Cuenta personal con correo y contraseña, base de datos en la nube con seguridad por usuario, copia en la nube y sincronización entre tus dispositivos y compartir un espacio con otras personas, con roles (Dueño, Administrador, Contador y roles a medida con permisos por módulo) e invitaciones por código (hechas).', current: true },
   { stage: 'Etapa 3', text: 'Deudas con riesgo y amortización, presupuesto automático, alertas y exportación a PDF, Excel y CSV (hecha).', done: true },
   { stage: 'Etapa 4', text: 'Patrimonio neto, estadísticas avanzadas (por mes, trimestre y año) y 9 calculadoras de matemática financiera (hecha).', done: true },
   { stage: 'Ampliación', text: 'Espacios de trabajo: Personal, Freelancer, Emprendedor y Empresa, cada uno con sus datos separados; los de negocio con sus datos de organización en los reportes (pasos 1 y 2) y el módulo Freelancer con clientes, servicios, cobros por cliente, ranking y flujo de caja (paso 3), el módulo Emprendedor con estado de resultados, margen, comparación y proyección (paso 4), las finanzas de Empresa con la pantalla Salud financiera (paso 5), el inventario de Emprendedor y Empresa: productos, proveedores, compras, ventas, stock, valor y ganancia bruta (paso 6a), las facturas internas de Emprendedor y Empresa: emisión con varias líneas, impuesto, cobros parciales, cuentas por cobrar, anulación y PDF de cada factura (paso 6b) y los departamentos de Empresa: cada gasto cargado a un área, presupuesto mensual por área con estado En orden, Cerca del límite o Excedido, y gastos sin departamento (paso 6c), los gastos cargados a cada cliente en Freelancer, con neto y margen por cliente (rentabilidad real), y los logros, rachas y niveles de todos los espacios, calculados con tus datos reales (paso 6d), el diagnóstico financiero con la viabilidad de cada meta, con reglas fijas y a la vista (paso 6e), y las facturas internas también en Freelancer, ligadas a clientes y servicios, con recordatorios de cobro para copiar y enviar tú (paso 6f, hecha). Compartir un espacio con roles e invitaciones llegó en la 0.16.0.', done: true },
@@ -234,7 +234,7 @@ ${cloudPanel(sync)}
       <ol class="roadmap">${ROADMAP.map(
         (r) => html`<li class="roadmap__item${r.current ? ' roadmap__item--current' : ''}${r.done ? ' roadmap__item--done' : ''}"><span class="roadmap__stage">${r.stage}</span><span>${r.text}</span></li>`,
       )}</ol>
-      <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · Compartir un espacio: roles e invitaciones (Etapa 2, parte 3)</p>
+      <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · Roles a medida con permisos por módulo (Etapa 2, parte 3)</p>
     </section>
   `;
 
