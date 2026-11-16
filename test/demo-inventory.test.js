@@ -33,9 +33,10 @@ for (const today of DAYS) {
     const byName = Object.fromEntries(summary.positions.map((p) => [p.product.name, p]));
     assert.deepEqual(
       Object.fromEntries(Object.entries(byName).map(([name, p]) => [name, [p.stock, p.status]])),
-      { 'Camisa de algodón': [7, 'low'], 'Pantalón de mezclilla': [11, 'ok'], Gorra: [6, 'low'], 'Cinturón de cuero': [0, 'out'] },
+      { 'Camisa de algodón': [7, 'low'], 'Pantalón de mezclilla': [11, 'ok'], Gorra: [6, 'low'], 'Cinturón de cuero': [0, 'out'], 'Caramelos sueltos': [0, 'untracked'] },
     );
-    assert.equal(summary.alerts.length, 3, 'dos con stock bajo y uno agotado');
+    assert.equal(summary.alerts.length, 3, 'dos con stock bajo y uno agotado (los caramelos, sin control de stock, no avisan)');
+    assert.equal(summary.outCount, 1, 'los caramelos no cuentan como agotados');
   });
 
   test(`demostración de inventario (${today}): cada compra y venta tiene su dinero y no hay dinero suelto`, () => {

@@ -21,7 +21,7 @@ import {
 import { isAssetCategory, isValidSubtype, MIN_ASSET_DATE } from './assets.js';
 import { isServiceStatus, MAX_ESTIMATED_DAYS, MAX_SERVICE_DATE, MIN_SERVICE_DATE } from './clients.js';
 import { isValidEmail, isValidPhone } from './contact.js';
-import { isStockKind, MAX_QUANTITY, replayProduct } from './inventory.js';
+import { isStockKind, isValidProductImage, MAX_QUANTITY, replayProduct } from './inventory.js';
 import { billedByService, invoiceTotals, MAX_DUE_DAYS, MAX_TAX_BP, MIN_INVOICE_DATE } from './invoices.js';
 import { defaultCategories } from './categories.js';
 import { addDays, isValidISODate, isValidTime } from './dates.js';
@@ -594,9 +594,17 @@ function validateData(d, { today, ids }) {
     if (!Number.isSafeInteger(x.minStock) || x.minStock < 0 || x.minStock > MAX_QUANTITY) throw new Error(`${w}: stock mínimo no válido.`);
     optionalText(x.notes, w, 'notas', LIMITS.productNotes);
     if (typeof x.archived !== 'boolean') throw new Error(`${w}: marca de archivado no válida.`);
+    // 0.17.0: grupo, «sin control de stock» y foto (las copias de antes no los traen).
+    if (x.groupName !== undefined) optionalText(x.groupName, w, 'grupo', LIMITS.productGroup);
+    if (x.trackStock !== undefined && typeof x.trackStock !== 'boolean') throw new Error(`${w}: marca de control de stock no válida.`);
+    if (x.imageData !== undefined && !isValidProductImage(x.imageData)) throw new Error(`${w}: la foto no es una imagen JPG, PNG o WEBP válida.`);
     return {
       id: x.id, name: x.name, sku: x.sku, unit: x.unit, priceCents: x.priceCents, minStock: x.minStock, notes: x.notes,
       archived: x.archived, createdAt: iso(x.createdAt, w), updatedAt: iso(x.updatedAt, w),
+      // Tal cual: si el producto los traía, se conservan; si no (copias de antes de la 0.17.0), no se inventan.
+      ...(x.groupName !== undefined ? { groupName: x.groupName } : {}),
+      ...(x.trackStock !== undefined ? { trackStock: x.trackStock } : {}),
+      ...(x.imageData !== undefined ? { imageData: x.imageData } : {}),
       ...(x.isDemo === true ? { isDemo: true } : {}),
     };
   });
@@ -781,12 +789,20 @@ function validateData(d, { today, ids }) {
     const problem = replayProduct(stockEntries.filter((e) => e.productId === product.id)).firstNegative;
     if (problem) throw new Error(`Producto «${product.name}»: sus salidas superan lo que había en stock (${problem.entry.date}).`);
   }
-  // Cada factura vigente sacó del inventario exactamente lo que dicen sus líneas con producto (y nada más).
+  // Un producto sin control de stock (0.17.0) no tiene movimientos de stock.
+  for (const product of products) {
+    if (product.trackStock === false && stockEntries.some((e) => e.productId === product.id)) {
+      throw new Error(`Producto «${product.name}»: no lleva control de stock, pero tiene movimientos de stock.`);
+    }
+  }
+  const untracked = new Set(products.filter((p) => p.trackStock === false).map((p) => p.id));
+  // Cada factura vigente sacó del inventario exactamente lo que dicen sus líneas con producto (y nada más), menos las de
+  // productos sin control de stock, que no sacan unidades.
   for (const invoice of invoices) {
     /** @type {Map<string, { units: number, cents: number }>} */
     const wanted = new Map();
     for (const line of invoice.lines) {
-      if (!line.productId) continue;
+      if (!line.productId || untracked.has(line.productId)) continue;
       const row = wanted.get(line.productId) ?? { units: 0, cents: 0 };
       row.units += line.quantity;
       row.cents += line.quantity * line.unitCents;

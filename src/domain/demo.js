@@ -411,7 +411,8 @@ export function buildDepartmentDemo(movements, today, nowISO) {
 /**
  * Lo que se suma a la demostración de un negocio (Emprendedor o Empresa): cuatro productos de una tienda de ropa inventada,
  * dos proveedores y tres meses de compras y ventas, cada una con su gasto o ingreso (porque así se registran de verdad).
- * Queda un producto con stock bajo y otro agotado para que se vean los avisos. El stock nunca es negativo y no hay fechas
+ * Queda un producto con stock bajo y otro agotado para que se vean los avisos. Desde la 0.17.0 llevan grupo (Ropa, Accesorios)
+ * y hay un quinto, «Caramelos sueltos», SIN CONTROL DE STOCK (no tiene compras ni ventas de stock). El stock nunca es negativo y no hay fechas
  * futuras. Todo con `isDemo`.
  * @param {string} today "AAAA-MM-DD" @param {string} nowISO
  * @returns {{ products: Product[], suppliers: Supplier[], stockEntries: StockEntry[], movements: Movement[] }}
@@ -429,15 +430,16 @@ export function buildInventoryDemo(today, nowISO) {
   const textiles = supplier('Textiles del Caribe', 'Marta Peña', 'ventas@textiles-ejemplo.test', '809-555-0140');
   const rivera = supplier('Importadora Rivera', 'Luis Rivera', 'pedidos@rivera-ejemplo.test', '809-555-0188');
 
-  /** @param {string} name @param {string} sku @param {number} pricePesos @param {number} minStock @returns {Product} */
-  const product = (name, sku, pricePesos, minStock) => ({
+  /** @param {string} name @param {string} sku @param {number} pricePesos @param {number} minStock @param {string} groupName @param {boolean} [trackStock] @returns {Product} */
+  const product = (name, sku, pricePesos, minStock, groupName, trackStock = true) => ({
     id: newId(), name, sku, unit: 'unidad', priceCents: pricePesos * 100, minStock, notes: 'Producto de ejemplo.',
-    archived: false, createdAt: nowISO, updatedAt: nowISO, isDemo: true,
+    archived: false, groupName, trackStock, imageData: '', createdAt: nowISO, updatedAt: nowISO, isDemo: true,
   });
-  const shirt = product('Camisa de algodón', 'CAM-001', 1200, 10);
-  const jeans = product('Pantalón de mezclilla', 'PAN-002', 2400, 6);
-  const cap = product('Gorra', 'GOR-003', 600, 8);
-  const belt = product('Cinturón de cuero', 'CIN-004', 900, 5);
+  const shirt = product('Camisa de algodón', 'CAM-001', 1200, 10, 'Ropa');
+  const jeans = product('Pantalón de mezclilla', 'PAN-002', 2400, 6, 'Ropa');
+  const cap = product('Gorra', 'GOR-003', 600, 8, 'Accesorios');
+  const belt = product('Cinturón de cuero', 'CIN-004', 900, 5, 'Accesorios');
+  const candy = product('Caramelos sueltos', 'CAR-005', 10, 0, 'Dulces', false);
 
   /** @type {StockEntry[]} */
   const stockEntries = [];
@@ -489,7 +491,7 @@ export function buildInventoryDemo(today, nowISO) {
   add('sale', belt, 1, 20, '16:30', 3, 900);
   add('sale', belt, 0, 5, '16:30', 5, 900);
 
-  return { products: [shirt, jeans, cap, belt], suppliers: [textiles, rivera], stockEntries, movements };
+  return { products: [shirt, jeans, cap, belt, candy], suppliers: [textiles, rivera], stockEntries, movements };
 }
 
 /**

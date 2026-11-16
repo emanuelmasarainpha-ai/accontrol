@@ -1109,7 +1109,8 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         if (stale) return stale;
         const existing = editingId ? state.data.products.find((x) => x.id === editingId) : null;
         if (editingId && !existing) return formFail('Ese producto ya no existe.');
-        const checked = validateProduct(input, { products: state.data.products, exceptId: editingId });
+        const stockEntries = editingId ? state.data.stockEntries.filter((e) => e.productId === editingId).length : 0;
+        const checked = validateProduct(input, { products: state.data.products, exceptId: editingId, stockEntries });
         if (!checked.ok) return checked;
         const product = existing
           ? applyProductEdit(existing, checked.value, nowISO())
@@ -1419,7 +1420,7 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         const invoice = buildInvoice(value, { id: newId(), number: nextInvoiceNumber(data.invoices, isDemo), nowISO: now, isDemo });
         const entries = stockEntriesFromLines(invoice.lines, {
           invoiceId: invoice.id, ids: invoice.lines.map(() => newId()), issueDate: invoice.issueDate, time, nowISO: now,
-          label: `Factura ${invoiceLabel(invoice)}`, isDemo,
+          label: `Factura ${invoiceLabel(invoice)}`, isDemo, products: data.products,
         });
         const failure = await tryWrite(() => dataStore.putMany({ invoices: [invoice], stockEntries: entries }));
         if (failure) return failure;

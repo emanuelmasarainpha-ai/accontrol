@@ -1,5 +1,5 @@
 {
-  "version": "49f758f4f49e",
+  "version": "6e0393eaf5d9",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -113,6 +113,7 @@
     "src/ui/haptics.js",
     "src/ui/html.js",
     "src/ui/icons.js",
+    "src/ui/image.js",
     "src/ui/passwordToggle.js",
     "src/ui/theme.js",
     "src/ui/toast.js",

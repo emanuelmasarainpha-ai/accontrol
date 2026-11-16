@@ -113,6 +113,12 @@
  * @property {number} minStock       Cuando el stock baja a esta cantidad o menos, aparece un aviso (0 = sin aviso).
  * @property {string} notes          Puede estar vacío.
  * @property {boolean} archived      true = ya no se ofrece al comprar o vender, pero su historial se conserva.
+ * @property {string} [groupName]    0.17.0: grupo para la caja («Bebidas», «Dulces»…). Ausente o '' = sin grupo.
+ * @property {boolean} [trackStock]  0.17.0: false = SIN CONTROL DE STOCK (por ejemplo gomitas sueltas): se vende pero no se cuentan
+ *                                   unidades (no tiene compras, ventas ni ajustes de stock y sus facturas no sacan unidades).
+ *                                   Ausente o true = se controla, como siempre.
+ * @property {string} [imageData]    0.17.0: foto en miniatura, «data:image/(webp|jpeg|png);base64,…» de hasta LIMITS.productImage
+ *                                   caracteres. Ausente o '' = sin foto.
  * @property {string} createdAt
  * @property {string} updatedAt
  * @property {boolean} [isDemo]
@@ -446,6 +452,9 @@ export const LIMITS = {
   productSku: 30,
   productUnit: 20,
   productNotes: 200,
+  productGroup: 30,
+  /** Foto en miniatura (0.17.0): unos 30 KB como máximo, en texto base64. */
+  productImage: 40000,
   supplierName: 80,
   supplierContact: 60,
   supplierEmail: 80,

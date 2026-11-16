@@ -87,7 +87,7 @@ test('el filtro conserva el orden de la lista', () => {
 
 test('los contadores de los botones cuadran con lo que muestra cada filtro', () => {
   const counts = productFilterCounts(positions);
-  assert.deepEqual(counts, { active: 4, low: 2, out: 2, in_stock: 2, archived: 1 });
+  assert.deepEqual(counts, { active: 4, low: 2, out: 2, in_stock: 2, untracked: 0, archived: 1 });
   for (const [f, n] of Object.entries(counts)) {
     assert.ok(isProductFilter(f));
     assert.equal(ids(/** @type {any} */ (f)).length, n, f);

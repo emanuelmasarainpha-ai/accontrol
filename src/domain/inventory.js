@@ -61,6 +61,34 @@ export function inventoryEnabled(workspaceKind, data) {
 /** @param {string} text */
 const fold = (text) => text.toLocaleLowerCase('es');
 
+// ---- Campos de la caja (0.17.0): los productos de antes no los tienen, y eso significa «como siempre» ----------
+
+/** ¿Se cuentan las unidades de este producto? (ausente = sí) @param {Pick<Product, 'trackStock'>} p */
+export const tracksStock = (p) => p.trackStock !== false;
+/** Su grupo ('' = sin grupo). @param {Pick<Product, 'groupName'>} p */
+export const productGroup = (p) => p.groupName ?? '';
+/** Su foto ('' = sin foto). @param {Pick<Product, 'imageData'>} p */
+export const productImage = (p) => p.imageData ?? '';
+
+/** Solo fotos JPG, PNG o WEBP en base64 (nunca SVG ni otros formatos, que pueden llevar código). */
+const IMAGE_PATTERN = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+/** ¿Es una foto que se puede guardar? ('' = sin foto, también vale) @param {unknown} value */
+export function isValidProductImage(value) {
+  return value === '' || (typeof value === 'string' && value.length <= LIMITS.productImage && IMAGE_PATTERN.test(value));
+}
+
+/** Los grupos que ya usas (para sugerirlos), en orden alfabético y sin repetir. @param {Product[]} products */
+export function productGroups(products) {
+  /** @type {Map<string, string>} */
+  const seen = new Map();
+  for (const p of sortProducts(products)) {
+    const g = productGroup(p);
+    if (g && !seen.has(fold(g))) seen.set(fold(g), g);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+}
+
 /** a ÷ b redondeado al entero más cercano (mitades hacia arriba), sin perder precisión en números grandes. @param {number} a @param {number} b */
 function roundDiv(a, b) {
   const num = BigInt(a);
@@ -80,17 +108,21 @@ function proportion(value, qty, stock) {
  * @typedef {Object} ProductInput
  * @property {string} name @property {string} [sku] @property {string} [unit] @property {string} [priceText]
  * @property {string} [minStockText] @property {string} [notes]
+ * @property {string} [groupText]    0.17.0: grupo para la caja.
+ * @property {boolean} [trackStock]  0.17.0: false = sin control de stock (por defecto, true).
+ * @property {string} [imageData]    0.17.0: foto ya reducida por la pantalla ('' = sin foto).
  */
 
-/** @typedef {Pick<Product, 'name' | 'sku' | 'unit' | 'priceCents' | 'minStock' | 'notes'>} ProductValue */
+/** @typedef {Pick<Product, 'name' | 'sku' | 'unit' | 'priceCents' | 'minStock' | 'notes'> & { groupName: string, trackStock: boolean, imageData: string }} ProductValue */
 
 /**
  * Valida un producto. Solo el nombre es obligatorio. No se permiten dos productos con el mismo nombre ni el mismo código.
  * @param {ProductInput} input
- * @param {{ products: Product[], exceptId?: string | null }} context
+ * Un producto que ya tiene movimientos de stock no puede pasar a «sin control de stock» (sus unidades quedarían sin explicar).
+ * @param {{ products: Product[], exceptId?: string | null, stockEntries?: number }} context  stockEntries: cuántos movimientos de stock tiene.
  * @returns {{ ok: true, value: ProductValue } | { ok: false, errors: Record<string, string> }}
  */
-export function validateProduct(input, { products, exceptId = null }) {
+export function validateProduct(input, { products, exceptId = null, stockEntries = 0 }) {
   /** @type {Record<string, string>} */
   const errors = {};
   const name = cleanText(input.name);
@@ -124,8 +156,21 @@ export function validateProduct(input, { products, exceptId = null }) {
     else minStock = Number(minText);
   }
 
+  const groupName = cleanText(input.groupText);
+  if (groupName.length > LIMITS.productGroup) errors.group = `Máximo ${LIMITS.productGroup} caracteres.`;
+
+  const trackStock = input.trackStock !== false;
+  if (!trackStock && stockEntries > 0) {
+    errors.trackStock = 'Este producto ya tiene compras, ventas o ajustes de stock: no puede pasar a «sin control de stock». Archívalo y crea otro sin control.';
+  }
+  // Sin control de stock no hay aviso de stock bajo.
+  if (!trackStock) minStock = 0;
+
+  const imageData = input.imageData ?? '';
+  if (!isValidProductImage(imageData)) errors.image = 'Esa foto no se puede guardar. Elige otra (JPG, PNG o WEBP).';
+
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, value: { name, sku, unit, priceCents, minStock, notes } };
+  return { ok: true, value: { name, sku, unit, priceCents, minStock, notes, groupName, trackStock, imageData } };
 }
 
 /** @param {ProductValue} value @param {{ id: string, nowISO: string }} extra @returns {Product} */
@@ -288,7 +333,8 @@ function groupByProduct(entries) {
  * @property {number} stock
  * @property {number} valueCents
  * @property {number} avgCostCents   Costo promedio por unidad (0 si no hay stock).
- * @property {'ok' | 'low' | 'out'} status  out = sin unidades; low = en el nivel de aviso o por debajo (solo si el producto tiene aviso).
+ * @property {'ok' | 'low' | 'out' | 'untracked'} status  out = sin unidades; low = en el nivel de aviso o por debajo (solo si el producto
+ *   tiene aviso); untracked = sin control de stock (0.17.0: no se cuentan sus unidades).
  */
 
 /**
@@ -303,7 +349,8 @@ export function stockPositions(data) {
     const stock = replay.stock;
     /** @type {StockPosition['status']} */
     let status = 'ok';
-    if (stock <= 0) status = 'out';
+    if (!tracksStock(product)) status = 'untracked';
+    else if (stock <= 0) status = 'out';
     else if (product.minStock > 0 && stock <= product.minStock) status = 'low';
     return { product, stock, valueCents: replay.valueCents, avgCostCents: stock > 0 ? roundDiv(replay.valueCents, stock) : 0, status };
   });
@@ -311,7 +358,7 @@ export function stockPositions(data) {
 
 // ---- Filtros de la lista de productos (0.16.2) ---------------------------------------------------
 
-/** @typedef {'active' | 'low' | 'out' | 'in_stock' | 'archived'} ProductFilter */
+/** @typedef {'active' | 'low' | 'out' | 'in_stock' | 'untracked' | 'archived'} ProductFilter */
 
 /** @type {readonly { id: ProductFilter, label: string }[]} */
 export const PRODUCT_FILTERS = [
@@ -319,6 +366,7 @@ export const PRODUCT_FILTERS = [
   { id: 'low', label: 'Stock bajo' },
   { id: 'out', label: 'Agotados' },
   { id: 'in_stock', label: 'Con stock' },
+  { id: 'untracked', label: 'Sin conteo' },
   { id: 'archived', label: 'Archivados' },
 ];
 
@@ -340,6 +388,9 @@ export const searchable = (text) => text.normalize('NFD').replace(/\p{Diacritic}
 export function matchesProductFilter(p, filter) {
   if (filter === 'archived') return p.product.archived;
   if (p.product.archived) return false;
+  // Sin control de stock (0.17.0): no están bajos, ni agotados, ni con stock: tienen su propio filtro.
+  if (filter === 'untracked') return p.status === 'untracked';
+  if (p.status === 'untracked') return filter === 'active';
   if (filter === 'low') return p.product.minStock > 0 && p.stock <= p.product.minStock;
   if (filter === 'out') return p.stock <= 0;
   if (filter === 'in_stock') return p.stock > 0;
@@ -360,7 +411,7 @@ export function filterStockPositions(positions, { filter, query }) {
 /** Cuántos productos hay en cada filtro (para mostrarlo en los botones). @param {StockPosition[]} positions */
 export function productFilterCounts(positions) {
   /** @type {Record<ProductFilter, number>} */
-  const counts = { active: 0, low: 0, out: 0, in_stock: 0, archived: 0 };
+  const counts = { active: 0, low: 0, out: 0, in_stock: 0, untracked: 0, archived: 0 };
   for (const p of positions) for (const f of PRODUCT_FILTERS) if (matchesProductFilter(p, f.id)) counts[f.id] += 1;
   return counts;
 }
@@ -373,13 +424,13 @@ export function inventorySummary(data) {
   const positions = stockPositions(data);
   const active = positions.filter((p) => !p.product.archived);
   // Aviso de stock bajo: solo productos activos que pidieron aviso (stock mínimo > 0).
-  const alerts = active.filter((p) => p.product.minStock > 0 && p.stock <= p.product.minStock);
+  const alerts = active.filter((p) => p.status !== 'untracked' && p.product.minStock > 0 && p.stock <= p.product.minStock);
   return {
     positions,
     totalValueCents: positions.reduce((sum, p) => sum + p.valueCents, 0),
     totalUnits: positions.reduce((sum, p) => sum + Math.max(p.stock, 0), 0),
     activeProducts: active.length,
-    outCount: active.filter((p) => p.stock <= 0).length,
+    outCount: active.filter((p) => p.status === 'out').length,
     alerts,
   };
 }
@@ -505,6 +556,7 @@ export function validateStockEntry(input, { products, suppliers, categories, ent
   const product = products.find((p) => p.id === input.productId);
   if (!product) errors.product = 'Elige un producto.';
   else if (product.archived) errors.product = 'Ese producto está archivado: reactívalo para comprar o vender.';
+  else if (!tracksStock(product)) errors.product = `«${product.name}» no lleva control de stock: sus ventas se cobran en una factura o en la caja, y lo que compras para él se anota como un gasto.`;
 
   // Cantidad: entero; las compras y ventas son positivas (la venta sale sola con signo negativo); el ajuste puede ser + o -.
   const quantityText = cleanText(input.quantityText);

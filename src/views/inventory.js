@@ -11,7 +11,7 @@
 
 import { formatDate, monthKeyOf, monthLabel, plural } from '../domain/dates.js';
 import {
-  PRODUCT_FILTERS, STOCK_KIND_LABELS, filterStockPositions, inventorySummary, isProductFilter, productFilterCounts, productUsage, replayProduct, salesAnalysis, sortEntriesNewestFirst, stockPositions, supplierTotals,
+  PRODUCT_FILTERS, STOCK_KIND_LABELS, filterStockPositions, inventorySummary, isProductFilter, productFilterCounts, productGroup, productImage, productUsage, replayProduct, salesAnalysis, sortEntriesNewestFirst, stockPositions, supplierTotals,
 } from '../domain/inventory.js';
 import { invoiceLabel } from '../domain/invoices.js';
 import { formatMoney, formatPercent } from '../domain/money.js';
@@ -36,6 +36,7 @@ const qty = (n) => n.toLocaleString('en-US');
 
 /** @param {StockPosition['status']} status @param {boolean} hasMovements */
 function statusChip(status, hasMovements) {
+  if (status === 'untracked') return html`<span class="chip">Sin conteo</span>`;
   if (status === 'ok') return html`<span class="chip chip--good">Bien</span>`;
   if (status === 'low') return html`<span class="chip chip--warn">Stock bajo</span>`;
   return hasMovements ? html`<span class="chip chip--alert">Agotado</span>` : html`<span class="chip">Sin movimientos</span>`;
@@ -129,26 +130,32 @@ function listPage(store, today) {
   /** @param {StockPosition} p */
   const productRow = (p) => {
     const pr = p.product;
+    const image = productImage(pr);
+    const group = productGroup(pr);
+    const untracked = p.status === 'untracked';
     return html`<li class="row-item">
       <a class="product-row${pr.archived ? ' product-row--archived' : ''}" href="#/inventario/${pr.id}" aria-label="${pr.name}. Ver ficha">
+        <span class="product-thumb" aria-hidden="true">${image ? html`<img src="${image}" alt="" width="44" height="44" loading="lazy" />` : pr.name.slice(0, 1).toLocaleUpperCase('es')}</span>
         <span class="product-row__main">
           <span class="product-row__top">
             <span class="product-row__name">${pr.name}</span>
             ${pr.archived ? html`<span class="chip">Archivado</span>` : statusChip(p.status, hasMovements.has(pr.id))}
             ${pr.isDemo ? demoBadge() : ''}
           </span>
-          ${pr.sku ? html`<span class="product-row__sub">Código ${pr.sku}</span>` : ''}
+          ${pr.sku || group ? html`<span class="product-row__sub">${[group, pr.sku ? `Código ${pr.sku}` : ''].filter(Boolean).join(' · ')}</span>` : ''}
           <span class="product-row__meta">
             <span>${pr.priceCents > 0 ? `Precio ${formatMoney(pr.priceCents)}` : 'Sin precio de venta'}</span>
             ${p.stock > 0 ? html`<span>Costo promedio ${formatMoney(p.avgCostCents)}</span>` : ''}
             ${pr.minStock > 0 ? html`<span>Avisar en ${qty(pr.minStock)}</span>` : ''}
           </span>
         </span>
-        <span class="product-row__side">
+        ${untracked
+          ? html`<span class="product-row__side"><span class="product-row__label">No se cuenta</span></span>`
+          : html`<span class="product-row__side">
           <span class="product-row__amount">${qty(p.stock)}</span>
           <span class="product-row__label">en stock (${pr.unit})</span>
           <span class="product-row__value">${formatMoney(p.valueCents)}</span>
-        </span>
+        </span>`}
       </a>
     </li>`;
   };
@@ -165,6 +172,7 @@ function listPage(store, today) {
       low: 'Ningún producto está en stock bajo. Para recibir el aviso, ponle un «stock mínimo» al producto.',
       out: 'No tienes productos agotados.',
       in_stock: 'Ningún producto tiene unidades en este momento.',
+      untracked: 'Todos tus productos llevan control de stock.',
       archived: 'No tienes productos archivados.',
     };
     return html`<p class="muted empty-line" role="status">${empty[view.filter]}</p>`;
@@ -357,12 +365,12 @@ function detailPage(store, id) {
 
     <header class="page-header page-header--wrap">
       <div>
-        <h1 class="page-title">${product.name}</h1>
-        <p class="page-subtitle">${product.sku ? `Código ${product.sku} · ` : ''}Se cuenta en: ${product.unit}</p>
+        <h1 class="page-title">${productImage(product) ? html`<img class="product-title-photo" src="${productImage(product)}" alt="" width="56" height="56" />` : ''}${product.name}</h1>
+        <p class="page-subtitle">${productGroup(product) ? `${productGroup(product)} · ` : ''}${product.sku ? `Código ${product.sku} · ` : ''}${position.status === 'untracked' ? 'Sin control de stock' : `Se cuenta en: ${product.unit}`}</p>
         <p class="debt__tags debt__tags--start">${product.archived ? html`<span class="chip">Archivado</span>` : statusChip(position.status, entries.length > 0)}${product.isDemo ? demoBadge() : ''}</p>
       </div>
       <div class="page-header__actions">
-        ${product.archived
+        ${product.archived || position.status === 'untracked'
           ? ''
           : html`<button type="button" class="btn btn--primary" data-action="stock-sell" data-product="${product.id}">${icon('plus', 18)}Registrar venta</button>
               <button type="button" class="btn btn--ghost" data-action="stock-buy" data-product="${product.id}">Registrar compra</button>
@@ -372,6 +380,10 @@ function detailPage(store, id) {
     </header>
 
     ${demoBanner(store.hasDemoData())}
+
+    ${position.status === 'untracked'
+      ? html`<p class="notice" role="status">${icon('info', 18)}<span>Este producto no lleva control de stock: se vende con una factura (o en la caja) y no se cuentan sus unidades. Lo que compras para él se anota como un gasto en Movimientos.</span></p>`
+      : ''}
 
     <section class="panel" aria-label="Resumen del producto">
       <dl class="kpis">

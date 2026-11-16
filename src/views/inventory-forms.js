@@ -8,14 +8,17 @@
 // =============================================================================
 
 import { categoriesOfKind } from '../domain/categories.js';
-import { MAX_QUANTITY, STOCK_KIND_LABELS, productUsage, sortProducts, sortSuppliers, stockPositions, supplierUsage } from '../domain/inventory.js';
+import {
+  MAX_QUANTITY, STOCK_KIND_LABELS, productGroup, productGroups, productImage, productUsage, sortProducts, sortSuppliers, stockPositions, supplierUsage, tracksStock,
+} from '../domain/inventory.js';
 import { centsToInputValue, formatMoney, parseMoney } from '../domain/money.js';
 import { LIMITS } from '../domain/types.js';
 import { $ } from '../ui/dom.js';
 import { confirmDialog, openSheet } from '../ui/dialog.js';
 import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
-import { html } from '../ui/html.js';
+import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
+import { shrinkProductImage } from '../ui/image.js';
 import { toast } from '../ui/toast.js';
 import { bindMoneyPreview, fieldError, handleResult, moneyField } from './form-parts.js';
 
@@ -46,17 +49,58 @@ export function openProductForm(store, { product = null } = {}) {
   const { data } = store.getState();
   const usage = product ? productUsage(data, product.id) : { entries: 0, invoices: 0 };
   const entries = usage.entries + usage.invoices;
+  const groups = productGroups(data.products);
+  const tracked = product ? tracksStock(product) : true;
+  // Un producto con movimientos de stock no puede dejar de contarse (sus unidades quedarían sin explicar).
+  const lockTracking = usage.entries > 0 && tracked;
+  /** @param {string} dataUrl */
+  const photoBox = (dataUrl) => (dataUrl
+    ? html`<img class="product-photo__img" src="${dataUrl}" alt="Foto del producto" width="96" height="96" />`
+    : html`<span class="product-photo__empty" aria-hidden="true">${icon('box', 32)}</span>`);
 
   openSheet({
     title: isEdit ? 'Editar producto' : 'Nuevo producto',
-    content: html`<form class="stack" novalidate>
+    content: html`<form class="stack" novalidate data-form="product">
+      <div class="field product-photo" data-field="image">
+        <span class="product-photo__box" data-photo-box>${photoBox(product ? productImage(product) : '')}</span>
+        <span class="product-photo__side">
+          <span class="product-photo__label">Foto (opcional)</span>
+          <span class="product-photo__actions">
+            <label class="btn btn--ghost btn--small" for="pr-photo">${icon('upload', 16)}Elegir foto</label>
+            <button type="button" class="btn btn--ghost btn--small" data-photo-clear ${product && productImage(product) ? '' : 'hidden'}>Quitar foto</button>
+          </span>
+          <input id="pr-photo" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/*" data-photo-input />
+          <input type="hidden" name="imageData" value="${product ? productImage(product) : ''}" data-photo-value />
+          <span class="hint">Se guarda una miniatura liviana. Se ve en la lista y en la caja.</span>
+          ${fieldError('image')}
+        </span>
+      </div>
       ${textField({ id: 'pr-name', name: 'name', label: 'Nombre', value: product?.name ?? '', max: LIMITS.productName, placeholder: 'Ej.: Camisa azul talla M', autofocus: !isEdit })}
+      <div class="field" data-field="group">
+        <label for="pr-group">Grupo (opcional)</label>
+        <input id="pr-group" name="groupText" class="input" type="text" list="pr-groups" maxlength="${LIMITS.productGroup}" autocomplete="off" placeholder="Ej.: Bebidas, Dulces, Limpieza" value="${product ? productGroup(product) : ''}" aria-describedby="pr-group-hint group-error" />
+        <datalist id="pr-groups">${groups.map((g) => html`<option value="${g}"></option>`)}</datalist>
+        <p class="hint" id="pr-group-hint">En la caja, los productos se filtran por grupo.</p>
+        ${fieldError('group')}
+      </div>
       <div class="field-row">
         ${textField({ id: 'pr-sku', name: 'sku', label: 'Código (opcional)', value: product?.sku ?? '', max: LIMITS.productSku, placeholder: 'Ej.: CAM-AZ-M' })}
         ${textField({ id: 'pr-unit', name: 'unit', label: 'Unidad', value: product?.unit ?? 'unidad', max: LIMITS.productUnit, placeholder: 'Ej.: unidad, caja, libra' })}
       </div>
       ${moneyField({ id: 'pr-price', name: 'priceText', label: 'Precio de venta por unidad (opcional)', value: product && product.priceCents > 0 ? centsToInputValue(product.priceCents) : '', errorKey: 'price' })}
-      <div class="field" data-field="minStock">
+      <div class="field" data-field="trackStock">
+        <label class="switch-row" for="pr-untracked">
+          <span class="switch-row__text">
+            <strong>Sin control de stock</strong>
+            <small id="pr-untracked-hint">${lockTracking
+              ? 'Este producto ya tiene compras, ventas o ajustes, así que sigue contando su stock. Si lo vendes suelto, archívalo y crea otro sin control de stock.'
+              : 'Para lo que se vende sin contar unidades (por ejemplo gomitas sueltas): se vende y se cobra, pero no lleva stock, compras ni avisos.'}</small>
+          </span>
+          <input type="checkbox" class="switch" id="pr-untracked" name="untracked" value="1" ${tracked ? '' : 'checked'} ${lockTracking ? 'disabled' : ''} aria-describedby="pr-untracked-hint trackStock-error" data-untracked />
+        </label>
+        ${fieldError('trackStock')}
+      </div>
+      <div class="field" data-field="minStock" data-min-stock ${tracked ? '' : 'hidden'}>
         <label for="pr-min">Avisarme cuando queden (opcional)</label>
         <input id="pr-min" name="minStockText" class="input" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="Ej.: 5" value="${product && product.minStock > 0 ? product.minStock : ''}" aria-describedby="pr-min-hint minStock-error" />
         <p class="hint" id="pr-min-hint">Cuando el stock llegue a esa cantidad (o menos) verás un aviso de «Stock bajo». Déjalo vacío si no lo necesitas.</p>
@@ -79,18 +123,52 @@ export function openProductForm(store, { product = null } = {}) {
       const form = /** @type {HTMLFormElement} */ ($('form', sheet));
       bindMoneyPreview(sheet, 'pr-price');
 
+      // «Sin control de stock» esconde el aviso de stock bajo (no aplica).
+      const untracked = /** @type {HTMLInputElement} */ ($('[data-untracked]', sheet));
+      const minField = /** @type {HTMLElement} */ ($('[data-min-stock]', sheet));
+      untracked.addEventListener('change', () => { minField.hidden = untracked.checked; });
+
+      // Foto: se reduce en el dispositivo y se guarda en un campo oculto hasta pulsar «Guardar».
+      const photoInput = /** @type {HTMLInputElement} */ ($('[data-photo-input]', sheet));
+      const photoValue = /** @type {HTMLInputElement} */ ($('[data-photo-value]', sheet));
+      const photoBoxEl = /** @type {HTMLElement} */ ($('[data-photo-box]', sheet));
+      const photoClear = /** @type {HTMLButtonElement} */ ($('[data-photo-clear]', sheet));
+      const photoError = sheet.querySelector('[data-error-for="image"]');
+      const setPhoto = (/** @type {string} */ dataUrl) => {
+        photoValue.value = dataUrl;
+        setHtml(photoBoxEl, photoBox(dataUrl));
+        photoClear.hidden = !dataUrl;
+      };
+      photoInput.addEventListener('change', async () => {
+        const file = photoInput.files?.[0];
+        photoInput.value = '';
+        if (!file) return;
+        if (photoError instanceof HTMLElement) { photoError.textContent = ''; photoError.hidden = true; }
+        photoBoxEl.setAttribute('aria-busy', 'true');
+        const result = await shrinkProductImage(file);
+        photoBoxEl.removeAttribute('aria-busy');
+        if (result.ok) setPhoto(result.dataUrl);
+        else if (photoError instanceof HTMLElement) { photoError.textContent = result.error; photoError.hidden = false; }
+      });
+      photoClear.addEventListener('click', () => setPhoto(''));
+
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         clearErrors(form);
         setBusy(form, true);
         const v = readForm(form);
         const result = await store.saveProduct(
-          { name: v.name ?? '', sku: v.sku ?? '', unit: v.unit ?? '', priceText: v.priceText ?? '', minStockText: v.minStockText ?? '', notes: v.notes ?? '' },
+          {
+            name: v.name ?? '', sku: v.sku ?? '', unit: v.unit ?? '', priceText: v.priceText ?? '', minStockText: v.minStockText ?? '', notes: v.notes ?? '',
+            groupText: v.groupText ?? '', imageData: v.imageData ?? '',
+            // Una casilla desactivada no se envía: entonces se conserva lo que tenía.
+            trackStock: untracked.disabled ? tracked : !untracked.checked,
+          },
           product?.id ?? null,
         );
         if (!handleResult(form, result)) return;
         close();
-        toast(isEdit ? 'Cambios guardados.' : 'Producto guardado. Ahora registra su primera compra para tener stock.');
+        toast(isEdit ? 'Cambios guardados.' : result.ok && !tracksStock(result.product) ? 'Producto guardado, sin control de stock: ya se puede vender.' : 'Producto guardado. Ahora registra su primera compra para tener stock.');
         if (!isEdit && result.ok) window.location.hash = `#/inventario/${result.product.id}`;
       });
 
@@ -230,9 +308,9 @@ function suggestedCategory(list, kind) {
 export function openStockForm(store, { kind, productId = '' }) {
   const { data } = store.getState();
   const today = store.today();
-  const products = sortProducts(data.products).filter((p) => !p.archived);
+  const products = sortProducts(data.products).filter((p) => !p.archived && tracksStock(p));
   if (products.length === 0) {
-    toast('Primero crea un producto: es lo que vas a comprar y vender.', 'info');
+    toast(data.products.some((p) => !p.archived) ? 'Tus productos no llevan control de stock: no tienen compras ni ajustes. Crea uno que sí lo lleve.' : 'Primero crea un producto: es lo que vas a comprar y vender.', 'info');
     openProductForm(store);
     return;
   }

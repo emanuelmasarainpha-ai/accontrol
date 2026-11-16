@@ -30,6 +30,7 @@ import { normalizePermissions } from '../domain/permissions.js';
  * @property {string[]} [timestamps] Fechas-hora ISO.
  * @property {string[]} [integers]   Números enteros (montos en centavos, cantidades, tasas).
  * @property {boolean} [noDemo]      El tipo no lleva marca de demostración en la app.
+ * @property {Record<string, unknown>} [defaults] Campos que los registros de antes no tienen (0.17.0): si faltan, viajan con este valor.
  */
 
 const STAMPS = ['createdAt', 'updatedAt'];
@@ -72,7 +73,10 @@ export const CLOUD_KINDS = [
   },
   {
     key: 'products', idsKey: 'productIds', table: 'products',
-    fields: ['id', 'name', 'sku', 'unit', 'priceCents', 'minStock', 'notes', 'archived', ...STAMPS], timestamps: STAMPS, integers: ['priceCents', 'minStock'],
+    fields: ['id', 'name', 'sku', 'unit', 'priceCents', 'minStock', 'notes', 'archived', 'groupName', 'trackStock', 'imageData', ...STAMPS],
+    timestamps: STAMPS, integers: ['priceCents', 'minStock'],
+    // 0.17.0: un producto de antes no tiene grupo ni foto y sí controla su stock.
+    defaults: { groupName: '', trackStock: true, imageData: '' },
   },
   { key: 'suppliers', idsKey: 'supplierIds', table: 'suppliers', fields: ['id', 'name', 'contact', 'email', 'phone', 'notes', 'archived', ...STAMPS], timestamps: STAMPS },
   {
@@ -129,6 +133,7 @@ export function toRow(key, record, workspaceId) {
   const row = { workspace_id: workspaceId };
   for (const field of kind.fields) {
     let value = record[field];
+    if ((value === undefined || value === null) && kind.defaults && field in kind.defaults) value = kind.defaults[field];
     if (value === undefined || value === null) {
       if (kind.optional?.includes(field) || (field === 'estimatedDays' && value === null)) value = null;
       else throw new Error(`Falta «${field}» en un registro de ${key}.`);
@@ -219,7 +224,8 @@ export function fromRow(key, row) {
   /** @type {Record<string, any>} */
   const record = {};
   for (const field of kind.fields) {
-    const value = row[toSnake(field)];
+    let value = row[toSnake(field)];
+    if ((value === undefined || value === null) && kind.defaults && field in kind.defaults) value = kind.defaults[field];
     if (value === undefined || value === null) {
       if (kind.optional?.includes(field)) continue;
       if (kind.emptyDate?.includes(field)) { record[field] = ''; continue; }

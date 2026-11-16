@@ -237,7 +237,11 @@ export function openInvoiceForm(store, preset = {}) {
           const unit = parseMoney(/** @type {HTMLInputElement} */ ($('[data-line-unit]', block)).value.trim());
           const position = productId ? stock.get(productId) : undefined;
           const stockHint = block.querySelector('[data-line-stock]');
-          if (stockHint) stockHint.textContent = position ? `En stock ahora: ${position.stock} (${position.product.unit}).` : '';
+          if (stockHint) {
+            stockHint.textContent = !position ? '' : position.status === 'untracked'
+              ? 'Sin control de stock: no se descuentan unidades.'
+              : `En stock ahora: ${position.stock} (${position.product.unit}).`;
+          }
           const serviceId = /** @type {HTMLSelectElement | null} */ (block.querySelector('[data-line-service]'))?.value ?? '';
           const roomHint = block.querySelector('[data-line-room]');
           const svc = serviceId ? billableServices().find((x) => x.id === serviceId) : undefined;

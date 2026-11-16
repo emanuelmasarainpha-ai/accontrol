@@ -27,7 +27,7 @@
 
 import { cleanText, isValidEmail, isValidPhone } from './contact.js';
 import { addDays, daysBetween, formatDate, isValidISODate } from './dates.js';
-import { MAX_QUANTITY, negativeMessage, replayProduct } from './inventory.js';
+import { MAX_QUANTITY, negativeMessage, replayProduct, tracksStock } from './inventory.js';
 import { formatMoney, MAX_CENTS, parseMoney } from './money.js';
 import { CLASSIFICATIONS_BY_TYPE, LIMITS } from './types.js';
 
@@ -485,7 +485,7 @@ export function validateInvoice(input, { products, entries, today, time, nowISO,
   // Regla de oro del inventario: las unidades que salen deben existir. Se prueba producto por producto con las salidas
   // ya guardadas MÁS las de esta factura, en el orden en que quedarían.
   if (!errors.issueDate && !errors.lines && inputLines.length > 0) {
-    const drafts = stockEntriesFromLines(lines, { invoiceId: '~nueva', ids: lines.map((_, i) => `~linea-${i}`), issueDate, time, nowISO, label: '' });
+    const drafts = stockEntriesFromLines(lines, { invoiceId: '~nueva', ids: lines.map((_, i) => `~linea-${i}`), issueDate, time, nowISO, label: '', products });
     for (const productId of new Set(drafts.map((d) => d.productId))) {
       const product = products.find((p) => p.id === productId);
       if (!product) continue;
@@ -507,15 +507,17 @@ export function validateInvoice(input, { products, entries, today, time, nowISO,
 /**
  * Las salidas de stock de las líneas que llevan producto (una por línea).
  * @param {InvoiceLine[]} lines
- * @param {{ invoiceId: string, ids: string[], issueDate: string, time: string, nowISO: string, label: string, isDemo?: boolean }} extra
+ * @param {{ invoiceId: string, ids: string[], issueDate: string, time: string, nowISO: string, label: string, isDemo?: boolean, products?: Product[] }} extra
  *   `ids`: un id por línea (en el mismo orden); solo se usan los de las líneas con producto.
+ *   `products`: para saber cuáles no llevan control de stock (0.17.0): esas líneas no sacan unidades.
  * @returns {StockEntry[]}
  */
-export function stockEntriesFromLines(lines, { invoiceId, ids, issueDate, time, nowISO, label, isDemo }) {
+export function stockEntriesFromLines(lines, { invoiceId, ids, issueDate, time, nowISO, label, isDemo, products = [] }) {
+  const untracked = new Set(products.filter((p) => !tracksStock(p)).map((p) => p.id));
   /** @type {StockEntry[]} */
   const entries = [];
   lines.forEach((line, i) => {
-    if (!line.productId) return;
+    if (!line.productId || untracked.has(line.productId)) return;
     entries.push({
       id: ids[i], productId: line.productId, kind: 'sale', quantity: -line.quantity, unitCents: line.unitCents, date: issueDate, time,
       invoiceId, note: label, createdAt: nowISO, updatedAt: nowISO, ...(isDemo ? { isDemo: true } : {}),

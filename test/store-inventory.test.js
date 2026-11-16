@@ -253,7 +253,7 @@ test('demostración de un negocio: productos, proveedores y movimientos coherent
     const { store } = await space(kind);
     must(await store.loadDemoData());
     const d = store.getState().data;
-    assert.equal(d.products.length, 4, kind);
+    assert.equal(d.products.length, 5, kind); // 0.17.0: el quinto, «Caramelos sueltos», sin control de stock
     assert.equal(d.suppliers.length, 2);
     assert.ok(d.stockEntries.length > 10);
     assert.ok(d.products.every((p) => p.isDemo) && d.suppliers.every((s) => s.isDemo) && d.stockEntries.every((e) => e.isDemo));

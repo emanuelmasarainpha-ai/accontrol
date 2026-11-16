@@ -279,6 +279,13 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     3. Abre a José → **Cobrar abono** de RD$ 300: debe decir que debe RD$ 250 y no guardar nada. Cobra RD$ 200: queda debiendo RD$ 50, y en *Movimientos* aparecen dos ingresos «Cobro F-0001» y «Cobro F-0002».
     4. **Copiar estado de cuenta** y pégalo en una nota: debe terminar en «Saldo pendiente: RD$ 50.00».
 
+41. **Productos para la caja (0.17.0).** En un espacio **Emprendedor**, *Finanzas → Inventario → Nuevo producto*:
+    1. Toca **Elegir foto** y elige una foto del teléfono (o tómala con la cámara): debe verse la miniatura. **Quitar foto** la borra.
+    2. Escribe un **Grupo** (por ejemplo «Bebidas»); en el siguiente producto, el grupo aparece como sugerencia.
+    3. Crea «Gomitas sueltas» con **Sin control de stock**: en la lista sale «Sin conteo» y «No se cuenta»; no aparece al **Registrar compra**; una factura de 300 gomitas se emite sin pedir stock.
+    4. A un producto con compras, la casilla «Sin control de stock» le sale bloqueada.
+    5. Con la copia en la nube activa, abre el mismo espacio en otro dispositivo: la foto y el grupo llegan.
+
 ## 3. Probar en el teléfono Android
 
 ### Opción A — Misma red Wi-Fi (la más rápida)
