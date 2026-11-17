@@ -4,6 +4,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryWorkspaceStore } from '../src/data/memoryWorkspaces.js';
 import { createStore } from '../src/app/store.js';
+import { buildWorkspace } from '../src/domain/workspaces.js';
+
+/**
+ * Un segundo espacio del MISMO tipo, como los que quedaron de antes de la regla «uno de cada tipo» (0.17.4): se guarda
+ * directo en el almacén (la app ya no deja crearlo) y se abre.
+ * @param {any} root @param {any} store @param {import('../src/domain/types.js').WorkspaceKind} kind @param {string} name
+ */
+async function legacySecond(root, store, kind, name) {
+  const workspace = buildWorkspace({ kind, name }, { id: crypto.randomUUID(), nowISO: '2026-01-01T00:00:00.000Z' });
+  await root.createWorkspace(workspace);
+  const opened = await store.switchWorkspace(workspace.id);
+  if (!opened.ok) throw new Error(JSON.stringify(opened));
+  return { ok: true, workspace };
+}
 
 const fixedNow = new Date(2026, 10, 2, 15, 30); // 2 nov 2026
 const TODAY = '2026-11-02';
@@ -176,7 +190,7 @@ test('un fallo al guardar no cambia lo que se ve', async () => {
 test('aislamiento: los clientes y servicios de un espacio no se ven en otro', async () => {
   const { store, root, client } = await withClientAndService();
   const a = /** @type {string} */ (store.getState().activeWorkspaceId);
-  must(await store.createWorkspace({ kind: 'freelancer', name: 'Otro trabajo' }));
+  must(await store.createWorkspace({ kind: 'personal', name: 'Mis cuentas' }));
   assert.deepEqual(store.getState().data.clients, []);
   assert.deepEqual(store.getState().data.services, []);
   // En el otro espacio no se puede vincular un ingreso a un cliente del primero.
@@ -190,7 +204,7 @@ test('aislamiento: los clientes y servicios de un espacio no se ven en otro', as
 
 test('borrar un espacio borra también sus clientes y servicios', async () => {
   const { store, root } = await withClientAndService();
-  const b = must(await store.createWorkspace({ kind: 'freelancer', name: 'Segundo' }));
+  const b = must(await legacySecond(root, store, 'freelancer', 'Segundo'));
   assert.ok(b.ok);
   const secondId = /** @type {string} */ (store.getState().activeWorkspaceId);
   must(await store.saveClient(clientInput({ firstName: 'Zoila', lastName: '', company: '' })));

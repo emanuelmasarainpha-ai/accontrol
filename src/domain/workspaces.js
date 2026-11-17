@@ -82,6 +82,29 @@ export function isWorkspaceKind(value) {
   return typeof value === 'string' && /** @type {readonly string[]} */ (WORKSPACE_KINDS).includes(value);
 }
 
+// ---- Un espacio de cada tipo por cuenta (0.17.4) ------------------------------------------------------------------
+// Cada cuenta puede ser DUEÑA de un solo espacio de cada tipo (uno Personal, uno Freelancer, uno Emprendedor y uno
+// Empresa). Los espacios de otras personas a los que te invitaron no cuentan: son de su dueño. Si ya había más de uno de
+// un tipo (de antes de esta regla), se conservan con sus datos; solo no se pueden crear más.
+
+/**
+ * Tu espacio (del que eres dueño) de ese tipo, o null si no tienes.
+ * @param {readonly { kind: string, name: string, role?: string }[]} workspaces @param {string} kind
+ */
+export function ownedWorkspaceOfKind(workspaces, kind) {
+  return workspaces.find((w) => w.kind === kind && (w.role ?? 'owner') === 'owner') ?? null;
+}
+
+/** Los tipos de espacio que todavía puedes crear. @param {readonly { kind: string, name: string, role?: string }[]} workspaces */
+export function availableKinds(workspaces) {
+  return WORKSPACE_KINDS.filter((k) => !ownedWorkspaceOfKind(workspaces, k));
+}
+
+/** El aviso cuando ya tienes uno de ese tipo. @param {{ kind: WorkspaceKind, name: string }} existing */
+export function oneOfEachMessage(existing) {
+  return `Ya tienes un espacio ${KIND_INFO[existing.kind].label} («${existing.name}»). Solo puedes tener uno de cada tipo: ábrelo desde tus espacios.`;
+}
+
 /** @returns {Profile} */
 export function defaultProfile() {
   return { displayName: '', lastWorkspaceId: null };

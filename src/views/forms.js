@@ -23,7 +23,12 @@ import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { haptic } from '../ui/haptics.js';
 import { toast } from '../ui/toast.js';
+import { ACTION_MODULE, canEditData, permissionsOf } from '../domain/roles.js';
+import { atLeast } from '../domain/permissions.js';
 import { openAssetForm } from './asset-forms.js';
+import { openCreditForm } from './fiado-forms.js';
+import { openProductForm } from './inventory-forms.js';
+import { openInvoiceForm } from './invoice-forms.js';
 import { openDebtForm } from './debt-forms.js';
 import { bindMoneyPreview, fieldError, handleResult, moneyField } from './form-parts.js';
 
@@ -101,7 +106,7 @@ export function openMovementForm(store, { type, movement = null, clientId = null
 
   openSheet({
     title: isEdit ? `Editar ${noun}` : kind === 'income' ? 'Añadir ingreso' : 'Añadir gasto',
-    content: html`<form class="stack" novalidate>
+    content: html`<form class="stack" novalidate data-movement="${kind}">
       ${moneyField({ id: 'mv-amount', name: 'amountText', label: 'Monto', value: movement ? centsToInputValue(movement.amountCents) : '', errorKey: 'amount', autofocus: !isEdit })}
 
       <div class="field-row">
@@ -643,17 +648,66 @@ export function openCategoryForm(store, { category = null }) {
 // MENÚ "AÑADIR" (documento maestro §18)
 // =============================================================================
 
-/** @param {Store} store */
+/**
+ * Menú «Añadir» (0.17.4): ingreso y gasto como dos tarjetas grandes arriba, lo demás en filas con el color del espacio y,
+ * en Emprendedor y Empresa, los atajos del negocio (caja, fiar, factura, producto). Solo salen las opciones que tu rol
+ * permite (y, por si acaso, cada una lleva su data-action: la guarda de permisos de app.js la detiene).
+ * @param {Store} store
+ */
 export function openAddMenu(store) {
+  const workspace = store.activeWorkspace();
+  const perms = permissionsOf(workspace);
+  const can = (/** @type {string} */ action) => {
+    const module = ACTION_MODULE[action];
+    return canEditData(workspace) && (!module || module === 'all' || atLeast(perms[module], 'create'));
+  };
+  /** @typedef {{ pick: string, action: string, icon: string, title: string, sub: string }} Item */
+  /** @type {Item[]} */
+  const main = [
+    { pick: 'income', action: 'add-income', icon: 'arrowDown', title: 'Ingreso', sub: 'Dinero que entra' },
+    { pick: 'expense', action: 'add-expense', icon: 'arrowUp', title: 'Gasto', sub: 'Dinero que sale' },
+  ].filter((i) => can(i.action));
+  /** @type {Item[]} */
+  const more = [
+    { pick: 'saving', action: 'add-saving', icon: 'target', title: 'Ahorro', sub: 'Aportar a una meta' },
+    { pick: 'debt', action: 'new-debt', icon: 'card', title: 'Deuda', sub: 'Préstamo, tarjeta u otra deuda' },
+    { pick: 'asset', action: 'new-asset', icon: 'bank', title: 'Activo', sub: 'Cuenta, inversión, vehículo, inmueble…' },
+  ].filter((i) => can(i.action));
+  const business = store.inventoryEnabled() && store.invoicesEnabled();
+  /** @type {Item[]} */
+  const shop = business
+    ? [
+        { pick: 'pos', action: 'pos-open', icon: 'receipt', title: 'Abrir caja', sub: 'Vender tocando los productos' },
+        ...(store.fiadoEnabled() ? [{ pick: 'credit', action: 'credit-new', icon: 'user', title: 'Fiar', sub: 'Anotar lo que alguien te debe' }] : []),
+        { pick: 'invoice', action: 'new-invoice', icon: 'copy', title: 'Nueva factura', sub: 'Con varias líneas e impuesto' },
+        { pick: 'product', action: 'new-product', icon: 'box', title: 'Nuevo producto', sub: 'Con foto, precio y grupo' },
+      ].filter((i) => can(i.action))
+    : [];
+
+  /** @param {Item} i */
+  const row = (i) => html`<li class="add-row"><button type="button" class="add-row__btn" data-pick="${i.pick}" data-action="${i.action}">
+    <span class="add-row__icon" aria-hidden="true">${icon(i.icon, 20)}</span>
+    <span class="add-row__text"><strong>${i.title}</strong><small>${i.sub}</small></span>
+    <span class="add-row__go" aria-hidden="true">${icon('chevronRight', 18)}</span>
+  </button></li>`;
+
+  const nothing = main.length + more.length + shop.length === 0;
   openSheet({
-    title: 'Añadir',
-    content: html`<ul class="menu">
-      <li><button type="button" class="menu__item" data-pick="income"><span class="menu__icon menu__icon--income">${icon('arrowDown', 20)}</span><span><strong>Añadir ingreso</strong><small>Dinero que entra</small></span></button></li>
-      <li><button type="button" class="menu__item" data-pick="expense"><span class="menu__icon menu__icon--expense">${icon('arrowUp', 20)}</span><span><strong>Añadir gasto</strong><small>Dinero que sale</small></span></button></li>
-      <li><button type="button" class="menu__item" data-pick="saving"><span class="menu__icon menu__icon--saving">${icon('target', 20)}</span><span><strong>Añadir ahorro</strong><small>Aportar a una meta</small></span></button></li>
-      <li><button type="button" class="menu__item" data-pick="debt"><span class="menu__icon menu__icon--debt">${icon('card', 20)}</span><span><strong>Añadir deuda</strong><small>Préstamo, tarjeta u otra deuda</small></span></button></li>
-      <li><button type="button" class="menu__item" data-pick="asset"><span class="menu__icon menu__icon--debt">${icon('bank', 20)}</span><span><strong>Añadir activo</strong><small>Cuenta, inversión, vehículo, inmueble...</small></span></button></li>
-    </ul>`,
+    title: '¿Qué quieres anotar?',
+    content: html`<div class="add-menu">
+      ${nothing ? html`<p class="muted">Con tu rol en este espacio no puedes registrar nada.</p>` : ''}
+      ${main.length > 0
+        ? html`<div class="add-hero">${main.map((i) => html`<button type="button" class="add-tile add-tile--${i.pick}" data-pick="${i.pick}" data-action="${i.action}">
+            <span class="add-tile__icon" aria-hidden="true">${icon(i.icon, 26)}</span>
+            <span class="add-tile__title">${i.title}</span>
+            <span class="add-tile__sub">${i.sub}</span>
+          </button>`)}</div>`
+        : ''}
+      ${more.length > 0 ? html`<ul class="add-list" aria-label="Más">${more.map(row)}</ul>` : ''}
+      ${shop.length > 0
+        ? html`<p class="add-menu__label" id="add-shop">Tu negocio</p><ul class="add-list" aria-labelledby="add-shop">${shop.map(row)}</ul>`
+        : ''}
+    </div>`,
     onMount: (sheet, close) => {
       for (const button of $$('[data-pick]', sheet)) {
         button.addEventListener('click', () => {
@@ -662,6 +716,10 @@ export function openAddMenu(store) {
           if (pick === 'income' || pick === 'expense') openMovementForm(store, { type: pick });
           else if (pick === 'debt') openDebtForm(store, { debt: null });
           else if (pick === 'asset') openAssetForm(store, { asset: null });
+          else if (pick === 'pos') window.location.hash = '#/caja';
+          else if (pick === 'credit') openCreditForm(store);
+          else if (pick === 'invoice') openInvoiceForm(store);
+          else if (pick === 'product') openProductForm(store);
           else void openAddSaving(store);
         });
       }

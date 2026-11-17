@@ -98,7 +98,7 @@ test('borrar la demostración de una empresa quita deuda, pagos y activo, y cons
 test('la demostración de Empresa no aparece en otro espacio', async () => {
   const { store } = await space('company', 'ABC');
   must(await store.loadDemoData());
-  must(await store.createWorkspace({ kind: 'company', name: 'Otra' }));
+  must(await store.createWorkspace({ kind: 'entrepreneur', name: 'Otra' }));
   const d = store.getState().data;
   assert.deepEqual([d.movements.length, d.debts.length, d.assets.length], [0, 0, 0]);
 });

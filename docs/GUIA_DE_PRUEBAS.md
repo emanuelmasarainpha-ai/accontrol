@@ -299,6 +299,11 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     2. **Pistola lectora** (USB o Bluetooth, en modo teclado): en la caja, toca un producto y luego escanea el código de otro: debe entrar a la venta sin tocar el buscador. En *Inventario*, escanea en el buscador: se abre la ficha.
     3. **Cámara** (teléfono Android con Chrome): en la caja toca **Cámara**, da permiso y apunta al código de barras de un producto que tengas guardado con ese código. Si el botón no aparece, ese navegador no sabe leer códigos.
 
+44. **Un espacio de cada tipo y menú «Añadir» (0.17.4).**
+    1. *Ajustes → Espacios de trabajo → Crear otro espacio*: los tipos que ya tienes salen desactivados con «Ya lo tienes: …». Crea los que faltan; con los cuatro, el botón avisa en vez de abrir la ventana.
+    2. En el teléfono toca **+**: arriba Ingreso (verde) y Gasto, abajo Ahorro, Deuda y Activo; en un espacio Emprendedor, también «Tu negocio» (Abrir caja, Fiar, Nueva factura, Nuevo producto). Prueba en modo oscuro.
+    3. Toca **Gasto**: el monto se ve grande sobre una banda; escribe una cifra y guarda.
+
 ## 3. Probar en el teléfono Android
 
 ### Opción A — Misma red Wi-Fi (la más rápida)

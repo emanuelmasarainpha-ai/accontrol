@@ -183,7 +183,7 @@ async function restoreFromFile(store, file) {
     const kind = inspected.sourceKind ?? 'personal';
     const made = await store.createWorkspace({ kind, name: inspected.sourceName ?? KIND_INFO[kind].defaultName });
     if (!made.ok) {
-      toast(made.errors.form ?? made.errors.name ?? 'No se pudo crear el espacio para la copia.', 'error');
+      toast(made.errors.form ?? made.errors.kind ?? made.errors.name ?? 'No se pudo crear el espacio para la copia.', 'error');
       return;
     }
   }

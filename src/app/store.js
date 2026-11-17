@@ -48,7 +48,7 @@ import { defaultSettings, validateSettings } from '../domain/settings.js';
 import { overallTotals } from '../domain/summaries.js';
 import { CLASSIFICATIONS_BY_TYPE, LIMITS } from '../domain/types.js';
 import {
-  buildWorkspace, defaultProfile, isWorkspaceKind, pickActiveWorkspace, validateWorkspaceName, withDefault,
+  buildWorkspace, defaultProfile, isWorkspaceKind, oneOfEachMessage, ownedWorkspaceOfKind, pickActiveWorkspace, validateWorkspaceName, withDefault,
 } from '../domain/workspaces.js';
 import {
   allowsWrite, canEditData, canManageWorkspace, NOT_YOURS_MESSAGE, NOT_YOURS_TO_DELETE, noPermissionMessage, OWNER_ONLY_MESSAGE, permissionsOf,
@@ -474,6 +474,9 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         const stale = await reloadFromStorage({ lenient: true });
         if (stale) return stale;
         if (!isWorkspaceKind(input.kind)) return { ok: false, errors: { kind: 'Elige para qué vas a usar ACCONTROL.' } };
+        // Un espacio de cada tipo por cuenta (0.17.4): los compartidos contigo no cuentan.
+        const taken = ownedWorkspaceOfKind(state.workspaces, input.kind);
+        if (taken) return { ok: false, errors: { kind: oneOfEachMessage(/** @type {Workspace} */ (taken)) } };
         if (state.workspaces.length >= LIMITS.maxWorkspaces) {
           return formFail(`Puedes tener hasta ${LIMITS.maxWorkspaces} espacios de trabajo.`);
         }

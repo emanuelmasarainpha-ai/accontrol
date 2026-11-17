@@ -10,7 +10,7 @@
 import { routeParams } from '../app/router.js';
 import { plural } from '../domain/dates.js';
 import { canManageWorkspace, roleLabel, roleOf } from '../domain/roles.js';
-import { KIND_INFO, suggestWorkspaceName, WORKSPACE_KINDS } from '../domain/workspaces.js';
+import { KIND_INFO, availableKinds, ownedWorkspaceOfKind, suggestWorkspaceName, WORKSPACE_KINDS } from '../domain/workspaces.js';
 import { confirmDialog, openSheet } from '../ui/dialog.js';
 import { $, $$ } from '../ui/dom.js';
 import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
@@ -123,18 +123,20 @@ function goHomeIfDetailScreen() {
 // ---- Crear un espacio ------------------------------------------------------------------------
 
 /**
- * Lista de las cuatro modalidades para elegir una (botones de opción).
- * @param {WorkspaceKind | null} selected
+ * Lista de las cuatro modalidades para elegir una (botones de opción). Las que ya tienes salen desactivadas, con el nombre
+ * de tu espacio de ese tipo (0.17.4: uno de cada tipo por cuenta).
+ * @param {WorkspaceKind | null} selected @param {readonly Workspace[]} [workspaces]
  */
-export function kindChoices(selected) {
+export function kindChoices(selected, workspaces = []) {
   return html`<div class="kind-choices" role="radiogroup" aria-label="Modalidad">
     ${WORKSPACE_KINDS.map((kind) => {
       const info = KIND_INFO[kind];
-      return html`<label class="kind-choice">
-        <input type="radio" name="kind" value="${kind}" ${selected === kind ? 'checked' : ''} />
+      const taken = ownedWorkspaceOfKind(workspaces, kind);
+      return html`<label class="kind-choice${taken ? ' kind-choice--taken' : ''}">
+        <input type="radio" name="kind" value="${kind}" ${selected === kind && !taken ? 'checked' : ''} ${taken ? 'disabled' : ''} />
         <span class="kind-choice__body">
           <span class="kind-choice__icon">${icon(info.icon, 20)}</span>
-          <span><strong>${info.label}</strong><small>${info.tagline}</small></span>
+          <span><strong>${info.label}</strong><small>${taken ? `Ya lo tienes: «${taken.name}»` : info.tagline}</small></span>
         </span>
       </label>`;
     })}
@@ -143,12 +145,19 @@ export function kindChoices(selected) {
 
 /** @param {Store} store */
 export function openCreateWorkspace(store) {
+  const { workspaces } = store.getState();
+  const free = availableKinds(workspaces);
+  if (free.length === 0) {
+    toast('Ya tienes un espacio de cada tipo (Personal, Freelancer, Emprendedor y Empresa). Solo se puede tener uno de cada uno.', 'info');
+    return;
+  }
   openSheet({
     title: 'Crear otro espacio',
     content: html`<form class="stack" data-form="new-workspace" novalidate>
       <div class="field" data-field="kind">
         <span class="field__label" id="nw-kind">¿Para qué lo vas a usar?</span>
-        ${kindChoices(null)}
+        <p class="hint">Puedes tener un espacio de cada tipo.</p>
+        ${kindChoices(null, workspaces)}
         <p class="field__error" data-error-for="kind" hidden></p>
       </div>
       <div class="field" data-field="name">

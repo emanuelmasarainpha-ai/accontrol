@@ -7,6 +7,20 @@ import { createStore } from '../src/app/store.js';
 import { departmentMonth, departmentNotices, unassignedExpenses } from '../src/domain/departments.js';
 import { computeNotices } from '../src/domain/notices.js';
 import { overallTotals } from '../src/domain/summaries.js';
+import { buildWorkspace } from '../src/domain/workspaces.js';
+
+/**
+ * Un segundo espacio del MISMO tipo, como los que quedaron de antes de la regla «uno de cada tipo» (0.17.4): se guarda
+ * directo en el almacén (la app ya no deja crearlo) y se abre.
+ * @param {any} root @param {any} store @param {import('../src/domain/types.js').WorkspaceKind} kind @param {string} name
+ */
+async function legacySecond(root, store, kind, name) {
+  const workspace = buildWorkspace({ kind, name }, { id: crypto.randomUUID(), nowISO: '2026-01-01T00:00:00.000Z' });
+  await root.createWorkspace(workspace);
+  const opened = await store.switchWorkspace(workspace.id);
+  if (!opened.ok) throw new Error(JSON.stringify(opened));
+  return { ok: true, workspace };
+}
 
 const fixedNow = new Date(2026, 10, 15, 15, 30); // 15 nov 2026, 15:30
 const TODAY = '2026-11-15';
@@ -251,7 +265,7 @@ test('cada espacio tiene sus departamentos: no se ven ni se mezclan, y el nombre
   await store.init();
   const first = must(await store.createWorkspace({ kind: 'company', name: 'Empresa A' }));
   must(await store.saveDepartment({ name: 'Ventas', budgetText: '100' }));
-  const second = must(await store.createWorkspace({ kind: 'company', name: 'Empresa B' }));
+  const second = must(await legacySecond(root, store, 'company', 'Empresa B'));
   assert.equal(data(store).departments.length, 0);
   must(await store.saveDepartment({ name: 'Ventas', budgetText: '200' })); // mismo nombre, otro espacio
   assert.equal(data(store).departments[0].monthlyBudgetCents, 20_000);

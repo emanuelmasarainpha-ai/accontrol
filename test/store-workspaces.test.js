@@ -63,7 +63,7 @@ test('crear el primer espacio: queda abierto, predeterminado y con las categorí
   assert.equal((await root.getProfile()).lastWorkspaceId, s.activeWorkspaceId);
 });
 
-test('crear espacio: valida modalidad, nombre repetido y el máximo', async () => {
+test('crear espacio: valida modalidad, nombre repetido y uno de cada tipo (0.17.4)', async () => {
   const { store } = await withPersonal();
   const bad = await store.createWorkspace({ kind: 'admin', name: 'X' });
   assert.ok(!bad.ok);
@@ -73,9 +73,15 @@ test('crear espacio: valida modalidad, nombre repetido y el máximo', async () =
   assert.ok(!dup.ok && dup.errors.name);
   assert.equal(store.getState().workspaces.length, 1);
 
-  for (let i = 2; i <= LIMITS.maxWorkspaces; i += 1) assert.ok((await store.createWorkspace({ kind: 'company', name: `Empresa ${i}` })).ok);
-  const over = await store.createWorkspace({ kind: 'company', name: 'Una más' });
-  assert.ok(!over.ok && over.errors.form);
+  for (const kind of /** @type {const} */ (['freelancer', 'entrepreneur', 'company'])) assert.ok((await store.createWorkspace({ kind, name: `Mi ${kind}` })).ok, kind);
+  assert.equal(store.getState().workspaces.length, 4, 'uno de cada tipo');
+  for (const kind of /** @type {const} */ (['personal', 'freelancer', 'entrepreneur', 'company'])) {
+    const again = await store.createWorkspace({ kind, name: `Otro ${kind}` });
+    assert.ok(!again.ok, kind);
+    if (!again.ok) assert.match(again.errors.kind, /Ya tienes un espacio .* Solo puedes tener uno de cada tipo/, kind);
+  }
+  assert.equal(store.getState().workspaces.length, 4, 'no se creó ninguno más');
+  assert.ok(LIMITS.maxWorkspaces >= 4);
 });
 
 test('aislamiento: lo registrado en un espacio no aparece en otro, y al volver sigue ahí', async () => {

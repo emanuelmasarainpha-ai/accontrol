@@ -1,6 +1,6 @@
 {
   "name": "accontrol",
-  "version": "0.17.3",
+  "version": "0.17.4",
   "description": "ACCONTROL 2.0 - plataforma de finanzas personales (Etapa 4: prototipo local con deudas, presupuesto, exportación, patrimonio neto y calculadoras, PWA)",
   "private": true,
   "type": "module",

@@ -1,4 +1,7 @@
-# ACCONTROL 2.0 — Caja: ticket y lector de códigos (versión 0.17.3)
+# ACCONTROL 2.0 — Menú «Añadir» renovado y un espacio de cada tipo (versión 0.17.4)
+
+**Novedad de la 0.17.4.** **Un espacio de cada tipo por cuenta:** cada cuenta puede tener un solo espacio Personal, uno Freelancer, uno Emprendedor y uno Empresa. En *Crear otro espacio*, los tipos que ya tienes salen desactivados con el nombre de tu espacio («Ya lo tienes: …»); con los cuatro, la app lo avisa. Los espacios que otra persona compartió contigo no cuentan, y si ya tenías dos del mismo tipo de antes, se conservan con sus datos (solo no se pueden crear más). **Menú «Añadir» renovado** (el botón + del celular y *Añadir* de la computadora): se llama *¿Qué quieres anotar?*, con **Ingreso** (verde) y **Gasto** (tinta) como dos tarjetas grandes, *Ahorro*, *Deuda* y *Activo* en filas con el color del espacio y, en Emprendedor y Empresa, la sección **Tu negocio** con *Abrir caja*, *Fiar*, *Nueva factura* y *Nuevo producto*; solo salen las opciones que tu rol permite y entran con una animación corta (sin ella si el teléfono pide reducir el movimiento). En el formulario de ingreso o gasto, el **monto** es el protagonista: cifra grande sobre una banda verde (ingreso) o tinta (gasto).
+
 
 **Novedad de la 0.17.3: productos más grandes en la caja.** Cada producto se ve en una tarjeta grande con la foto a todo lo ancho (unos 175 px en la computadora y 155 px en el celular, en 2 columnas; antes 88 px), con el nombre y el precio en letra más grande. Las fotos nuevas se guardan a 256 px para que se vean nítidas (las de antes siguen a 192 px).
 
