@@ -85,7 +85,7 @@ export function renderPos(store, ctx) {
     const left = availableUnits(p);
     const out = left === 0;
     return html`<li><button type="button" class="pos-card" data-pos-add="${pr.id}" ${out ? 'aria-disabled="true"' : ''} aria-label="${pr.name}, ${pr.priceCents > 0 ? formatMoney(pr.priceCents) : 'sin precio'}${out ? ', agotado' : ''}. Agregar a la venta">
-      <span class="pos-card__img" aria-hidden="true">${image ? html`<img src="${image}" alt="" width="96" height="96" loading="lazy" />` : pr.name.slice(0, 1).toLocaleUpperCase('es')}</span>
+      <span class="pos-card__img" aria-hidden="true">${image ? html`<img src="${image}" alt="" width="256" height="256" loading="lazy" />` : pr.name.slice(0, 1).toLocaleUpperCase('es')}</span>
       <span class="pos-card__name">${pr.name}</span>
       <span class="pos-card__price">${pr.priceCents > 0 ? formatMoney(pr.priceCents) : 'Sin precio'}</span>
       <span class="pos-card__stock${out ? ' pos-card__stock--out' : ''}">${!tracksStock(pr) ? 'Sin conteo' : out ? 'Agotado' : `Quedan ${left}`}</span>

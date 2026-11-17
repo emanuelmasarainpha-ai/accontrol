@@ -2463,7 +2463,8 @@ html[data-pos] .view {
 }
 .pos-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  /* 0.17.3: tarjetas grandes para ver bien la foto (2 columnas en el celular, 4 o más en la computadora). */
+  grid-template-columns: repeat(auto-fill, minmax(min(190px, calc(50% - var(--space-3))), 1fr));
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -2471,11 +2472,12 @@ html[data-pos] .view {
 }
 .pos-card {
   display: grid;
+  grid-template-rows: auto 1fr auto auto;
   justify-items: center;
-  gap: 4px;
+  gap: 6px;
   width: 100%;
   height: 100%;
-  padding: var(--space-3) var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -2504,13 +2506,13 @@ html[data-pos] .view {
 .pos-card__img {
   display: grid;
   place-items: center;
-  width: 88px;
-  height: 88px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   border-radius: var(--radius-sm);
   background: var(--navy-50);
   color: var(--navy-800);
-  font-size: var(--fs-xl);
+  font-size: var(--fs-2xl);
   font-weight: 700;
 }
 .pos-card__img img {
@@ -2519,16 +2521,19 @@ html[data-pos] .view {
   object-fit: cover;
 }
 .pos-card__name {
+  align-self: center;
+  font-size: var(--fs-lg);
   font-weight: 600;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
 .pos-card__price {
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 .pos-card__stock {
   color: var(--text-muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
 }
 .pos-card__stock--out {
   color: var(--red-700);

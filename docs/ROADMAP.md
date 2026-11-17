@@ -68,6 +68,7 @@ Hoy, el espacio Emprendedor tiene su pantalla *Resultados* y su panel en *Inicio
 | 0.17.0 ✅ | **Productos para la caja:** foto pequeña del producto (miniatura liviana guardada con el producto, también en la nube), grupo (Bebidas, Alimentos…) y opción **«sin control de stock»** para lo que no se cuenta por unidad (por ejemplo gomitas sueltas). **Cambia la base de datos** (migración `20261119000100_product_pos`): copia de seguridad y permiso antes. Migración aplicada (2026-11-16) y probada contra el Supabase real (14 de 14). |
 | 0.17.1 ✅ | **Modo facturación (caja / punto de venta):** pantalla táctil con fotos, grupos, buscador y carrito; cobro en efectivo (con la devuelta), tarjeta, transferencia o fiado; crea la factura y descuenta el inventario. |
 | 0.17.2 ✅ | **Ticket e impresión, lector de códigos:** ticket de 80 mm para imprimir o guardar en PDF; la pistola lectora de códigos de barras o QR agrega el producto al carrito; cámara donde el navegador lo permita. |
+| 0.17.3 ✅ | **Caja con productos grandes:** tarjetas con la foto a todo lo ancho (≈175 px en la computadora, ≈155 px en el celular en 2 columnas; antes 88 px), nombre y precio más grandes; fotos nuevas a 256 px. Navegador real: medidas comprobadas en computadora y celular, caja 24 de 24, ticket 15 de 15, contraste 40 de 40. |
 | 0.18.0 | IA financiera real (con la clave protegida en un servidor) y notificaciones. |
 | 0.19.0 | Panel administrativo, versión premium y pagos. |
 | 0.20.0 | Conexión con bancos. |

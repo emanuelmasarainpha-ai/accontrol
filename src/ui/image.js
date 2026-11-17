@@ -11,8 +11,8 @@
 import { isValidProductImage } from '../domain/inventory.js';
 import { LIMITS } from '../domain/types.js';
 
-/** Lado de la miniatura, en píxeles (se ve nítida en la caja y en la lista). */
-export const THUMB_SIZE = 192;
+/** Lado de la miniatura, en píxeles (0.17.3: 256 para que se vea nítida en las tarjetas grandes de la caja). */
+export const THUMB_SIZE = 256;
 /** Fotos más grandes que esto ni se intentan abrir (una foto de teléfono pesa 2–8 MB). */
 export const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 
