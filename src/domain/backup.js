@@ -21,7 +21,7 @@ import {
 import { isAssetCategory, isValidSubtype, MIN_ASSET_DATE } from './assets.js';
 import { isServiceStatus, MAX_ESTIMATED_DAYS, MAX_SERVICE_DATE, MIN_SERVICE_DATE } from './clients.js';
 import { isValidEmail, isValidPhone } from './contact.js';
-import { isStockKind, isValidProductImage, MAX_QUANTITY, replayProduct } from './inventory.js';
+import { isStockKind, isValidProductImage, MAX_PACK_QTY, MAX_QUANTITY, replayProduct } from './inventory.js';
 import { billedByService, invoiceTotals, MAX_DUE_DAYS, MAX_TAX_BP, MIN_INVOICE_DATE } from './invoices.js';
 import { defaultCategories } from './categories.js';
 import { addDays, isValidISODate, isValidTime } from './dates.js';
@@ -598,6 +598,14 @@ function validateData(d, { today, ids }) {
     if (x.groupName !== undefined) optionalText(x.groupName, w, 'grupo', LIMITS.productGroup);
     if (x.trackStock !== undefined && typeof x.trackStock !== 'boolean') throw new Error(`${w}: marca de control de stock no válida.`);
     if (x.imageData !== undefined && !isValidProductImage(x.imageData)) throw new Error(`${w}: la foto no es una imagen JPG, PNG o WEBP válida.`);
+    // 0.17.5: oferta por cantidad. Las dos van juntas (0 y 0 = sin oferta) y la oferta sale más barata que las sueltas.
+    if ((x.packQty !== undefined) !== (x.packPriceCents !== undefined)) throw new Error(`${w}: la oferta por cantidad está incompleta.`);
+    if (x.packQty !== undefined) {
+      const none = x.packQty === 0 && x.packPriceCents === 0;
+      const valid = Number.isSafeInteger(x.packQty) && x.packQty >= 2 && x.packQty <= MAX_PACK_QTY
+        && Number.isSafeInteger(x.packPriceCents) && x.packPriceCents >= x.packQty && x.packPriceCents <= MAX_CENTS;
+      if (!none && !valid) throw new Error(`${w}: la oferta por cantidad no es válida.`);
+    }
     return {
       id: x.id, name: x.name, sku: x.sku, unit: x.unit, priceCents: x.priceCents, minStock: x.minStock, notes: x.notes,
       archived: x.archived, createdAt: iso(x.createdAt, w), updatedAt: iso(x.updatedAt, w),
@@ -605,6 +613,7 @@ function validateData(d, { today, ids }) {
       ...(x.groupName !== undefined ? { groupName: x.groupName } : {}),
       ...(x.trackStock !== undefined ? { trackStock: x.trackStock } : {}),
       ...(x.imageData !== undefined ? { imageData: x.imageData } : {}),
+      ...(x.packQty !== undefined ? { packQty: x.packQty, packPriceCents: x.packPriceCents } : {}),
       ...(x.isDemo === true ? { isDemo: true } : {}),
     };
   });

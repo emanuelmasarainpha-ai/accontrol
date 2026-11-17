@@ -21,7 +21,7 @@
 
 import { EMAIL_ERROR, PHONE_ERROR, cleanText, isValidEmail, isValidPhone } from './contact.js';
 import { formatDate, isValidISODate } from './dates.js';
-import { MAX_CENTS, parseMoney } from './money.js';
+import { MAX_CENTS, formatMoney, parseMoney } from './money.js';
 import { CLASSIFICATIONS_BY_TYPE, LIMITS } from './types.js';
 
 /** @typedef {import('./types.js').Product} Product */
@@ -69,6 +69,19 @@ export const tracksStock = (p) => p.trackStock !== false;
 export const productGroup = (p) => p.groupName ?? '';
 /** Su foto ('' = sin foto). @param {Pick<Product, 'imageData'>} p */
 export const productImage = (p) => p.imageData ?? '';
+/** La oferta por cantidad tiene de 2 a este número de unidades. */
+export const MAX_PACK_QTY = 999;
+/**
+ * Su oferta por cantidad («2 por RD$15»), o null si no tiene (0.17.5).
+ * @param {Pick<Product, 'packQty' | 'packPriceCents'>} p @returns {{ qty: number, priceCents: number } | null}
+ */
+export const productPack = (p) => {
+  const qty = p.packQty ?? 0;
+  const priceCents = p.packPriceCents ?? 0;
+  return qty >= 2 && priceCents > 0 ? { qty, priceCents } : null;
+};
+/** «2 por RD$15.00». @param {{ qty: number, priceCents: number }} pack */
+export const packLabel = (pack) => `${pack.qty} por ${formatMoney(pack.priceCents)}`;
 
 /** Solo fotos JPG, PNG o WEBP en base64 (nunca SVG ni otros formatos, que pueden llevar código). */
 const IMAGE_PATTERN = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/;
@@ -111,9 +124,11 @@ function proportion(value, qty, stock) {
  * @property {string} [groupText]    0.17.0: grupo para la caja.
  * @property {boolean} [trackStock]  0.17.0: false = sin control de stock (por defecto, true).
  * @property {string} [imageData]    0.17.0: foto ya reducida por la pantalla ('' = sin foto).
+ * @property {string} [packQtyText]   0.17.5: oferta por cantidad: cuántas unidades ('' = sin oferta).
+ * @property {string} [packPriceText] 0.17.5: oferta por cantidad: cuánto cuestan juntas.
  */
 
-/** @typedef {Pick<Product, 'name' | 'sku' | 'unit' | 'priceCents' | 'minStock' | 'notes'> & { groupName: string, trackStock: boolean, imageData: string }} ProductValue */
+/** @typedef {Pick<Product, 'name' | 'sku' | 'unit' | 'priceCents' | 'minStock' | 'notes'> & { groupName: string, trackStock: boolean, imageData: string, packQty: number, packPriceCents: number }} ProductValue */
 
 /**
  * Valida un producto. Solo el nombre es obligatorio. No se permiten dos productos con el mismo nombre ni el mismo código.
@@ -169,8 +184,32 @@ export function validateProduct(input, { products, exceptId = null, stockEntries
   const imageData = input.imageData ?? '';
   if (!isValidProductImage(imageData)) errors.image = 'Esa foto no se puede guardar. Elige otra (JPG, PNG o WEBP).';
 
+  // 0.17.5: oferta por cantidad («2 por RD$15»). Las dos casillas van juntas: vacías = sin oferta.
+  let packQty = 0;
+  let packPriceCents = 0;
+  const packQtyText = cleanText(input.packQtyText);
+  const packPriceText = cleanText(input.packPriceText);
+  if (packQtyText || packPriceText) {
+    if (!packQtyText) errors.packQty = 'Escribe cuántas unidades lleva la oferta (por ejemplo 2), o borra también el precio.';
+    else if (!/^\d{1,3}$/.test(packQtyText) || Number(packQtyText) < 2) errors.packQty = `Escribe un número entero de 2 a ${MAX_PACK_QTY}.`;
+    else packQty = Number(packQtyText);
+    if (!packPriceText) errors.packPrice = 'Escribe cuánto cuestan juntas, o borra también la cantidad.';
+    else {
+      const money = parseMoney(packPriceText);
+      if (!money.ok) errors.packPrice = money.error;
+      else if (money.cents <= 0) errors.packPrice = 'El precio de la oferta debe ser mayor que cero.';
+      else if (money.cents > MAX_CENTS) errors.packPrice = 'El monto es demasiado grande.';
+      else packPriceCents = money.cents;
+    }
+    if (packQty > 0 && packPriceCents > 0 && !errors.price) {
+      if (priceCents <= 0) errors.price = 'Con una oferta, pon también el precio de una unidad: es el que se cobra a las que sobran.';
+      else if (packPriceCents >= packQty * priceCents) errors.packPrice = `La oferta debe salir más barata que ${packQty} unidades sueltas (${formatMoney(packQty * priceCents)}).`;
+      else if (packPriceCents < packQty) errors.packPrice = 'El precio de la oferta es demasiado bajo.';
+    }
+  }
+
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, value: { name, sku, unit, priceCents, minStock, notes, groupName, trackStock, imageData } };
+  return { ok: true, value: { name, sku, unit, priceCents, minStock, notes, groupName, trackStock, imageData, packQty, packPriceCents } };
 }
 
 /** @param {ProductValue} value @param {{ id: string, nowISO: string }} extra @returns {Product} */

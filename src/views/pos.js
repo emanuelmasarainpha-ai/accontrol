@@ -11,11 +11,11 @@
 // =============================================================================
 
 import { customerSuggestions, invoiceLabel } from '../domain/invoices.js';
-import { productGroup, productImage, stockPositions, tracksStock } from '../domain/inventory.js';
+import { packLabel, productGroup, productImage, productPack, stockPositions, tracksStock } from '../domain/inventory.js';
 import { centsToInputValue, formatMoney } from '../domain/money.js';
 import {
-  PAYMENT_METHODS, WALK_IN_CUSTOMER, addToCart, availableUnits, cartTotals, cashChange, isPaymentMethod, posGroups, posProducts, productForCode,
-  quickCashOptions, reconcileCart, setCartPrice, setCartQuantity,
+  PAYMENT_METHODS, WALK_IN_CUSTOMER, addToCart, availableUnits, cartTotals, cashChange, isPaymentMethod, lineSavingsCents, lineTotalCents, posGroups,
+  posProducts, productForCode, quickCashOptions, reconcileCart, setCartPrice, setCartQuantity,
 } from '../domain/pos.js';
 import { createScanReader } from '../domain/scan.js';
 import { LIMITS } from '../domain/types.js';
@@ -84,10 +84,12 @@ export function renderPos(store, ctx) {
     const image = productImage(pr);
     const left = availableUnits(p);
     const out = left === 0;
-    return html`<li><button type="button" class="pos-card" data-pos-add="${pr.id}" ${out ? 'aria-disabled="true"' : ''} aria-label="${pr.name}, ${pr.priceCents > 0 ? formatMoney(pr.priceCents) : 'sin precio'}${out ? ', agotado' : ''}. Agregar a la venta">
+    const pack = productPack(pr);
+    return html`<li><button type="button" class="pos-card" data-pos-add="${pr.id}" ${out ? 'aria-disabled="true"' : ''} aria-label="${pr.name}, ${pr.priceCents > 0 ? formatMoney(pr.priceCents) : 'sin precio'}${pack ? `, oferta ${packLabel(pack)}` : ''}${out ? ', agotado' : ''}. Agregar a la venta">
       <span class="pos-card__img" aria-hidden="true">${image ? html`<img src="${image}" alt="" width="256" height="256" loading="lazy" />` : pr.name.slice(0, 1).toLocaleUpperCase('es')}</span>
       <span class="pos-card__name">${pr.name}</span>
       <span class="pos-card__price">${pr.priceCents > 0 ? formatMoney(pr.priceCents) : 'Sin precio'}</span>
+      ${pack ? html`<span class="pos-card__offer">${packLabel(pack)}</span>` : ''}
       <span class="pos-card__stock${out ? ' pos-card__stock--out' : ''}">${!tracksStock(pr) ? 'Sin conteo' : out ? 'Agotado' : `Quedan ${left}`}</span>
       ${pr.isDemo ? demoBadge() : ''}
     </button></li>`;
@@ -113,21 +115,29 @@ export function renderPos(store, ctx) {
         : html`<ul class="pos-lines">${lines.map((l) => {
             const p = byId.get(l.productId);
             const name = p?.product.name ?? 'Producto';
+            const saved = lineSavingsCents(l);
+            const pack = l.pack ?? null;
             return html`<li class="pos-line">
               <span class="pos-line__main">
                 <span class="pos-line__name">${name}</span>
                 <button type="button" class="pos-line__price" data-pos-price="${l.productId}" aria-label="Cambiar el precio de ${name} (${l.unitCents > 0 ? formatMoney(l.unitCents) : 'sin precio'})">${l.unitCents > 0 ? `${formatMoney(l.unitCents)} c/u` : 'Poner precio'}</button>
+                ${pack
+                  ? saved > 0
+                    ? html`<span class="pos-line__offer pos-line__offer--on">Oferta ${packLabel(pack)}</span><span class="pos-line__offer pos-line__offer--on">Ahorra ${formatMoney(saved)}</span>`
+                    : html`<span class="pos-line__offer">Oferta: ${packLabel(pack)}</span>`
+                  : ''}
               </span>
               <span class="pos-qty" role="group" aria-label="Cantidad de ${name}">
                 <button type="button" class="pos-qty__btn" data-pos-dec="${l.productId}" aria-label="Uno menos">−</button>
                 <span class="pos-qty__n" aria-live="polite">${l.quantity}</span>
                 <button type="button" class="pos-qty__btn" data-pos-inc="${l.productId}" aria-label="Uno más">+</button>
               </span>
-              <span class="pos-line__total">${formatMoney(l.quantity * l.unitCents)}</span>
+              <span class="pos-line__total">${formatMoney(lineTotalCents(l))}</span>
             </li>`;
           })}</ul>`}
       <dl class="pos-totals">
         <div><dt>Subtotal</dt><dd>${formatMoney(t.subtotalCents)}</dd></div>
+        ${t.savingsCents > 0 ? html`<div class="pos-totals__saved"><dt>Ahorro por ofertas</dt><dd>${formatMoney(t.savingsCents)}</dd></div>` : ''}
         <div>
           <dt><label class="pos-tax"><input type="checkbox" data-pos-tax ${view.taxBp > 0 ? 'checked' : ''} /> ITBIS 18 %</label></dt>
           <dd>${formatMoney(t.taxCents)}</dd>
@@ -283,7 +293,7 @@ export function renderPos(store, ctx) {
           title: `Precio de ${p.product.name}`,
           content: html`<form class="stack" novalidate data-form="pos-price">
             ${moneyField({ id: 'pos-price', name: 'priceText', label: 'Precio por unidad en esta venta', value: line.unitCents > 0 ? centsToInputValue(line.unitCents) : '', errorKey: 'price', autofocus: true })}
-            <p class="hint">Solo cambia en esta venta. Para cambiarlo siempre, edita el producto en Inventario.</p>
+            <p class="hint">Solo cambia en esta venta. Para cambiarlo siempre, edita el producto en Inventario.${line.pack ? ` Con un precio puesto a mano, la oferta (${packLabel(line.pack)}) no se aplica en esta venta.` : ''}</p>
             <div class="actions"><span class="actions__group">
               <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
               <button type="submit" class="btn btn--primary">Listo</button>

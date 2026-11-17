@@ -433,13 +433,14 @@ export function buildInventoryDemo(today, nowISO) {
   /** @param {string} name @param {string} sku @param {number} pricePesos @param {number} minStock @param {string} groupName @param {boolean} [trackStock] @returns {Product} */
   const product = (name, sku, pricePesos, minStock, groupName, trackStock = true) => ({
     id: newId(), name, sku, unit: 'unidad', priceCents: pricePesos * 100, minStock, notes: 'Producto de ejemplo.',
-    archived: false, groupName, trackStock, imageData: '', createdAt: nowISO, updatedAt: nowISO, isDemo: true,
+    archived: false, groupName, trackStock, imageData: '', packQty: 0, packPriceCents: 0, createdAt: nowISO, updatedAt: nowISO, isDemo: true,
   });
   const shirt = product('Camisa de algodón', 'CAM-001', 1200, 10, 'Ropa');
   const jeans = product('Pantalón de mezclilla', 'PAN-002', 2400, 6, 'Ropa');
   const cap = product('Gorra', 'GOR-003', 600, 8, 'Accesorios');
   const belt = product('Cinturón de cuero', 'CIN-004', 900, 5, 'Accesorios');
-  const candy = product('Caramelos sueltos', 'CAR-005', 10, 0, 'Dulces', false);
+  // 0.17.5: con oferta por cantidad («3 por RD$25»).
+  const candy = { ...product('Caramelos sueltos', 'CAR-005', 10, 0, 'Dulces', false), packQty: 3, packPriceCents: 2500 };
 
   /** @type {StockEntry[]} */
   const stockEntries = [];

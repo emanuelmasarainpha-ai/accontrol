@@ -73,10 +73,10 @@ export const CLOUD_KINDS = [
   },
   {
     key: 'products', idsKey: 'productIds', table: 'products',
-    fields: ['id', 'name', 'sku', 'unit', 'priceCents', 'minStock', 'notes', 'archived', 'groupName', 'trackStock', 'imageData', ...STAMPS],
-    timestamps: STAMPS, integers: ['priceCents', 'minStock'],
-    // 0.17.0: un producto de antes no tiene grupo ni foto y sí controla su stock.
-    defaults: { groupName: '', trackStock: true, imageData: '' },
+    fields: ['id', 'name', 'sku', 'unit', 'priceCents', 'minStock', 'notes', 'archived', 'groupName', 'trackStock', 'imageData', 'packQty', 'packPriceCents', ...STAMPS],
+    timestamps: STAMPS, integers: ['priceCents', 'minStock', 'packQty', 'packPriceCents'],
+    // 0.17.0: un producto de antes no tiene grupo ni foto y sí controla su stock. 0.17.5: ni oferta por cantidad.
+    defaults: { groupName: '', trackStock: true, imageData: '', packQty: 0, packPriceCents: 0 },
   },
   { key: 'suppliers', idsKey: 'supplierIds', table: 'suppliers', fields: ['id', 'name', 'contact', 'email', 'phone', 'notes', 'archived', ...STAMPS], timestamps: STAMPS },
   {

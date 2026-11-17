@@ -262,15 +262,15 @@ test('nube simulada (columnas leídas de la migración): un producto con foto, g
   const ws = { id: randomUUID(), kind: 'entrepreneur', name: 'Colmado', currency: 'DOP', openingBalanceCents: 0, isDefault: false, createdAt: NOW, updatedAt: NOW };
   assert.deepEqual(await cloud.saveWorkspaces([ws]), { ok: true });
   const base = { sku: '', unit: 'unidad', priceCents: 500, minStock: 0, notes: '', archived: false, createdAt: NOW, updatedAt: NOW };
-  const gomitas = { id: randomUUID(), name: 'Gomitas', ...base, groupName: 'Dulces', trackStock: false, imageData: PNG };
+  const gomitas = { id: randomUUID(), name: 'Gomitas', ...base, groupName: 'Dulces', trackStock: false, imageData: PNG, packQty: 3, packPriceCents: 1200 };
   const viejo = { id: randomUUID(), name: 'Arroz', ...base }; // guardado antes de la 0.17.0: sin los campos nuevos
   const empty = Object.fromEntries((await import('../src/data/cloudRows.js')).CLOUD_KINDS.map((k) => [k.key, []]));
   const pushed = await cloud.push(ws.id, { ...empty, products: [gomitas, viejo] });
   assert.equal(pushed.ok, true, JSON.stringify(pushed));
   const row = mock.data.live('products', ws.id).find((/** @type {any} */ x) => x.id === gomitas.id);
-  assert.deepEqual([row.group_name, row.track_stock, row.image_data], ['Dulces', false, PNG]);
+  assert.deepEqual([row.group_name, row.track_stock, row.image_data, row.pack_qty, row.pack_price_cents], ['Dulces', false, PNG, 3, 1200]);
   const pulled = await cloud.pull(ws.id);
   const got = new Map(pulled.changes.products.map((/** @type {any} */ c) => [c.record.id, c.record]));
   assert.deepEqual(got.get(gomitas.id), { ...gomitas, createdBy: userId });
-  assert.deepEqual(got.get(viejo.id), { ...viejo, groupName: '', trackStock: true, imageData: '', createdBy: userId }, 'el de antes baja con los valores de siempre');
+  assert.deepEqual(got.get(viejo.id), { ...viejo, groupName: '', trackStock: true, imageData: '', packQty: 0, packPriceCents: 0, createdBy: userId }, 'el de antes baja con los valores de siempre');
 });

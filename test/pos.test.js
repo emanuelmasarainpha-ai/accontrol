@@ -70,7 +70,7 @@ test('carrito: tocar suma una unidad; no pasa del stock; lo que no se cuenta no 
   /** @type {any[]} */
   let cart = [];
   for (let i = 0; i < 3; i += 1) cart = must(addToCart(cart, at(store, refresco.id))).cart;
-  assert.deepEqual(cart, [{ productId: refresco.id, quantity: 3, unitCents: 5000 }]);
+  assert.deepEqual(cart, [{ productId: refresco.id, quantity: 3, unitCents: 5000, pack: null }]);
   const fourth = addToCart(cart, at(store, refresco.id));
   assert.equal(fourth.ok, false);
   if (!fourth.ok) assert.match(fourth.error, /Solo quedan 3 de «Refresco»/);
@@ -111,7 +111,7 @@ test('carrito: si otra persona vendió mientras tanto, baja a lo que queda y qui
 
 test('totales del carrito con impuesto (redondeado al centavo, como una factura)', () => {
   const cart = [{ productId: 'a', quantity: 3, unitCents: 3333 }, { productId: 'b', quantity: 1, unitCents: 1 }];
-  assert.deepEqual(cartTotals(cart, 1800), { subtotalCents: 10000, taxCents: 1800, totalCents: 11800, units: 4 });
+  assert.deepEqual(cartTotals(cart, 1800), { subtotalCents: 10000, taxCents: 1800, totalCents: 11800, units: 4, savingsCents: 0 });
   assert.equal(cartTotals([], 0).totalCents, 0);
 });
 

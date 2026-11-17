@@ -7,22 +7,31 @@
 // en el momento, su COBRO con el ingreso, todo guardado en una sola operación. Si es fiado, queda la factura pendiente
 // y aparece en «Fiado».
 //
-// El carrito es una lista de { productId, quantity, unitCents } con cantidades enteras. Un producto que cuenta su stock no se
-// puede poner en el carrito más veces de las que hay; uno «sin control de stock» no tiene ese tope.
+// El carrito es una lista de { productId, quantity, unitCents, pack } con cantidades enteras. Un producto que cuenta su stock no
+// se puede poner en el carrito más veces de las que hay; uno «sin control de stock» no tiene ese tope.
+//
+// OFERTA POR CANTIDAD (0.17.5): si el producto se vende «2 por RD$15», cada grupo completo de 2 se cobra a RD$15 y lo que
+// sobra, al precio de una unidad (7 panes = 3 × RD$15 + 1 × RD$8 = RD$53). En la factura, la oferta va en su propia línea
+// con su precio por unidad (RD$7.50); si no se divide exacto (3 por RD$25 = 8.333…), se reparte en dos líneas de centavos
+// enteros que suman justo lo de la oferta (2 × RD$8.33 + 1 × RD$8.34). Si en la venta se cambia el precio a mano, la
+// oferta deja de aplicarse a esa línea.
 // Todo en centavos enteros; el impuesto se calcula igual que en una factura (invoiceTotals).
 // =============================================================================
 
 import { cleanText } from './contact.js';
 import { CREDIT_NOTE, foldName } from './fiado.js';
-import { productGroup, searchable, tracksStock, MAX_QUANTITY } from './inventory.js';
+import { packLabel, productGroup, productPack, searchable, tracksStock, MAX_QUANTITY } from './inventory.js';
 import { invoiceTotals, parseTaxPercent } from './invoices.js';
 import { centsToInputValue, formatMoney, MAX_CENTS, parseMoney } from './money.js';
+import { LIMITS } from './types.js';
 
 /** @typedef {import('./types.js').Product} Product */
 /** @typedef {import('./types.js').Category} Category */
 /** @typedef {import('./inventory.js').StockPosition} StockPosition */
 
-/** @typedef {{ productId: string, quantity: number, unitCents: number }} CartLine */
+/** @typedef {{ qty: number, priceCents: number }} Pack */
+/** @typedef {{ productId: string, quantity: number, unitCents: number, pack?: Pack | null }} CartLine */
+/** Un tramo de una línea con un solo precio por unidad (lo que será una línea de la factura). @typedef {{ quantity: number, unitCents: number, offer: boolean }} Segment */
 /** @typedef {'cash' | 'card' | 'transfer' | 'credit'} PaymentMethod */
 
 /** @type {readonly { id: PaymentMethod, label: string }[]} */
@@ -37,7 +46,7 @@ export const PAYMENT_METHODS = [
 export const WALK_IN_CUSTOMER = 'Cliente de mostrador';
 /** Nota de las facturas que se cobran en la caja. */
 export const POS_NOTE = 'Venta en caja';
-/** Una venta en la caja tiene como mucho estas líneas (como una factura). */
+/** Una venta en la caja tiene como mucho estas líneas de factura (como una factura). */
 export const MAX_CART_LINES = 30;
 
 /** @param {unknown} value @returns {value is PaymentMethod} */
@@ -97,6 +106,40 @@ export function productForCode(positions, text) {
   return found.length === 1 ? found[0] : null;
 }
 
+// ---- Oferta por cantidad ----------------------------------------------------------------------------------------
+
+/**
+ * Parte una línea del carrito en tramos de un solo precio por unidad: la oferta (uno o dos tramos de centavos enteros que
+ * suman exacto packs × precio de la oferta) y lo que sobra al precio normal. Sin oferta (o sin llegar a la cantidad), un tramo.
+ * @param {CartLine} line @returns {Segment[]}
+ */
+export function lineSegments(line) {
+  const pack = line.pack ?? null;
+  if (!pack || line.quantity < pack.qty) return line.quantity > 0 ? [{ quantity: line.quantity, unitCents: line.unitCents, offer: false }] : [];
+  const packs = Math.floor(line.quantity / pack.qty);
+  const units = packs * pack.qty;
+  const cents = packs * pack.priceCents;
+  const base = Math.floor(cents / units);
+  const extra = cents - base * units; // tantas unidades llevan un centavo más
+  /** @type {Segment[]} */
+  const out = [];
+  if (units - extra > 0) out.push({ quantity: units - extra, unitCents: base, offer: true });
+  if (extra > 0) out.push({ quantity: extra, unitCents: base + 1, offer: true });
+  if (line.quantity > units) out.push({ quantity: line.quantity - units, unitCents: line.unitCents, offer: false });
+  return out;
+}
+
+/** Lo que se cobra por una línea (con la oferta, si aplica). @param {CartLine} line */
+export const lineTotalCents = (line) => lineSegments(line).reduce((sum, seg) => sum + seg.quantity * seg.unitCents, 0);
+
+/** Cuánto se ahorra el cliente con la oferta en esta línea (0 si no aplica). @param {CartLine} line */
+export const lineSavingsCents = (line) => (line.unitCents > 0 ? Math.max(0, line.quantity * line.unitCents - lineTotalCents(line)) : 0);
+
+/** Cuántas líneas tendrá la factura de este carrito (cada producto con oferta puede ocupar hasta 3). @param {CartLine[]} cart */
+export const cartInvoiceLines = (cart) => cart.reduce((n, l) => n + lineSegments(l).length, 0);
+
+const TOO_MANY_LINES = `Esta venta llegó al máximo de ${MAX_CART_LINES} líneas de factura: cóbrala y empieza otra.`;
+
 // ---- Carrito -----------------------------------------------------------------------------------------------------
 
 /** Cuántas unidades hay disponibles para vender (Infinity si no cuenta su stock). @param {StockPosition} p */
@@ -116,12 +159,12 @@ export function addToCart(cart, position) {
   if (next > available) {
     return { ok: false, error: available === 0 ? `«${product.name}» está agotado.` : `Solo quedan ${available} de «${product.name}».` };
   }
-  if (!line && cart.length >= MAX_CART_LINES) return { ok: false, error: `Una venta puede tener hasta ${MAX_CART_LINES} productos distintos.` };
   if (next > MAX_QUANTITY) return { ok: false, error: 'Demasiadas unidades en una sola línea.' };
-  return {
-    ok: true,
-    cart: line ? cart.map((l) => (l === line ? { ...l, quantity: next } : l)) : [...cart, { productId: product.id, quantity: 1, unitCents: product.priceCents }],
-  };
+  const updated = line
+    ? cart.map((l) => (l === line ? { ...l, quantity: next } : l))
+    : [...cart, { productId: product.id, quantity: 1, unitCents: product.priceCents, pack: productPack(product) }];
+  if (cartInvoiceLines(updated) > MAX_CART_LINES) return { ok: false, error: TOO_MANY_LINES };
+  return { ok: true, cart: updated };
 }
 
 /**
@@ -137,11 +180,14 @@ export function setCartQuantity(cart, productId, quantity, position) {
     const available = availableUnits(position);
     return { ok: false, error: `Solo quedan ${available} de «${position.product.name}».` };
   }
-  return { ok: true, cart: cart.map((l) => (l.productId === productId ? { ...l, quantity } : l)) };
+  const updated = cart.map((l) => (l.productId === productId ? { ...l, quantity } : l));
+  if (cartInvoiceLines(updated) > MAX_CART_LINES) return { ok: false, error: TOO_MANY_LINES };
+  return { ok: true, cart: updated };
 }
 
 /**
- * Cambia el precio por unidad de una línea (por ejemplo, un producto sin precio o con descuento).
+ * Cambia el precio por unidad de una línea (por ejemplo, un producto sin precio o con descuento). Con un precio puesto a mano,
+ * la oferta por cantidad deja de aplicarse a esa línea.
  * @param {CartLine[]} cart @param {string} productId @param {string} priceText
  * @returns {{ ok: true, cart: CartLine[] } | { ok: false, error: string }}
  */
@@ -150,7 +196,9 @@ export function setCartPrice(cart, productId, priceText) {
   if (!money.ok) return { ok: false, error: money.error };
   if (money.cents <= 0) return { ok: false, error: 'El precio debe ser mayor que cero.' };
   if (money.cents > MAX_CENTS) return { ok: false, error: 'El precio es demasiado grande.' };
-  return { ok: true, cart: cart.map((l) => (l.productId === productId ? { ...l, unitCents: money.cents } : l)) };
+  const updated = cart.map((l) => (l.productId === productId ? { ...l, unitCents: money.cents, pack: null } : l));
+  if (cartInvoiceLines(updated) > MAX_CART_LINES) return { ok: false, error: TOO_MANY_LINES };
+  return { ok: true, cart: updated };
 }
 
 /**
@@ -173,8 +221,9 @@ export function reconcileCart(cart, positions) {
 
 /** Totales del carrito con el impuesto (en centésimas de por ciento). @param {CartLine[]} cart @param {number} taxRateBp */
 export function cartTotals(cart, taxRateBp) {
-  const totals = invoiceTotals({ lines: cart.map((l) => ({ description: '', quantity: l.quantity, unitCents: l.unitCents })), taxRateBp });
-  return { ...totals, units: cart.reduce((s, l) => s + l.quantity, 0) };
+  const lines = cart.flatMap((l) => lineSegments(l).map((seg) => ({ description: '', quantity: seg.quantity, unitCents: seg.unitCents })));
+  const totals = invoiceTotals({ lines, taxRateBp });
+  return { ...totals, units: cart.reduce((s, l) => s + l.quantity, 0), savingsCents: cart.reduce((s, l) => s + lineSavingsCents(l), 0) };
 }
 
 // ---- Cobro ---------------------------------------------------------------------------------------------------------
@@ -237,6 +286,7 @@ export function prepareSale(input, { products }) {
     if (!Number.isSafeInteger(l.unitCents) || l.unitCents <= 0) { errors.form = `«${p.name}» no tiene precio: tócalo en el carrito y escribe cuánto cuesta.`; break; }
     if (!Number.isSafeInteger(l.quantity) || l.quantity < 1) { errors.form = `La cantidad de «${p.name}» no es válida.`; break; }
   }
+  if (!errors.form && cartInvoiceLines(cart) > MAX_CART_LINES) errors.form = TOO_MANY_LINES;
   let taxRateBp = 0;
   const taxText = cleanText(input.taxText);
   if (taxText) {
@@ -276,12 +326,25 @@ export function prepareSale(input, { products }) {
       dueDate: '',
       taxText,
       notes: method === 'credit' ? CREDIT_NOTE : `${POS_NOTE} · ${methodLabel(method)}`,
-      lines: cart.map((l) => {
+      lines: cart.flatMap((l) => {
         const p = /** @type {Product} */ (byId.get(l.productId));
-        return { description: p.name, productId: p.id, serviceId: '', quantityText: String(l.quantity), unitText: centsToInputValue(l.unitCents) };
+        return lineSegments(l).map((seg) => ({
+          description: seg.offer && l.pack ? offerDescription(p.name, l.pack) : p.name,
+          productId: p.id, serviceId: '', quantityText: String(seg.quantity), unitText: centsToInputValue(seg.unitCents),
+        }));
       }),
     },
   };
+}
+
+/**
+ * «Pan (oferta 2 por RD$15.00)», sin pasar del máximo de una línea de factura (se acorta el nombre si hace falta).
+ * @param {string} name @param {Pack} pack
+ */
+export function offerDescription(name, pack) {
+  const tail = ` (oferta ${packLabel(pack)})`;
+  const room = LIMITS.invoiceLine - tail.length;
+  return `${name.length > room ? `${name.slice(0, room - 1).trimEnd()}…` : name}${tail}`;
 }
 
 /** La categoría de ingresos de las ventas: «Ventas» si existe; si no, la primera de ingresos. @param {Category[]} categories */

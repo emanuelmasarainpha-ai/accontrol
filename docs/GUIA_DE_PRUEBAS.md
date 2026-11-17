@@ -304,6 +304,11 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     2. En el teléfono toca **+**: arriba Ingreso (verde) y Gasto, abajo Ahorro, Deuda y Activo; en un espacio Emprendedor, también «Tu negocio» (Abrir caja, Fiar, Nueva factura, Nuevo producto). Prueba en modo oscuro.
     3. Toca **Gasto**: el monto se ve grande sobre una banda; escribe una cifra y guarda.
 
+45. **Oferta por cantidad (0.17.5).**
+    1. En un espacio Emprendedor: *Inventario → Nuevo producto*: «Pan», precio 8, oferta **2** por **15**. Mira la ayuda: «2 = RD$15.00 · 3 = RD$23.00 · 6 = RD$45.00». Prueba 2 por 16: no te deja (no sale más barata).
+    2. *Abrir caja*: la tarjeta del pan dice «2 por RD$15.00». Tócala 7 veces: la venta da **RD$53.00** y dice «Ahorra RD$3.00».
+    3. Cobra y abre la factura: una línea «Pan (oferta 2 por RD$15.00)» de 6 a RD$7.50 y otra «Pan» de 1 a RD$8.00.
+
 ## 3. Probar en el teléfono Android
 
 ### Opción A — Misma red Wi-Fi (la más rápida)

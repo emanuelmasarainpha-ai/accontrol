@@ -9,8 +9,10 @@
 
 import { categoriesOfKind } from '../domain/categories.js';
 import {
-  MAX_QUANTITY, STOCK_KIND_LABELS, productGroup, productGroups, productImage, productUsage, sortProducts, sortSuppliers, stockPositions, supplierUsage, tracksStock,
+  MAX_QUANTITY, STOCK_KIND_LABELS, productGroup, productGroups, productImage, productPack, productUsage, sortProducts, sortSuppliers, stockPositions, supplierUsage,
+  tracksStock,
 } from '../domain/inventory.js';
+import { lineTotalCents } from '../domain/pos.js';
 import { centsToInputValue, formatMoney, parseMoney } from '../domain/money.js';
 import { LIMITS } from '../domain/types.js';
 import { $ } from '../ui/dom.js';
@@ -40,6 +42,35 @@ function textField({ id, name, label, value, max, placeholder = '', type = 'text
 // PRODUCTO
 // =============================================================================
 
+const PACK_HINT = 'Para lo que se vende «2 por RD$15» (como el pan). En la caja, cada grupo completo se cobra a ese precio y lo que sobra, al precio de una unidad. Déjalo vacío si no tiene oferta.';
+
+/**
+ * Mientras se escribe la oferta, muestra cómo se cobrará (por ejemplo «2 = RD$15.00 · 3 = RD$23.00 · 6 = RD$45.00»).
+ * Es solo una ayuda: las reglas las aplica validateProduct al guardar.
+ * @param {HTMLElement} sheet
+ */
+function bindPackPreview(sheet) {
+  const qtyInput = /** @type {HTMLInputElement | null} */ (sheet.querySelector('#pr-pack-qty'));
+  const priceInput = /** @type {HTMLInputElement | null} */ (sheet.querySelector('#pr-pack-price'));
+  const unitInput = /** @type {HTMLInputElement | null} */ (sheet.querySelector('#pr-price'));
+  const hint = sheet.querySelector('[data-pack-hint]');
+  if (!qtyInput || !priceInput || !unitInput || !hint) return;
+  const update = () => {
+    const qty = /^\d{1,3}$/.test(qtyInput.value.trim()) ? Number(qtyInput.value.trim()) : 0;
+    const price = parseMoney(priceInput.value.trim());
+    const unit = parseMoney(unitInput.value.trim());
+    if (qty < 2 || !price.ok || price.cents <= 0 || !unit.ok || unit.cents <= 0 || price.cents >= qty * unit.cents) {
+      hint.textContent = PACK_HINT;
+      return;
+    }
+    const p = { qty, priceCents: price.cents };
+    const sample = [qty, qty + 1, qty * 3].map((n) => `${n} = ${formatMoney(lineTotalCents({ productId: '', quantity: n, unitCents: unit.cents, pack: p }))}`);
+    hint.textContent = `Así se cobra: ${sample.join(' · ')}.`;
+  };
+  for (const input of [qtyInput, priceInput, unitInput]) input.addEventListener('input', update);
+  update();
+}
+
 /**
  * @param {Store} store
  * @param {{ product?: Product | null }} [options]
@@ -53,6 +84,7 @@ export function openProductForm(store, { product = null } = {}) {
   const tracked = product ? tracksStock(product) : true;
   // Un producto con movimientos de stock no puede dejar de contarse (sus unidades quedarían sin explicar).
   const lockTracking = usage.entries > 0 && tracked;
+  const pack = product ? productPack(product) : null;
   /** @param {string} dataUrl */
   const photoBox = (dataUrl) => (dataUrl
     ? html`<img class="product-photo__img" src="${dataUrl}" alt="Foto del producto" width="96" height="96" />`
@@ -88,6 +120,26 @@ export function openProductForm(store, { product = null } = {}) {
         ${textField({ id: 'pr-unit', name: 'unit', label: 'Unidad', value: product?.unit ?? 'unidad', max: LIMITS.productUnit, placeholder: 'Ej.: unidad, caja, libra' })}
       </div>
       ${moneyField({ id: 'pr-price', name: 'priceText', label: 'Precio de venta por unidad (opcional)', value: product && product.priceCents > 0 ? centsToInputValue(product.priceCents) : '', errorKey: 'price' })}
+      <fieldset class="field pack-field" data-field="pack">
+        <legend>Oferta por cantidad (opcional)</legend>
+        <div class="pack-field__row">
+          <span class="field" data-field="packQty">
+            <label for="pr-pack-qty">Cantidad</label>
+            <input id="pr-pack-qty" name="packQtyText" class="input" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="2" value="${pack ? pack.qty : ''}" aria-describedby="pr-pack-hint packQty-error" />
+          </span>
+          <span class="pack-field__por" aria-hidden="true">por</span>
+          <span class="field" data-field="packPrice">
+            <label for="pr-pack-price">Precio de esa cantidad</label>
+            <span class="input-money">
+              <span class="input-money__symbol" aria-hidden="true">RD$</span>
+              <input id="pr-pack-price" name="packPriceText" class="input input--money" type="text" inputmode="decimal" autocomplete="off" placeholder="15.00" value="${pack ? centsToInputValue(pack.priceCents) : ''}" aria-describedby="pr-pack-hint packPrice-error" />
+            </span>
+          </span>
+        </div>
+        <p class="hint" id="pr-pack-hint" data-pack-hint aria-live="polite">${PACK_HINT}</p>
+        ${fieldError('packQty')}
+        ${fieldError('packPrice')}
+      </fieldset>
       <div class="field" data-field="trackStock">
         <label class="switch-row" for="pr-untracked">
           <span class="switch-row__text">
@@ -122,6 +174,7 @@ export function openProductForm(store, { product = null } = {}) {
     onMount: (sheet, close) => {
       const form = /** @type {HTMLFormElement} */ ($('form', sheet));
       bindMoneyPreview(sheet, 'pr-price');
+      bindPackPreview(sheet);
 
       // «Sin control de stock» esconde el aviso de stock bajo (no aplica).
       const untracked = /** @type {HTMLInputElement} */ ($('[data-untracked]', sheet));
@@ -160,7 +213,7 @@ export function openProductForm(store, { product = null } = {}) {
         const result = await store.saveProduct(
           {
             name: v.name ?? '', sku: v.sku ?? '', unit: v.unit ?? '', priceText: v.priceText ?? '', minStockText: v.minStockText ?? '', notes: v.notes ?? '',
-            groupText: v.groupText ?? '', imageData: v.imageData ?? '',
+            groupText: v.groupText ?? '', imageData: v.imageData ?? '', packQtyText: v.packQtyText ?? '', packPriceText: v.packPriceText ?? '',
             // Una casilla desactivada no se envía: entonces se conserva lo que tenía.
             trackStock: untracked.disabled ? tracked : !untracked.checked,
           },

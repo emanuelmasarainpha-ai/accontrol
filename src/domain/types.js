@@ -119,6 +119,9 @@
  *                                   Ausente o true = se controla, como siempre.
  * @property {string} [imageData]    0.17.0: foto en miniatura, «data:image/(webp|jpeg|png);base64,…» de hasta LIMITS.productImage
  *                                   caracteres. Ausente o '' = sin foto.
+ * @property {number} [packQty]        0.17.5: OFERTA POR CANTIDAD («2 por RD$15»): cuántas unidades lleva la oferta (2 a 999).
+ *                                   Ausente o 0 = sin oferta.
+ * @property {number} [packPriceCents] 0.17.5: lo que cuestan esas packQty unidades juntas, en centavos (0 = sin oferta).
  * @property {string} createdAt
  * @property {string} updatedAt
  * @property {boolean} [isDemo]

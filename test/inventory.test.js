@@ -35,7 +35,7 @@ const sell = (/** @type {string} */ pid, /** @type {number} */ q, /** @type {num
 test('producto: solo el nombre es obligatorio y todo lo demás tiene un valor por defecto', () => {
   const r = validateProduct({ name: '  Camisa   azul ' }, { products: [] });
   assert.ok(r.ok);
-  if (r.ok) assert.deepEqual(r.value, { name: 'Camisa azul', sku: '', unit: 'unidad', priceCents: 0, minStock: 0, notes: '', groupName: '', trackStock: true, imageData: '' });
+  if (r.ok) assert.deepEqual(r.value, { name: 'Camisa azul', sku: '', unit: 'unidad', priceCents: 0, minStock: 0, notes: '', groupName: '', trackStock: true, imageData: '', packQty: 0, packPriceCents: 0 });
   const bad = validateProduct({ name: '   ' }, { products: [] });
   assert.ok(!bad.ok);
   if (!bad.ok) assert.match(bad.errors.name, /nombre/);
@@ -44,7 +44,7 @@ test('producto: solo el nombre es obligatorio y todo lo demás tiene un valor po
 test('producto: lee precio y stock mínimo y rechaza lo que no es válido', () => {
   const ok = validateProduct({ name: 'A', priceText: '1,250.50', minStockText: '5', unit: 'caja', sku: 'A-1', notes: 'nota' }, { products: [] });
   assert.ok(ok.ok);
-  if (ok.ok) assert.deepEqual(ok.value, { name: 'A', sku: 'A-1', unit: 'caja', priceCents: 125050, minStock: 5, notes: 'nota', groupName: '', trackStock: true, imageData: '' });
+  if (ok.ok) assert.deepEqual(ok.value, { name: 'A', sku: 'A-1', unit: 'caja', priceCents: 125050, minStock: 5, notes: 'nota', groupName: '', trackStock: true, imageData: '', packQty: 0, packPriceCents: 0 });
   for (const [input, field] of [
     [{ name: 'A', priceText: 'abc' }, 'price'],
     [{ name: 'A', priceText: '999999999999' }, 'price'],
