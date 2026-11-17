@@ -11,7 +11,7 @@
 
 import { formatDate, monthKeyOf, monthLabel, plural } from '../domain/dates.js';
 import {
-  PRODUCT_FILTERS, STOCK_KIND_LABELS, filterStockPositions, inventorySummary, isProductFilter, productFilterCounts, productGroup, productImage, productUsage, replayProduct, salesAnalysis, sortEntriesNewestFirst, stockPositions, supplierTotals,
+  PRODUCT_FILTERS, STOCK_KIND_LABELS, filterStockPositions, searchable, inventorySummary, isProductFilter, productFilterCounts, productGroup, productImage, productUsage, replayProduct, salesAnalysis, sortEntriesNewestFirst, stockPositions, supplierTotals,
 } from '../domain/inventory.js';
 import { invoiceLabel } from '../domain/invoices.js';
 import { formatMoney, formatPercent } from '../domain/money.js';
@@ -71,6 +71,15 @@ export function renderInventory(store, ctx) {
       const results = root.querySelector('#product-results');
       if (search instanceof HTMLInputElement && results instanceof HTMLElement) {
         search.addEventListener('input', () => { view.query = search.value; setHtml(results, list.results()); }, { signal });
+        // Enter con un código exacto (por ejemplo, el que manda la pistola lectora) abre la ficha de ese producto.
+        search.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return;
+          const code = searchable(search.value.trim());
+          const hit = code ? store.getState().data.products.filter((p) => p.sku && searchable(p.sku) === code) : [];
+          if (hit.length !== 1) return;
+          event.preventDefault();
+          window.location.hash = `#/inventario/${hit[0].id}`;
+        }, { signal });
       }
     },
   };

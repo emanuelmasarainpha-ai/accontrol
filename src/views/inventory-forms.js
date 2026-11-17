@@ -84,7 +84,7 @@ export function openProductForm(store, { product = null } = {}) {
         ${fieldError('group')}
       </div>
       <div class="field-row">
-        ${textField({ id: 'pr-sku', name: 'sku', label: 'Código (opcional)', value: product?.sku ?? '', max: LIMITS.productSku, placeholder: 'Ej.: CAM-AZ-M' })}
+        ${textField({ id: 'pr-sku', name: 'sku', label: 'Código (opcional; puedes escanearlo)', value: product?.sku ?? '', max: LIMITS.productSku, placeholder: 'Ej.: 7460001234567' })}
         ${textField({ id: 'pr-unit', name: 'unit', label: 'Unidad', value: product?.unit ?? 'unidad', max: LIMITS.productUnit, placeholder: 'Ej.: unidad, caja, libra' })}
       </div>
       ${moneyField({ id: 'pr-price', name: 'priceText', label: 'Precio de venta por unidad (opcional)', value: product && product.priceCents > 0 ? centsToInputValue(product.priceCents) : '', errorKey: 'price' })}

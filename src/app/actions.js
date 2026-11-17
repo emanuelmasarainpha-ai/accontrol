@@ -24,6 +24,7 @@ import { openDebtForm, openPaymentForm } from '../views/debt-forms.js';
 import { openProductForm, openStockForm, openSupplierForm } from '../views/inventory-forms.js';
 import { copyInvoiceReminder, openInvoiceEditForm, openInvoiceForm, openInvoicePaymentForm } from '../views/invoice-forms.js';
 import { copyStatement, openCreditForm, openCustomerPaymentForm } from '../views/fiado-forms.js';
+import { printTicket } from '../ui/ticket.js';
 import { openWorkspaceMenu } from '../views/workspaces.js';
 import {
   openAddMenu, openAddSaving, openContributionForm, openGoalForm, openMovementForm,
@@ -164,6 +165,9 @@ export function runCommonAction(store, name, element) {
     case 'new-invoice':
       // Desde la ficha de un cliente o de un servicio (Freelancer), la factura se abre ya con ellos elegidos.
       openInvoiceForm(store, { clientId: element.dataset.clientId ?? '', serviceId: element.dataset.serviceId ?? '' });
+      return true;
+    case 'invoice-ticket':
+      printTicket(store, element.dataset.id ?? '');
       return true;
     case 'pos-open':
       window.location.hash = '#/caja';

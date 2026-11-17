@@ -10,14 +10,16 @@
 // La pistola lectora de códigos escribe el código en el buscador y pulsa Enter: el producto entra al carrito.
 // =============================================================================
 
-import { customerSuggestions } from '../domain/invoices.js';
+import { customerSuggestions, invoiceLabel } from '../domain/invoices.js';
 import { productGroup, productImage, stockPositions, tracksStock } from '../domain/inventory.js';
 import { centsToInputValue, formatMoney } from '../domain/money.js';
 import {
   PAYMENT_METHODS, WALK_IN_CUSTOMER, addToCart, availableUnits, cartTotals, cashChange, isPaymentMethod, posGroups, posProducts, productForCode,
   quickCashOptions, reconcileCart, setCartPrice, setCartQuantity,
 } from '../domain/pos.js';
+import { createScanReader } from '../domain/scan.js';
 import { LIMITS } from '../domain/types.js';
+import { cameraScanSupported, openCameraScanner } from '../ui/camera-scan.js';
 import { demoBadge, emptyState } from '../ui/components.js';
 import { $ } from '../ui/dom.js';
 import { openSheet } from '../ui/dialog.js';
@@ -25,6 +27,7 @@ import { clearErrors, readForm, setBusy } from '../ui/forms.js';
 import { haptic } from '../ui/haptics.js';
 import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
+import { printTicket } from '../ui/ticket.js';
 import { toast } from '../ui/toast.js';
 import { bindMoneyPreview, fieldError, handleResult, moneyField } from './form-parts.js';
 
@@ -42,6 +45,14 @@ const view = {
 };
 /** Un carrito por espacio de trabajo. @type {Map<string, CartLine[]>} */
 const carts = new Map();
+
+/** «Imprimir el ticket al cobrar» (de este dispositivo; si el navegador no deja guardar, queda apagado). */
+const AUTO_PRINT_KEY = 'accontrol.pos.autoprint.v1';
+const autoPrint = {
+  get() { try { return localStorage.getItem(AUTO_PRINT_KEY) === '1'; } catch { return false; } },
+  /** @param {boolean} on */
+  set(on) { try { if (on) localStorage.setItem(AUTO_PRINT_KEY, '1'); else localStorage.removeItem(AUTO_PRINT_KEY); } catch { /* sin almacenamiento */ } },
+};
 
 /**
  * @param {Store} store
@@ -136,6 +147,7 @@ export function renderPos(store, ctx) {
       <header class="pos-bar">
         <a class="pos-bar__exit" href="#/inventario">${icon('back', 18)}Salir de la caja</a>
         <span class="pos-bar__title">Caja · ${workspace?.name ?? ''}</span>
+        <button type="button" class="btn btn--ghost btn--small" data-pos-camera hidden>Cámara</button>
         <button type="button" class="btn btn--ghost btn--small pos-bar__full" data-pos-fullscreen hidden>Pantalla completa</button>
       </header>
 
@@ -190,7 +202,7 @@ export function renderPos(store, ctx) {
       root.addEventListener('click', (event) => {
         const target = event.target instanceof Element ? event.target : null;
         if (!target) return;
-        const el = /** @type {HTMLElement | null} */ (target.closest('[data-pos-add], [data-pos-inc], [data-pos-dec], [data-pos-price], [data-pos-clear], [data-pos-group], [data-pos-fullscreen], [data-pos-jump], [data-action="pos-charge"]'));
+        const el = /** @type {HTMLElement | null} */ (target.closest('[data-pos-add], [data-pos-inc], [data-pos-dec], [data-pos-price], [data-pos-clear], [data-pos-group], [data-pos-fullscreen], [data-pos-camera], [data-pos-jump], [data-action="pos-charge"]'));
         if (!el) return;
         if (el.dataset.posAdd) add(el.dataset.posAdd);
         else if (el.dataset.posInc) add(el.dataset.posInc);
@@ -202,6 +214,7 @@ export function renderPos(store, ctx) {
           if (r.ok) { setCart(r.cart); refreshCart(); }
         } else if (el.dataset.posPrice) openPriceSheet(el.dataset.posPrice);
         else if ('posClear' in el.dataset) { setCart([]); refreshCart(); }
+        else if ('posCamera' in el.dataset) openCameraScanner({ onCode: (code) => addByCode(code) });
         else if ('posJump' in el.dataset) root.querySelector('[data-pos-cart]')?.scrollIntoView({ block: 'start' });
         else if (el.dataset.posGroup !== undefined) {
           view.group = el.dataset.posGroup === '*' ? null : el.dataset.posGroup;
@@ -226,9 +239,8 @@ export function renderPos(store, ctx) {
         search.addEventListener('keydown', (event) => {
           if (event.key !== 'Enter') return;
           event.preventDefault();
-          const found = productForCode(positions, search.value);
-          if (!found) { toast(search.value.trim() ? `No encontré un producto con «${search.value.trim()}».` : 'Escribe un nombre o pasa un código.', 'info'); return; }
-          add(found.product.id);
+          if (!search.value.trim()) { toast('Escribe un nombre o pasa un código.', 'info'); return; }
+          if (!addByCode(search.value)) return;
           search.value = '';
           view.query = '';
           refreshGrid();
@@ -238,8 +250,29 @@ export function renderPos(store, ctx) {
         if (window.matchMedia('(pointer: fine)').matches) window.setTimeout(() => { if (search.isConnected) search.focus({ preventScroll: true }); }, 0);
       }
 
+      // Pistola lectora con el cursor fuera de los campos (por ejemplo, después de tocar un producto): se reconoce por la
+      // velocidad de las teclas y el Enter del final (domain/scan.js).
+      const reader = createScanReader();
+      document.addEventListener('keydown', (event) => {
+        const t = event.target;
+        if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || document.querySelector('dialog[open]')) { reader.reset(); return; }
+        const code = reader.key(event.key, event.timeStamp);
+        if (code) { event.preventDefault(); addByCode(code); }
+      }, { signal });
+
+      const camera = root.querySelector('[data-pos-camera]');
+      if (camera instanceof HTMLElement && cameraScanSupported()) camera.hidden = false;
+
       const full = root.querySelector('[data-pos-fullscreen]');
       if (full instanceof HTMLElement && document.fullscreenEnabled) full.hidden = false;
+
+      /** Agrega el producto de un código (pistola o cámara). @param {string} code @returns {boolean} */
+      function addByCode(code) {
+        const found = productForCode(positions, code);
+        if (!found) { toast(`No encontré un producto con el código «${code.trim()}».`, 'info'); return false; }
+        add(found.product.id);
+        return true;
+      }
 
       /** @param {string} id */
       function openPriceSheet(id) {
@@ -298,6 +331,7 @@ export function renderPos(store, ctx) {
               <datalist id="pos-customers">${names.map((n) => html`<option value="${n}"></option>`)}</datalist>
               ${fieldError('customerName')}
             </div>
+            <label class="pos-autoprint"><input type="checkbox" name="autoPrint" value="1" ${autoPrint.get() ? 'checked' : ''} /> Imprimir el ticket al cobrar</label>
             <p class="field__error field__error--form" data-error-for="form" role="alert" hidden></p>
             <div class="actions"><span class="actions__group">
               <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
@@ -347,21 +381,26 @@ export function renderPos(store, ctx) {
               // La pantalla ya se volvió a dibujar al guardar (con la venta todavía llena): se vacía y se dibuja otra vez.
               setCart([]);
               ctx.rerender();
-              const label = `F-${String(result.invoice.number).padStart(4, '0')}`;
+              const label = invoiceLabel(result.invoice);
+              const wantsPrint = v.autoPrint === '1';
+              autoPrint.set(wantsPrint);
               const box = /** @type {HTMLElement} */ ($('[data-charge]', sheet));
               setHtml(box, html`<div class="pos-done" role="status">
                 <span class="pos-done__icon" aria-hidden="true">${icon('check', 36)}</span>
                 <p class="pos-done__title">${result.method === 'credit' ? `Fiado anotado a ${result.invoice.customerName}` : 'Venta cobrada'}</p>
                 <p class="pos-done__amount">${formatMoney(result.totalCents)}</p>
                 ${result.changeCents > 0 ? html`<p class="pos-done__change">Devuelta: <strong>${formatMoney(result.changeCents)}</strong></p>` : ''}
-                <p class="muted">${result.invoice.isDemo ? 'Factura de demostración' : `Factura ${label}`} · ${result.method === 'credit' ? 'queda en «Fiado»' : 'se anotó como ingreso'}${result.entries.length > 0 ? ' · el inventario se actualizó' : ''}.</p>
+                <p class="muted">Factura ${label} · ${result.method === 'credit' ? 'queda en «Fiado»' : 'se anotó como ingreso'}${result.entries.length > 0 ? ' · el inventario se actualizó' : ''}.</p>
                 <div class="actions"><span class="actions__group">
                   <button type="button" class="btn btn--ghost" data-go-invoice="${result.invoice.id}">Ver factura</button>
+                  <button type="button" class="btn btn--ghost" data-print-ticket>Imprimir ticket</button>
                   <button type="button" class="btn btn--primary" data-close data-autofocus>Nueva venta</button>
                 </span></div>
               </div>`);
               /** @type {HTMLElement | null} */ (box.querySelector('[data-autofocus]'))?.focus();
               box.querySelector('[data-go-invoice]')?.addEventListener('click', () => { close(); window.location.hash = `#/facturas/${result.invoice.id}`; });
+              box.querySelector('[data-print-ticket]')?.addEventListener('click', () => printTicket(store, result.invoice.id));
+              if (wantsPrint) window.setTimeout(() => printTicket(store, result.invoice.id), 50);
             });
           },
         });

@@ -304,6 +304,7 @@ function detailPage(store, id, today) {
               ${p.status === 'overdue' ? html`<button type="button" class="btn btn--ghost" data-action="invoice-reminder" data-id="${invoice.id}">${icon('copy', 16)}Copiar mensaje de recordatorio</button>` : ''}
               <button type="button" class="btn btn--ghost" data-action="invoice-edit" data-id="${invoice.id}">Editar datos</button>`}
         <button type="button" class="btn btn--ghost" data-action="export" data-kind="invoice" data-format="pdf" data-id="${invoice.id}">${icon('download', 16)}Descargar PDF</button>
+        <button type="button" class="btn btn--ghost" data-action="invoice-ticket" data-id="${invoice.id}">Imprimir ticket</button>
       </div>
     </header>
 

@@ -294,6 +294,11 @@ Pensada para quien está empezando. Si algo no coincide con lo que ves, anota el
     5. Haz otra venta con **Fiado**: sin nombre no deja; con nombre, aparece en *Fiado*.
     6. En el teléfono, la barra de abajo muestra el total y **Ver venta** baja hasta la venta.
 
+43. **Ticket y lector de códigos (0.17.2).** Con aparatos reales (lo que la prueba automática no puede comprobar):
+    1. **Impresora de tickets de 80 mm** conectada a la computadora: en la caja cobra una venta y toca **Imprimir ticket**; en la ventana de imprimir elige la impresora. Debe salir del ancho del papel y cortarse al final. Sin impresora, elige **Guardar como PDF**.
+    2. **Pistola lectora** (USB o Bluetooth, en modo teclado): en la caja, toca un producto y luego escanea el código de otro: debe entrar a la venta sin tocar el buscador. En *Inventario*, escanea en el buscador: se abre la ficha.
+    3. **Cámara** (teléfono Android con Chrome): en la caja toca **Cámara**, da permiso y apunta al código de barras de un producto que tengas guardado con ese código. Si el botón no aparece, ese navegador no sabe leer códigos.
+
 ## 3. Probar en el teléfono Android
 
 ### Opción A — Misma red Wi-Fi (la más rápida)

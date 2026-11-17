@@ -2760,3 +2760,93 @@ html[data-pos] .view {
     padding-bottom: var(--space-4);
   }
 }
+
+/* ---- Ticket de 80 mm (0.17.2) ------------------------------------------------------------------------------ */
+/* En pantalla no se ve; solo al imprimir (html[data-print="ticket"]). */
+.ticket-print {
+  display: none;
+}
+@media print {
+  html[data-print='ticket'] body > *:not(#ticket-print) {
+    display: none !important;
+  }
+  html[data-print='ticket'],
+  html[data-print='ticket'] body {
+    margin: 0;
+    background: transparent !important; /* el papel ya es blanco (y así no se imprime el fondo del modo oscuro) */
+  }
+  html[data-print='ticket'] .ticket-print {
+    display: block;
+    width: 72mm;
+    margin: 0 auto;
+    color: #000;
+    font: 12px/1.35 'Courier New', ui-monospace, monospace;
+  }
+}
+/* Para medir el largo del ticket antes de imprimir (fuera de la vista, con su ancho de papel). */
+.ticket-print--measure {
+  position: fixed;
+  top: 0;
+  left: -200mm;
+  display: block;
+  width: 72mm;
+  font: 12px/1.35 'Courier New', ui-monospace, monospace;
+  visibility: hidden;
+}
+.ticket p {
+  margin: 0;
+}
+.ticket__business {
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+.ticket__title {
+  margin-top: 4px !important;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+.ticket__small {
+  font-size: 11px;
+}
+.ticket__center {
+  text-align: center;
+}
+.ticket__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ticket__row span:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+.ticket__name {
+  overflow-wrap: anywhere;
+}
+.ticket__total {
+  font-size: 14px;
+  font-weight: 700;
+}
+.ticket__rule {
+  margin: 6px 0;
+  border: 0;
+  border-top: 1px dashed #000;
+}
+
+/* ---- Cámara para leer códigos y opción de imprimir (0.17.2) ---------------------------------------------------- */
+.camera-scan__video {
+  width: 100%;
+  max-height: 50dvh;
+  border-radius: var(--radius-sm);
+  background: #000;
+  object-fit: cover;
+}
+.pos-autoprint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  cursor: pointer;
+}
