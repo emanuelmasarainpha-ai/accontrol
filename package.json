@@ -14,10 +14,12 @@
     "android": "npm run build && npx cap sync android",
     "android:abrir": "npx cap open android",
     "android:firma": "node tools/android-apk.mjs firma",
-    "android:apk": "node tools/android-apk.mjs"
+    "android:apk": "node tools/android-apk.mjs",
+    "android:iconos": "node tools/android-apk.mjs iconos"
   },
   "devDependencies": {
     "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.6.2",
     "@capacitor/core": "^8.6.2",
     "@capacitor/filesystem": "^8.1.5",

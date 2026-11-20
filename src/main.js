@@ -15,6 +15,7 @@ import { createAccountApi } from './app/accountApi.js';
 import { startApp } from './app/app.js';
 import { createTourMemory, LOCAL_ACCOUNT } from './app/tourMemory.js';
 import { emailReturnAddress, isNativeApp } from './app/platform.js';
+import { installBackButton } from './app/nativeShell.js';
 import { runAuthGate } from './app/authGate.js';
 import { createStore } from './app/store.js';
 import { createAuthClient, SESSION_KEY } from './auth/authClient.js';
@@ -200,6 +201,8 @@ async function main() {
   // Modo claro / oscuro: desde el primer momento (también en las pantallas de acceso).
   installThemeToggle();
   installPasswordToggles();
+  // App de Android: el botón «atrás» cierra ventanas y vuelve atrás en vez de cerrar la app de golpe.
+  if (isNativeApp()) installBackButton(/** @type {any} */ (window).Capacitor);
   const view = /** @type {HTMLElement} */ (document.getElementById('view'));
   const session = await signIn(view);
   const databaseName = session ? resolveDatabaseName(localStorageOrNull(), session.user.id) : undefined;

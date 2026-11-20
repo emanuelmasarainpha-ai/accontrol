@@ -5,6 +5,7 @@
 //                           ~/.accontrol-firma/ (accontrol.jks + firma.properties con la contraseña).
 //                           ⚠ Haz una copia de esa carpeta (por ejemplo en una memoria USB). Si se pierde,
 //                           los teléfonos que ya tienen ACCONTROL no podrán recibir versiones nuevas.
+//   npm run android:iconos  Rehace los íconos y la pantalla de arranque de Android desde icons/ (tools/MakeAndroidIcons.java).
 //   npm run android:apk     Prepara la app, crea el APK firmado y lo copia al Escritorio
 //                           como ACCONTROL-<versión>.apk.
 //
@@ -100,6 +101,7 @@ function makeApk() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     if (process.argv[2] === 'firma') makeFirma();
+    else if (process.argv[2] === 'iconos') run(`"${join(javaHome(), 'bin', 'java')}"`, ['tools/MakeAndroidIcons.java'], { cwd: ROOT });
     else makeApk();
   } catch (error) {
     console.error(`\n✖ ${error instanceof Error ? error.message : error}`);

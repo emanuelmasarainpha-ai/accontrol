@@ -13,10 +13,14 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- ACCONTROL: mientras la página carga, las franjas de arriba y abajo van moradas (no blancas). -->
+        <item name="android:windowBackground">@color/ic_launcher_background</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- ACCONTROL: Android 12 o más nuevo pinta su propia pantalla de arranque con este color y el ícono de la app. -->
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
     </style>
 </resources>

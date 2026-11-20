@@ -2,6 +2,7 @@
   "appId": "com.accontrol.app",
   "appName": "ACCONTROL",
   "webDir": "dist",
+  "backgroundColor": "#34204f",
   "android": {
     "allowMixedContent": false,
     "webContentsDebuggingEnabled": false

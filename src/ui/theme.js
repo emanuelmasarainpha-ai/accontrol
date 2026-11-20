@@ -10,6 +10,8 @@
 // · Lo que cambia los colores es <html data-theme="dark"> (tokens.css, «el billete de noche»).
 // =============================================================================
 
+import { applyStatusBar } from '../app/nativeShell.js';
+import { isNativeApp } from '../app/platform.js';
 import { html, setHtml } from './html.js';
 
 export const THEME_KEY = 'accontrol.theme.v1';
@@ -105,6 +107,12 @@ export function setTheme(theme, storage = defaultStorage()) {
   const deep = getComputedStyle(document.body).getPropertyValue('--kind-deep').trim();
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta && deep) meta.setAttribute('content', deep);
+  syncNativeStatusBar();
+}
+
+/** En la app de Android, los iconos de la barra de estado siguen el tema de ACCONTROL (no el del teléfono). */
+function syncNativeStatusBar() {
+  if (isNativeApp()) applyStatusBar(/** @type {any} */ (window).Capacitor, currentTheme());
 }
 
 let installed = false;
@@ -113,6 +121,7 @@ let installed = false;
 export function installThemeToggle() {
   document.documentElement.dataset.theme = readTheme();
   syncToggles();
+  syncNativeStatusBar();
   if (installed) return;
   installed = true;
   document.addEventListener('click', (event) => {
