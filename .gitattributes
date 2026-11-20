@@ -1,4 +1,2 @@
-# Los archivos de texto se guardan con saltos de línea LF (como ya están), también en Windows.
-* text=auto eol=lf
-*.png binary
-*.woff2 binary
+# Los archivos .bat de Windows necesitan fin de línea CRLF (gradlew.bat de Android)
+*.bat text eol=crlf
