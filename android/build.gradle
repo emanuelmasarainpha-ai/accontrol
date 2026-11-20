@@ -22,6 +22,13 @@ allprojects {
         google()
         mavenCentral()
     }
+    // ACCONTROL: en Windows, lo que se genera al compilar va FUERA de la carpeta del proyecto.
+    // El proyecto vive en el Escritorio, que OneDrive sincroniza: OneDrive abre esos archivos
+    // mientras se copian y Gradle ya no puede borrarlos («Unable to delete directory ...»).
+    def localAppData = System.getenv('LOCALAPPDATA')
+    if (localAppData) {
+        layout.buildDirectory = new File(localAppData, "accontrol-android-build/${project.name}")
+    }
 }
 
 task clean(type: Delete) {

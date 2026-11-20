@@ -50,6 +50,11 @@ describe('proyecto de Android', () => {
     const major = Number(/gradle-(\d+)\./.exec(wrapper)?.[1]);
     assert.ok(major >= 9, `Gradle ${major}`);
   });
+  it('en Windows compila fuera de OneDrive (OneDrive bloquea los archivos y Gradle no los puede borrar)', () => {
+    const build = readFileSync(new URL('../android/build.gradle', import.meta.url), 'utf8');
+    assert.ok(build.includes("System.getenv('LOCALAPPDATA')"));
+    assert.ok(build.includes('layout.buildDirectory = new File(localAppData, "accontrol-android-build/'));
+  });
   it('ninguna llave secreta dentro de la configuración nativa', () => {
     const text = JSON.stringify(config) + manifest;
     assert.doesNotMatch(text, /service_role|sb_secret_/i);
