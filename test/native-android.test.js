@@ -45,6 +45,11 @@ describe('proyecto de Android', () => {
     assert.deepEqual(perms, ['android.permission.CAMERA', 'android.permission.INTERNET']);
     assert.match(manifest, /android\.hardware\.camera" android:required="false"/);
   });
+  it('Gradle 9 o más nuevo (el Java 25 de Android Studio no funciona con Gradle 8)', () => {
+    const wrapper = readFileSync(new URL('../android/gradle/wrapper/gradle-wrapper.properties', import.meta.url), 'utf8');
+    const major = Number(/gradle-(\d+)\./.exec(wrapper)?.[1]);
+    assert.ok(major >= 9, `Gradle ${major}`);
+  });
   it('ninguna llave secreta dentro de la configuración nativa', () => {
     const text = JSON.stringify(config) + manifest;
     assert.doesNotMatch(text, /service_role|sb_secret_/i);

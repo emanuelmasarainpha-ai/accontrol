@@ -241,7 +241,7 @@ accontrol/
 ACCONTROL hoy es una **PWA** (una web que se instala en el teléfono). En la 0.18.0 se convierte también en **app nativa de Android**: la misma app, envuelta con **Capacitor** (una herramienta que mete la app web dentro de una app de Android de verdad). Las pantallas, la lógica y la nube son las mismas.
 
 - **Hecho (paso 1):** proyecto de Android en `android/` (`capacitor.config.json`, identificador `com.accontrol.app`), permiso de cámara para el lector de códigos, sin copia automática de Android (tus datos financieros no salen por ahí), sin modo sin conexión de la web dentro de la app (los archivos ya vienen dentro) y enlaces de correo que vuelven a la dirección principal de Supabase.
-- **Todavía NO probado en un teléfono:** falta instalar Android Studio y crear el instalador (APK). Hasta entonces no se puede decir que la app de Android funcione.
+- **Probado solo en el emulador:** el instalador de prueba (APK) se crea con `npm run android` y luego `cd android && gradlew.bat assembleDebug` (con `JAVA_HOME` apuntando al Java de Android Studio). En el emulador instala, abre y muestra la pantalla de entrada. **Falta probarlo en un teléfono real** (entrar, nube, caja, cámara).
 - **Pendiente dentro de la app de Android:** descargar la copia de seguridad y los reportes, e imprimir el ticket (el navegador interno de Android no lo hace solo). Mientras tanto, se hacen desde la app web.
 - **Tus datos:** la app de Android guarda sus datos aparte de los del navegador. Para tenerlos en las dos, usa la copia en la nube (entra con la misma cuenta).
 - **iPhone y escritorio:** después; iPhone necesita una Mac o un servicio en la nube.
