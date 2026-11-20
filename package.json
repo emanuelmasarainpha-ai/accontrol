@@ -10,9 +10,14 @@
     "typecheck": "tsc -p jsconfig.json",
     "precache": "node tools/make-precache.mjs",
     "roles-css": "node tools/make-roles-css.mjs",
-    "build": "node tools/build.mjs"
+    "build": "node tools/build.mjs",
+    "android": "npm run build && npx cap sync android",
+    "android:abrir": "npx cap open android"
   },
   "devDependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/cli": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
     "typescript": "~6.0.3"
   },
   "engines": {

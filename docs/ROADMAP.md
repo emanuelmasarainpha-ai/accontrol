@@ -71,11 +71,22 @@ Hoy, el espacio Emprendedor tiene su pantalla *Resultados* y su panel en *Inicio
 | 0.17.3 ✅ | **Caja con productos grandes:** tarjetas con la foto a todo lo ancho (≈175 px en la computadora, ≈155 px en el celular en 2 columnas; antes 88 px), nombre y precio más grandes; fotos nuevas a 256 px. Navegador real: medidas comprobadas en computadora y celular, caja 24 de 24, ticket 15 de 15, contraste 40 de 40. |
 | 0.17.4 ✅ | **Un espacio de cada tipo y menú «Añadir» renovado:** cada cuenta puede ser dueña de un solo espacio de cada tipo (`ownedWorkspaceOfKind`, `availableKinds`; los compartidos contigo no cuentan; los repetidos de antes se conservan; la regla está en la app, no en la base de datos), y el menú «Añadir» con Ingreso y Gasto en tarjetas grandes, filas con el color del espacio, la sección «Tu negocio» y solo lo que el rol permite; el monto, protagonista en el formulario de ingreso y gasto. 6 pruebas nuevas (`test/one-of-each.test.js`) y 4 ajustadas; navegador real 13 de 13 (menú en claro y oscuro con contraste AA, monto grande, atajo a la caja, tipos desactivados, aviso con los 4) y los anteriores sin cambios (caja 24, fiado 20, productos 20, recorrido 149, oscuro 45). |
 | 0.17.5 ✅ | **Oferta por cantidad («2 por RD$15»):** opcional por producto (`packQty`, `packPriceCents`; columnas `pack_qty` y `pack_price_cents`, migración `20261120000100_product_pack`). En la caja, los grupos completos a precio de oferta y lo que sobra al precio normal (`lineSegments`), exacto al centavo (si no se divide exacto, dos líneas que suman justo la oferta), con el ahorro a la vista; la factura no pasa de 30 líneas contando las de las ofertas; un precio puesto a mano quita la oferta de esa línea. 12 pruebas nuevas (`test/pack-price.test.js`, una revisa todas las cantidades de 1 a 200 con 5 ofertas) y 8 ajustadas; navegador real 16 de 16 (formulario, celular, caja, contraste AA claro y oscuro, factura) y los anteriores sin cambios (caja 24, productos 20, ticket 15, fiado 20, contraste 40, recorrido 149). |
-| 0.18.0 | IA financiera real (con la clave protegida en un servidor) y notificaciones. |
-| 0.19.0 | Panel administrativo, versión premium y pagos. |
-| 0.20.0 | Conexión con bancos. |
-| 0.21.0 | Aplicaciones nativas (Android, iOS, escritorio). |
+| 0.18.0 🟡 | **App nativa de Android** (adelantada a petición; antes era la 0.21.0): la misma app envuelta con Capacitor. Ver «Plan de la 0.18.0». |
+| 0.19.0 | IA financiera real (con la clave protegida en un servidor) y notificaciones. |
+| 0.20.0 | Panel administrativo, versión premium y pagos. |
+| 0.21.0 | Conexión con bancos. |
+| 0.22.0 | Aplicaciones nativas de iOS y escritorio. |
 | **1.0.0** | **La final**: todo lo anterior, con la base de datos y las cuentas. |
+
+### Plan de la 0.18.0 (app nativa de Android)
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 1 | **Proyecto de Android con Capacitor 7** (`android/`, `capacitor.config.json`, `npm run android`). `webDir` = `dist` (solo archivos públicos). Permisos: internet y cámara (no obligatoria). `allowBackup="false"` (los datos financieros no van a la copia automática de Android). Depuración externa apagada. En la app nativa no se registra el Service Worker y los correos no llevan `redirect_to` (`src/app/platform.js`). Pruebas: `test/native-android.test.js`. | ✅ Hecho (pruebas y tipos; **sin probar en teléfono**) |
+| 2 | Instalar **Android Studio** (lo hace la persona) y crear el primer APK de prueba; abrirlo en el teléfono: entrar, sincronizar con la nube, caja, cámara. | Pendiente |
+| 3 | **Descargas e impresión dentro de la app:** copia de seguridad, reportes (PDF, Excel, CSV) y ticket, con «Compartir» de Android. | Pendiente |
+| 4 | **Ícono y pantalla de arranque** propios de ACCONTROL (hoy son los de Capacitor), barra de estado con el color de la app y botón «atrás» de Android. | Pendiente |
+| 5 | Prueba real completa, APK firmado (con la llave guardada fuera del repositorio) y, si se quiere, ficha en Google Play (USD 25 una vez). | Pendiente |
 
 ### Plan de la caja (0.16.2 a 0.17.2)
 
@@ -142,7 +153,7 @@ Decisión acordada (2026-11-14): en vez de añadir más roles fijos (cajero, emp
 
 ### Cómo se llega a Android, iOS y escritorio sin rehacer todo
 
-- **Hoy:** la PWA ya se instala en Android (con HTTPS).
+- **Hoy:** la PWA ya se instala en Android (con HTTPS). La app nativa de Android está en camino (0.18.0, Capacitor).
 - **Etapa 6:** la misma app web se empaqueta como app nativa con una herramienta de envoltorio (por ejemplo Capacitor para Android/iOS; Tauri o Electron para escritorio). La lógica (`domain/`), los datos (`data/`) y las pantallas se reutilizan; lo nuevo son permisos, íconos de tienda y notificaciones.
 - iOS: compilar y publicar requiere una Mac o un servicio de compilación en la nube, además de la cuenta de desarrollador de Apple.
 

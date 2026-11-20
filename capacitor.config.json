@@ -1,0 +1,9 @@
+{
+  "appId": "com.accontrol.app",
+  "appName": "ACCONTROL",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  }
+}

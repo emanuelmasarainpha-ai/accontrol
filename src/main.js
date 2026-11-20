@@ -14,6 +14,7 @@
 import { createAccountApi } from './app/accountApi.js';
 import { startApp } from './app/app.js';
 import { createTourMemory, LOCAL_ACCOUNT } from './app/tourMemory.js';
+import { emailReturnAddress, isNativeApp } from './app/platform.js';
 import { runAuthGate } from './app/authGate.js';
 import { createStore } from './app/store.js';
 import { createAuthClient, SESSION_KEY } from './auth/authClient.js';
@@ -79,9 +80,11 @@ function protectStorageWhenThereIsData(store) {
 /**
  * El Service Worker hace que la app abra sin internet y sea instalable.
  * Solo existe en páginas seguras (https o localhost).
+ * En la app nativa (Android) no hace falta: los archivos ya vienen dentro de la app y las
+ * versiones nuevas llegan al instalar la app actualizada, no por el aviso de «versión nueva».
  */
 function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
+  if (isNativeApp() || !('serviceWorker' in navigator)) return;
   const register = () => {
     navigator.serviceWorker.register('sw.js').catch((error) => {
       console.warn('No se pudo activar el modo sin conexión:', error);
@@ -113,9 +116,9 @@ function keepTabsInSync(store, databaseName) {
   return () => channel?.postMessage('changed');
 }
 
-/** Dirección a la que vuelven los enlaces de los correos: esta misma página, sin la parte "#…". */
+/** Dirección a la que vuelven los enlaces de los correos: esta misma página, sin la parte "#…" (vacía en la app nativa). */
 function appAddress() {
-  return `${window.location.origin}${window.location.pathname}`;
+  return emailReturnAddress(window.location, isNativeApp());
 }
 
 /** Quita de la barra de direcciones lo que dejó un enlace de correo (contiene tokens: no debe quedarse a la vista). */
