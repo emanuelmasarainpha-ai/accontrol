@@ -12,7 +12,9 @@
     "roles-css": "node tools/make-roles-css.mjs",
     "build": "node tools/build.mjs",
     "android": "npm run build && npx cap sync android",
-    "android:abrir": "npx cap open android"
+    "android:abrir": "npx cap open android",
+    "android:firma": "node tools/android-apk.mjs firma",
+    "android:apk": "node tools/android-apk.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.6.2",

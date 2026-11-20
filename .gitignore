@@ -19,3 +19,8 @@ accontrol-respaldo*.json
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Firma de Android: SECRETA. Vive en ~/.accontrol-firma, nunca en el proyecto
+*.jks
+*.keystore
+firma.properties

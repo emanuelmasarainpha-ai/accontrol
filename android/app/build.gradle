@@ -1,4 +1,17 @@
 apply plugin: 'com.android.application'
+import groovy.json.JsonSlurper
+
+// ACCONTROL: la versión sale de package.json (una sola fuente). versionCode crece solo:
+// 0.17.5 -> 1705, 1.0.0 -> 10000. Android solo instala encima si el número es mayor.
+def appVersion = new JsonSlurper().parse(rootProject.file('../package.json')).version
+def versionParts = appVersion.tokenize('.').collect { it.toInteger() }
+def appVersionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
+
+// ACCONTROL: la firma de las versiones para instalar vive FUERA del proyecto y de OneDrive
+// (~/.accontrol-firma/firma.properties, la crea `npm run android:firma`). Nunca se sube a GitHub.
+def firmaFile = new File(System.getProperty('user.home'), '.accontrol-firma/firma.properties')
+def firma = new Properties()
+if (firmaFile.exists()) { firmaFile.withInputStream { firma.load(it) } }
 
 android {
     namespace = "com.accontrol.app"
@@ -7,8 +20,8 @@ android {
         applicationId "com.accontrol.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +29,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // ACCONTROL: sin la revisión «lint» al crear el APK final. OneDrive convierte los archivos de
+    // assets/public en marcadores (ReparsePoint) y lint no los puede leer («not a regular file»).
+    // La app es web: lint revisa código Java/Kotlin de Android, que aquí es el de Capacitor.
+    lint {
+        checkReleaseBuilds = false
+    }
+    signingConfigs {
+        if (firmaFile.exists()) {
+            release {
+                storeFile new File(firmaFile.parentFile, firma.getProperty('storeFile'))
+                storePassword firma.getProperty('storePassword')
+                keyAlias firma.getProperty('keyAlias')
+                keyPassword firma.getProperty('keyPassword')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (firmaFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

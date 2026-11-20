@@ -60,3 +60,26 @@ describe('proyecto de Android', () => {
     assert.doesNotMatch(text, /service_role|sb_secret_/i);
   });
 });
+
+describe('APK para instalar (firmado)', async () => {
+  const { apkName } = await import('../tools/android-apk.mjs');
+  const gitignore = readFileSync(new URL('../.gitignore', import.meta.url), 'utf8');
+  const appGradle = readFileSync(new URL('../android/app/build.gradle', import.meta.url), 'utf8');
+
+  it('el archivo lleva la versión de la app', () => {
+    assert.equal(apkName('0.17.5'), 'ACCONTROL-0.17.5.apk');
+    assert.throws(() => apkName('1.0'));
+    assert.throws(() => apkName('../../x'));
+  });
+  it('la firma nunca entra al repositorio', () => {
+    for (const line of ['*.jks', '*.keystore', 'firma.properties']) assert.ok(gitignore.split(/\r?\n/).includes(line), line);
+  });
+  it('la firma se lee de fuera del proyecto, sin contraseñas escritas en el código', () => {
+    assert.ok(appGradle.includes("'.accontrol-firma/firma.properties'"));
+    assert.doesNotMatch(appGradle, /storePassword\s+['"]/);
+  });
+  it('la versión de Android sale de package.json y crece sola', () => {
+    assert.ok(appGradle.includes('versionCode appVersionCode'));
+    assert.ok(appGradle.includes('versionName appVersion'));
+  });
+});
