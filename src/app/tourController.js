@@ -39,13 +39,19 @@ export function tourToOffer({ ready, kind, busy, dialogOpen, memory }) {
   return kind;
 }
 
+/** La pantalla y su sección que se ven ahora («ajustes/almacenamiento»), sin «#/» ni lo que va tras «?». */
+function currentPath() {
+  return window.location.hash.replace(/^#\/?/, '').split('?')[0] ?? '';
+}
+
 /**
  * Va a una pantalla y espera a que la app la dibuje.
  * @param {string} route
  * @returns {Promise<void>}
  */
 export function navigateTo(route) {
-  if (routeFromHash(window.location.hash) === route) return Promise.resolve();
+  // La pantalla y su sección (0.18.1: «ajustes/almacenamiento»), sin «#/» ni lo que va tras «?».
+  if (currentPath() === route) return Promise.resolve();
   return new Promise((resolve) => {
     const done = () => {
       window.clearTimeout(timer);
@@ -84,7 +90,9 @@ export function createTourController({ store, memory }) {
    */
   function launch(kind, guide, withWelcome) {
     busy = true;
-    const startRoute = routeFromHash(window.location.hash);
+    // Se vuelve a la misma pantalla y sección (0.18.1: «ajustes/general»), o a Inicio si la dirección no es de la app.
+    const here = currentPath();
+    const startRoute = here !== '' && routeFromHash(window.location.hash) === here.split('/')[0] ? here : routeFromHash(window.location.hash);
     runTour({
       label: `Recorrido por tu espacio ${KIND_INFO[kind].label}`,
       steps: stepsFor(kind).map((s) => ({ title: s.title, text: s.text, route: s.route, selectors: selectorsFor(s.target), mood: s.mood })),
@@ -96,7 +104,7 @@ export function createTourController({ store, memory }) {
         memory.mark(kind, reason, nowISO());
         busy = false;
         void navigateTo(startRoute);
-        if (reason === 'skipped') toast('Puedes ver el recorrido cuando quieras en Ajustes.');
+        if (reason === 'skipped') toast('Puedes ver el recorrido cuando quieras en Ajustes → General.');
       },
     });
   }
@@ -136,7 +144,7 @@ export function createTourController({ store, memory }) {
       launch(kind, null, false);
     } else {
       memory.mark(kind, 'skipped', nowISO());
-      toast('Puedes ver el recorrido cuando quieras en Ajustes.');
+      toast('Puedes ver el recorrido cuando quieras en Ajustes → General.');
     }
   }
 

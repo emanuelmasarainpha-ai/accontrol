@@ -116,8 +116,9 @@ describe('recorrido guiado: cada paso apunta a algo que existe', () => {
 
   it('la pantalla de cada paso existe y está disponible en un espacio nuevo de ese tipo', () => {
     for (const { kind, step } of allSteps) {
-      assert.ok(routeIds.has(step.route), `${kind}/${step.id}: no existe la pantalla ${step.route}`);
-      assert.ok(routeAvailable(step.route, kind), `${kind}/${step.id}: ${step.route} no está en los espacios ${kind}`);
+      const screen = step.route.split('/')[0];
+      assert.ok(routeIds.has(screen), `${kind}/${step.id}: no existe la pantalla ${step.route}`);
+      assert.ok(routeAvailable(screen, kind), `${kind}/${step.id}: ${step.route} no está en los espacios ${kind}`);
     }
   });
 
@@ -134,7 +135,8 @@ describe('recorrido guiado: cada paso apunta a algo que existe', () => {
           assert.match(finances, new RegExp(`tab\\('${target.subtab}'`), `${where}: no hay pestaña «${target.subtab}»`);
           assert.ok(routeAvailable(target.subtab, kind), `${where}: la pestaña ${target.subtab} no está en los espacios ${kind}`);
         } else {
-          const files = [VIEW_FILES[step.route], ...(VIEW_PARTS[step.route] ?? [])];
+          const screen = step.route.split('/')[0];
+          const files = [VIEW_FILES[screen], ...(VIEW_PARTS[screen] ?? [])];
           assert.ok(files[0], `${where}: falta saber qué archivo dibuja ${step.route}`);
           const found = CHROME_MARKS.has(target.mark) || files.some((file) => marksIn(read(file)).has(target.mark));
           assert.ok(found, `${where}: no hay data-tour="${target.mark}" en ${files.join(', ')} ni en index.html`);

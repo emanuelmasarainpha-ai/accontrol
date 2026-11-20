@@ -152,7 +152,7 @@ function nameStep(kind) {
       <div class="field" data-field="name">
         <label for="onb-name">Nombre del espacio</label>
         <input id="onb-name" name="name" class="input" type="text" maxlength="40" autocomplete="off" value="${suggestWorkspaceName(kind, [])}" aria-describedby="onb-hint name-error" />
-        <p class="hint" id="onb-hint">Puedes cambiarlo después en Ajustes.</p>
+        <p class="hint" id="onb-hint">Puedes cambiarlo después en Ajustes → Espacios y equipo.</p>
         <p class="field__error" id="name-error" data-error-for="name" hidden></p>
       </div>
       <p class="field__error field__error--form" data-error-for="form" role="alert" hidden></p>

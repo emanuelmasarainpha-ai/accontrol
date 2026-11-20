@@ -1,5 +1,5 @@
 {
-  "version": "1359e4e1191e",
+  "version": "c1f24ed9cd8f",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -19,6 +19,7 @@
     "src/app/nativeShell.js",
     "src/app/platform.js",
     "src/app/router.js",
+    "src/app/settingsSections.js",
     "src/app/store.js",
     "src/app/tourController.js",
     "src/app/tourMemory.js",

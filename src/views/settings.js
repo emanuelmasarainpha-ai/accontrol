@@ -26,6 +26,7 @@ import { openCategoryForm } from './forms.js';
 import { openOrganizationForm, workspaceDetailsPanel } from './organization.js';
 import { runWorkspaceAction, workspacesPanel } from './workspaces.js';
 import { saveFile } from '../ui/saveFile.js';
+import { sectionFromParams, visibleSections } from '../app/settingsSections.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 
@@ -84,6 +85,32 @@ export function tourPanel(workspace, available) {
   </section>`;
 }
 
+/** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
+const VERSION_NOTE = 'Ajustes por secciones';
+
+/**
+ * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.
+ * @param {import('../app/settingsSections.js').SettingsSection[]} sections
+ */
+export function settingsMenu(sections) {
+  return html`<header class="page-header">
+      <div>
+        <h1 class="page-title">Ajustes</h1>
+        <p class="page-subtitle">Tu perfil, tus datos y cómo se protegen.</p>
+      </div>
+    </header>
+    <nav class="settings-menu" aria-label="Secciones de Ajustes">
+      <ul class="settings-menu__list">${sections.map(
+        (s) => html`<li><a class="settings-menu__item" href="#/ajustes/${s.id}" data-settings-section="${s.id}">
+          <span class="settings-menu__icon" aria-hidden="true">${icon(s.icon, 22)}</span>
+          <span class="settings-menu__text"><span class="settings-menu__title">${s.title}</span><span class="settings-menu__summary">${s.summary}</span></span>
+          <span class="settings-menu__chev" aria-hidden="true">›</span>
+        </a></li>`,
+      )}</ul>
+    </nav>
+    <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · ${VERSION_NOTE}</p>`;
+}
+
 /**
  * @param {Store} store
  * @param {import('../app/app.js').ViewContext} [ctx]
@@ -121,17 +148,8 @@ export function renderSettings(store, ctx) {
 
   const counts = `${plural(data.movements.length, 'movimiento', 'movimientos')}, ${plural(data.goals.length, 'meta', 'metas')} y ${plural(data.contributions.length, 'aporte', 'aportes')}`;
 
-  const page = html`
-    <header class="page-header">
-      <div>
-        <h1 class="page-title">Ajustes</h1>
-        <p class="page-subtitle">Tu perfil, tus datos y cómo se protegen.</p>
-      </div>
-    </header>
-
-    ${accountPanel(account)}
-
-    <section class="panel" aria-labelledby="set-profile">
+  // ---- Cada bloque de Ajustes (0.18.1: se reparten en secciones, ver app/settingsSections.js) ----------------
+  const profileBlock = html`<section class="panel" aria-labelledby="set-profile">
       <h2 class="panel__title" id="set-profile">Perfil</h2>
       <form class="stack" data-form="profile" novalidate>
         <div class="field" data-field="displayName">
@@ -152,19 +170,9 @@ export function renderSettings(store, ctx) {
         <p class="field__error field__error--form" data-error-for="form" role="alert" hidden></p>
         <div class="actions"><button type="submit" class="btn btn--primary">Guardar perfil</button></div>
       </form>
-    </section>
+    </section>`;
 
-    ${tourPanel(workspace, ctx?.tour.available() ?? false)}
-
-    ${devicePanel({ vibration: vibrationEnabled(), canVibrate: canVibrate(), theme: currentTheme() })}
-
-    ${workspacesPanel(store, { canShare: Boolean(sync) })}
-
-    ${workspaceDetailsPanel(store)}
-
-    ${membersPanel(store, sync)}
-
-    <section class="panel" aria-labelledby="set-cats">
+  const categoriesBlock = html`<section class="panel" aria-labelledby="set-cats">
       <div class="panel__head">
         <h2 class="panel__title" id="set-cats">Categorías</h2>
         <button type="button" class="btn btn--ghost btn--small" data-action="cat-new">${icon('plus', 16)}Nueva categoría</button>
@@ -174,11 +182,9 @@ export function renderSettings(store, ctx) {
         <div><h3 class="indicator-group__title">${TYPE_LABELS.expense}s</h3>${categoryList('expense')}</div>
         <div><h3 class="indicator-group__title">${TYPE_LABELS.income}s</h3>${categoryList('income')}</div>
       </div>
-    </section>
+    </section>`;
 
-${cloudPanel(sync)}
-
-    <section class="panel" aria-labelledby="set-backup" data-tour="settings-backup">
+  const backupBlock = html`<section class="panel" aria-labelledby="set-backup" data-tour="settings-backup">
       <h2 class="panel__title" id="set-backup">Copia de seguridad</h2>
       <p>«${workspaceName}» guarda ${counts}. Exportar crea un archivo; importarlo en otro dispositivo (o después de un borrado) lo restaura.</p>
       <div class="actions actions--start">
@@ -193,9 +199,9 @@ ${cloudPanel(sync)}
         ? html`La copia de <strong>este espacio</strong> solo trae «${workspaceName}»; la <strong>completa</strong> trae todos tus espacios y tu nombre. Al importar te digo qué va a reemplazar antes de tocar nada.`
         : html`Importar <strong>reemplaza</strong> lo que hay ahora en este espacio, y antes te pido confirmación.`}
         El archivo no está cifrado: guárdalo en un lugar seguro.</p>
-    </section>
+    </section>`;
 
-    <section class="panel" aria-labelledby="set-privacy">
+  const privacyBlock = html`<section class="panel" aria-labelledby="set-privacy">
       <h2 class="panel__title" id="set-privacy">Privacidad y seguridad de tus datos</h2>
       <ul class="plain-list">
         <li><strong>Dónde están:</strong> ${cloudOn
@@ -208,9 +214,9 @@ ${cloudPanel(sync)}
         <li><strong>Dispositivos:</strong> ${cloudOn ? 'tus dispositivos con esta cuenta comparten los datos a través de la nube: lo que cambias en uno llega a los otros. Si el mismo dato cambió en dos, se queda el cambio más reciente y la app te avisa.' : 'tu computadora y tu celular guardan datos separados. Para pasar datos de uno a otro usa la copia de seguridad.'}</li>
       </ul>
       <p class="storage-status" id="storage-status" role="status">Comprobando el almacenamiento…</p>
-    </section>
+    </section>`;
 
-    <section class="panel" aria-labelledby="set-demo">
+  const demoBlock = html`<section class="panel" aria-labelledby="set-demo">
       <h2 class="panel__title" id="set-demo">Datos de demostración</h2>
       <p>${workspace && (workspace.kind === 'entrepreneur' || workspace.kind === 'company') ? 'Datos inventados de una tienda (ventas, gastos y su inventario con productos, proveedores y movimientos de stock' + (workspace.kind === 'company' ? ', más un préstamo y un equipo' : '') + ')' : 'Datos inventados (de una persona, no de un negocio)'} para que veas la app llena en «${workspaceName}». Todos llevan la etiqueta ${demoBadge()}. Mientras estén cargados cuentan en tus totales; al borrarlos no se toca nada de lo tuyo.</p>
       <div class="actions actions--start">
@@ -218,26 +224,54 @@ ${cloudPanel(sync)}
           ? html`<button type="button" class="btn btn--ghost" data-action="remove-demo">Borrar demostración</button>`
           : html`<button type="button" class="btn btn--ghost" data-action="load-demo">Cargar datos de demostración</button>`}
       </div>
-    </section>
+    </section>`;
 
-    <section class="panel panel--danger" aria-labelledby="set-danger">
+  const dangerBlock = html`<section class="panel panel--danger" aria-labelledby="set-danger">
       <h2 class="panel__title" id="set-danger">Borrar todo</h2>
-      <p>${cloudOn ? html`<strong>Tienes la copia en la nube activada.</strong> «Borrar de este dispositivo» deja tus datos en la nube y apaga la sincronización aquí; «Borrar de todos mis dispositivos» los borra también de la nube (necesita conexión). ` : ''}Elimina de este dispositivo <strong>todos tus espacios de trabajo</strong> con sus movimientos, metas, aportes, deudas, activos, categorías propias y ajustes. Al terminar volverás a la pantalla de elegir modalidad. No se puede deshacer; exporta una copia antes si quieres conservarlos. (Para borrar un solo espacio usa «Espacios de trabajo», arriba.)</p>
+      <p>${cloudOn ? html`<strong>Tienes la copia en la nube activada.</strong> «Borrar de este dispositivo» deja tus datos en la nube y apaga la sincronización aquí; «Borrar de todos mis dispositivos» los borra también de la nube (necesita conexión). ` : ''}Elimina de este dispositivo <strong>todos tus espacios de trabajo</strong> con sus movimientos, metas, aportes, deudas, activos, categorías propias y ajustes. Al terminar volverás a la pantalla de elegir modalidad. No se puede deshacer; exporta una copia antes si quieres conservarlos. (Para borrar un solo espacio, ve a Ajustes → «Espacios y equipo».)</p>
       <div class="actions actions--start">
         ${clearAllActions(sync)}
       </div>
-    </section>
+    </section>`;
 
-    ${accountDangerPanel(account)}
-
-    <section class="panel" aria-labelledby="set-next">
+  const nextBlock = html`<section class="panel" aria-labelledby="set-next">
       <h2 class="panel__title" id="set-next">Qué viene</h2>
       <ol class="roadmap">${ROADMAP.map(
         (r) => html`<li class="roadmap__item${r.current ? ' roadmap__item--current' : ''}${r.done ? ' roadmap__item--done' : ''}"><span class="roadmap__stage">${r.stage}</span><span>${r.text}</span></li>`,
       )}</ol>
-      <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · Oferta por cantidad («2 por RD$15») en la caja</p>
-    </section>
-  `;
+      <p class="panel__foot">ACCONTROL · versión ${APP_VERSION} · ${VERSION_NOTE}</p>
+    </section>`;
+
+  /** @type {Record<import('../app/settingsSections.js').SettingsBlock, unknown>} */
+  const blocks = {
+    account: accountPanel(account),
+    profile: profileBlock,
+    device: devicePanel({ vibration: vibrationEnabled(), canVibrate: canVibrate(), theme: currentTheme() }),
+    tour: tourPanel(workspace, ctx?.tour.available() ?? false),
+    categories: categoriesBlock,
+    workspaces: workspacesPanel(store, { canShare: Boolean(sync) }),
+    details: workspaceDetailsPanel(store),
+    members: membersPanel(store, sync),
+    cloud: cloudPanel(sync),
+    backup: backupBlock,
+    demo: demoBlock,
+    danger: dangerBlock,
+    accountDanger: accountDangerPanel(account),
+    privacy: privacyBlock,
+    next: nextBlock,
+  };
+  const sectionOptions = { hasAccount: account !== null };
+  const section = sectionFromParams(ctx?.params ?? [], sectionOptions);
+  const page = section
+    ? html`<header class="page-header">
+        <div>
+          <a class="back-link" href="#/ajustes">${icon('back', 16)}Ajustes</a>
+          <h1 class="page-title">${section.title}</h1>
+          <p class="page-subtitle">${section.summary}</p>
+        </div>
+      </header>
+      ${section.blocks.map((b) => blocks[b])}`
+    : settingsMenu(visibleSections(sectionOptions));
 
   return {
     html: page,

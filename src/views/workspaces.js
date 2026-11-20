@@ -66,7 +66,7 @@ export function openWorkspaceMenu(store) {
         ${workspaces.map((w) => workspaceOption(w, w.id === activeWorkspaceId))}
       </ul>
       <div class="actions actions--split">
-        <a class="btn btn--ghost" href="#/ajustes" data-close>Administrar espacios</a>
+        <a class="btn btn--ghost" href="#/ajustes/espacios" data-close>Administrar espacios</a>
         <button type="button" class="btn btn--primary" data-new-workspace>${icon('plus', 18)}Crear otro espacio</button>
       </div>
     </div>`,

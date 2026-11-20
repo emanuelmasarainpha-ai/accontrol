@@ -31,7 +31,7 @@
 /**
  * @typedef {Object} TourStep
  * @property {string} id
- * @property {string} route          Pantalla a la que se navega antes de mostrar el paso.
+ * @property {string} route          Pantalla a la que se navega antes de mostrar el paso (con sección si hace falta: «ajustes/almacenamiento»).
  * @property {TourTarget[]} target   Elementos posibles, en orden de preferencia.
  * @property {string} title
  * @property {string} text           Explicación corta (máximo 220 caracteres).
@@ -216,7 +216,7 @@ const COMMON = {
   /** @type {TourStep} */
   organization: {
     id: 'organization',
-    route: 'ajustes',
+    route: 'ajustes/espacios',
     target: [{ mark: 'settings-organization' }],
     title: 'Datos para tus reportes',
     mood: 'point',
@@ -226,7 +226,7 @@ const COMMON = {
   /** @type {TourStep} */
   backup: {
     id: 'backup',
-    route: 'ajustes',
+    route: 'ajustes/almacenamiento',
     target: [{ mark: 'settings-backup' }],
     title: 'Copia de seguridad',
     mood: 'point',

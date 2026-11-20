@@ -231,7 +231,7 @@ export async function askAboutCloudOnce(sync, ready = () => true) {
     cancelLabel: 'Ahora no',
   });
   if (!yes) return 'done';
-  window.location.hash = '#/ajustes';
+  window.location.hash = '#/ajustes/almacenamiento';
   // Cuando Ajustes esté dibujado, se lleva la vista a la sección.
   setTimeout(() => document.getElementById('cloud-panel')?.scrollIntoView({ block: 'start' }), 350);
   return 'done';
