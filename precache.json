@@ -1,5 +1,5 @@
 {
-  "version": "f41667d714b2",
+  "version": "632db98f3c9a",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -15,6 +15,7 @@
     "src/app/app.js",
     "src/app/authGate.js",
     "src/app/celebrations.js",
+    "src/app/nativeFiles.js",
     "src/app/platform.js",
     "src/app/router.js",
     "src/app/store.js",
@@ -82,6 +83,7 @@
     "src/export/pdf-metrics.js",
     "src/export/pdf.js",
     "src/export/reports.js",
+    "src/export/ticketPdf.js",
     "src/export/xlsx.js",
     "src/export/zip.js",
     "src/main.js",
@@ -120,6 +122,7 @@
     "src/ui/icons.js",
     "src/ui/image.js",
     "src/ui/passwordToggle.js",
+    "src/ui/saveFile.js",
     "src/ui/theme.js",
     "src/ui/ticket.js",
     "src/ui/toast.js",

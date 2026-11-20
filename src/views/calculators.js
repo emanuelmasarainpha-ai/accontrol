@@ -13,7 +13,8 @@
 import {
   CALCULATORS, calculatorById, computeCalculator, defaultValues, resolveMode, suggestions,
 } from '../domain/calculators.js';
-import { downloadFile, isExportFormat, makeFile } from '../export/index.js';
+import { isExportFormat, makeFile } from '../export/index.js';
+import { saveFile } from '../ui/saveFile.js';
 import { cellText, isNumericCell } from '../export/model.js';
 import { calculatorReport } from '../export/reports.js';
 import { columnChart } from '../ui/charts.js';
@@ -339,8 +340,7 @@ function renderOne(store, ctx, calc) {
           if (!isExportFormat(format) || !outcome) return;
           try {
             const file = makeFile(calculatorReport(calc.title, outcome, store.today()), format, store.now());
-            downloadFile(file);
-            toast(`Se descargó ${file.filename}.`, 'info');
+            void saveFile(file, { done: `Listo: ${file.filename}.` });
           } catch (error) {
             toast('No se pudo crear el archivo. Intenta de nuevo.', 'error');
             console.error(error);

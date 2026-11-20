@@ -13,7 +13,8 @@ import { STOCK_KIND_LABELS } from '../domain/inventory.js';
 import { invoiceLabel } from '../domain/invoices.js';
 import { formatMoney } from '../domain/money.js';
 import { GRANULARITIES } from '../domain/summaries.js';
-import { downloadFile, isExportFormat, makeFile } from '../export/index.js';
+import { isExportFormat, makeFile } from '../export/index.js';
+import { saveFile } from '../ui/saveFile.js';
 import { amortizationReport, clientsReport, debtsReport, departmentsReport, diagnosisReport, healthReport, inventoryReport, invoiceReport, invoicesReport, monthReport, netWorthReport, resultsReport, withWorkspaceHeader } from '../export/reports.js';
 import { confirmDialog } from '../ui/dialog.js';
 import { toast } from '../ui/toast.js';
@@ -433,8 +434,7 @@ function runExport(store, element) {
       return;
     }
     const file = makeFile(withWorkspaceHeader(report, store.activeWorkspace()), format, store.now());
-    downloadFile(file);
-    toast(`Se descargó ${file.filename}.`, 'info');
+    void saveFile(file, { done: `Listo: ${file.filename}.` });
   } catch (error) {
     toast('No se pudo crear el archivo. Intenta de nuevo.', 'error');
     console.error(error);

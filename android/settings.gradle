@@ -1,3 +1,9 @@
+// ACCONTROL: el complemento Filesystem pide Java 21 y Android Studio trae Java 25. Con esto Gradle descarga
+// Java 21 (Adoptium) la primera vez y lo guarda en su caché; no hay que instalar nada a mano.
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')

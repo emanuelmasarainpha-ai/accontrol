@@ -4,10 +4,15 @@
 // Arma el ticket (domain/ticket.js) en un bloque propio y abre la ventana de imprimir del navegador. Mientras se imprime,
 // la página marca <html data-print="ticket"> y los estilos de impresión (views.css) esconden todo lo demás y usan papel de
 // 80 mm. Sin impresora, en esa misma ventana se elige «Guardar como PDF».
+// En la app de Android (0.18.0) no hay ventana de imprimir: el ticket sale como PDF de 80 mm (export/ticketPdf.js) y se
+// abre «Compartir» para mandarlo a la app de la impresora, a WhatsApp o a Drive.
 // La gaveta de dinero se abre sola con muchas impresoras al imprimir (se configura en el controlador de la impresora).
 // =============================================================================
 
+import { isNativeApp } from '../app/platform.js';
 import { buildTicket, TICKET_PAPER_MM } from '../domain/ticket.js';
+import { buildTicketPdf, ticketFileName } from '../export/ticketPdf.js';
+import { saveFile } from './saveFile.js';
 import { html, setHtml } from './html.js';
 import { toast } from './toast.js';
 
@@ -50,6 +55,11 @@ export function printTicket(store, invoiceId) {
   if (!invoice) { toast('Esa factura ya no existe.', 'error'); return; }
   const workspace = store.activeWorkspace();
   const ticket = buildTicket(invoice, data.invoicePayments, { workspaceName: workspace?.name ?? '', organization: workspace?.organization ?? null, today: store.today() });
+  if (isNativeApp()) {
+    const file = { filename: ticketFileName(ticket), mime: 'application/pdf', bytes: buildTicketPdf(ticket, { generatedAt: store.now() }) };
+    void saveFile(file, { dialogTitle: 'Imprimir o enviar el ticket' });
+    return;
+  }
   document.getElementById('ticket-print')?.remove();
   const box = document.createElement('div');
   box.id = 'ticket-print';

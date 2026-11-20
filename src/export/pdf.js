@@ -122,7 +122,7 @@ const rgb = (c) => `${num(c[0])} ${num(c[1])} ${num(c[2])}`;
 /** @param {number[]} bytes */
 const hex = (bytes) => bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
 
-class Page {
+export class Page {
   /** @param {number} pageH */
   constructor(pageH) {
     this.pageH = pageH;
@@ -429,7 +429,7 @@ const two = (n) => String(n).padStart(2, '0');
  * @param {Page[]} pages @param {string} title @param {Date} when @param {Geometry} geom
  * @returns {Uint8Array}
  */
-function assemble(pages, title, when, geom) {
+export function assemble(pages, title, when, geom) {
   const created = `D:${when.getUTCFullYear()}${two(when.getUTCMonth() + 1)}${two(when.getUTCDate())}${two(when.getUTCHours())}${two(when.getUTCMinutes())}${two(when.getUTCSeconds())}Z`;
   /** @type {string[]} */
   const objects = [];

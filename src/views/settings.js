@@ -25,6 +25,7 @@ import { membersPanel, runShareAction, watchMembers } from './members.js';
 import { openCategoryForm } from './forms.js';
 import { openOrganizationForm, workspaceDetailsPanel } from './organization.js';
 import { runWorkspaceAction, workspacesPanel } from './workspaces.js';
+import { saveFile } from '../ui/saveFile.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 
@@ -371,18 +372,12 @@ async function deleteCategory(store, id) {
   else toast(result.errors.form ?? 'No se pudo borrar.', 'error');
 }
 
-/** Descarga un texto como archivo. @param {string} fileName @param {string} json */
+/** Guarda la copia de seguridad (descarga en el navegador; «Compartir» en la app de Android). @param {string} fileName @param {string} json */
 function downloadJson(fileName, json) {
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  toast(`Copia exportada: ${fileName}`);
+  void saveFile(
+    { filename: fileName, mime: 'application/json', bytes: new TextEncoder().encode(json) },
+    { done: `Copia exportada: ${fileName}`, dialogTitle: 'Guardar la copia de seguridad' },
+  );
 }
 
 /** @param {Store} store */

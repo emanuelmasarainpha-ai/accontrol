@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ACCONTROL: solo se comparte la carpeta privada «compartir» (copias de seguridad, reportes y tickets que
+     la persona decide enviar). Nada más del teléfono se expone por el FileProvider. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
+    <cache-path name="compartir" path="compartir/" />
 </paths>
