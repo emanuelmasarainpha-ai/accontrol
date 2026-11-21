@@ -16,6 +16,7 @@ import { startApp } from './app/app.js';
 import { createTourMemory, LOCAL_ACCOUNT } from './app/tourMemory.js';
 import { emailReturnAddress, isNativeApp } from './app/platform.js';
 import { installBackButton } from './app/nativeShell.js';
+import { browserTarget, createAutoBackup, nativeTarget } from './app/autoBackup.js';
 import { runAuthGate } from './app/authGate.js';
 import { createStore } from './app/store.js';
 import { createAuthClient, SESSION_KEY } from './auth/authClient.js';
@@ -233,8 +234,16 @@ async function main() {
   const store = createStore(sync ? sync.store : local, undefined, { userId: session ? session.user.id : null });
   // El recorrido guiado se recuerda por cuenta (y por tipo de espacio) en este dispositivo.
   const tourMemory = createTourMemory(localStorageOrNull(), session ? session.user.id : LOCAL_ACCOUNT);
-  startApp(store, { account, tourMemory });
+  // Copia automática diaria (0.18.2): por cuenta; en la app de Android, en Documentos/ACCONTROL; en el navegador, en su memoria.
+  const autoBackup = createAutoBackup({
+    store,
+    owner: databaseName ?? 'accontrol',
+    target: isNativeApp() ? nativeTarget(/** @type {any} */ (window).Capacitor) : browserTarget(),
+    storage: localStorageOrNull(),
+  });
+  startApp(store, { account, tourMemory, autoBackup });
   await store.init();
+  autoBackup.start();
   const tellOtherTabs = keepTabsInSync(store, databaseName ?? 'accontrol');
   protectStorageWhenThereIsData(store);
   if (session) adoptAccountName(store, session.user);

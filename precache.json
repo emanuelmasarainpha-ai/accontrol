@@ -1,5 +1,5 @@
 {
-  "version": "c1f24ed9cd8f",
+  "version": "631d2ea8c506",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -14,6 +14,7 @@
     "src/app/actions.js",
     "src/app/app.js",
     "src/app/authGate.js",
+    "src/app/autoBackup.js",
     "src/app/celebrations.js",
     "src/app/nativeFiles.js",
     "src/app/nativeShell.js",
@@ -136,6 +137,7 @@
     "src/views/ai.js",
     "src/views/asset-forms.js",
     "src/views/auth.js",
+    "src/views/autoBackupPanel.js",
     "src/views/calculators.js",
     "src/views/client-forms.js",
     "src/views/clients.js",

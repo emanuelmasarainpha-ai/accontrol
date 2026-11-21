@@ -68,6 +68,7 @@ import { createTourMemory, LOCAL_ACCOUNT } from './tourMemory.js';
  * @property {string[]} params      Lo que viene después de la pantalla en la dirección: "#/deudas/abc" -> ["abc"].
  * @property {AccountApi | null} account  La cuenta con sesión abierta; null si la app corre sin cuentas (modo local).
  * @property {{ available: () => boolean, start: () => void }} tour  Recorrido guiado del espacio abierto (botón de Ajustes).
+ * @property {import('./autoBackup.js').AutoBackup | null} autoBackup  Copia automática diaria (0.18.2); null en pruebas.
  */
 
 /**
@@ -103,10 +104,10 @@ const APP_NAME = 'ACCONTROL';
 
 /**
  * @param {Store} store
- * @param {{ account?: AccountApi | null, tourMemory?: import('./tourMemory.js').TourMemory }} [options]
+ * @param {{ account?: AccountApi | null, tourMemory?: import('./tourMemory.js').TourMemory, autoBackup?: import('./autoBackup.js').AutoBackup | null }} [options]
  *   tourMemory: dónde se recuerda si ya se vio el recorrido (por cuenta); sin él, solo mientras la página esté abierta.
  */
-export function startApp(store, { account = null, tourMemory = createTourMemory(null, LOCAL_ACCOUNT) } = {}) {
+export function startApp(store, { account = null, tourMemory = createTourMemory(null, LOCAL_ACCOUNT), autoBackup = null } = {}) {
   const view = $('#view');
   drawChrome();
   const tours = createTourController({ store, memory: tourMemory });
@@ -172,7 +173,7 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     view.dataset.screen = onboarding ? 'bienvenida' : routeId;
     if (routeChanged || routeId !== lastRoute) view.dataset.enter = '';
     else delete view.dataset.enter;
-    const context = { rerender: () => render(false), params: routeParams(window.location.hash), account, tour };
+    const context = { rerender: () => render(false), params: routeParams(window.location.hash), account, tour, autoBackup };
     const rendered = onboarding ? renderOnboarding(store, context) : VIEWS[routeId](store, context);
     setHtml(view, readOnly && activeWs ? html`${roleBanner(activeWs)}${rendered.html}` : rendered.html);
     cleanup = rendered.mount?.(view, controller.signal);

@@ -27,6 +27,7 @@ import { openOrganizationForm, workspaceDetailsPanel } from './organization.js';
 import { runWorkspaceAction, workspacesPanel } from './workspaces.js';
 import { saveFile } from '../ui/saveFile.js';
 import { sectionFromParams, visibleSections } from '../app/settingsSections.js';
+import { autoBackupPanel, runAutoBackupAction, watchAutoBackup } from './autoBackupPanel.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 
@@ -86,7 +87,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Ajustes por secciones';
+const VERSION_NOTE = 'Copia de seguridad automática';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.
@@ -254,6 +255,7 @@ export function renderSettings(store, ctx) {
     members: membersPanel(store, sync),
     cloud: cloudPanel(sync),
     backup: backupBlock,
+    autoBackup: autoBackupPanel(ctx?.autoBackup ?? null),
     demo: demoBlock,
     danger: dangerBlock,
     accountDanger: accountDangerPanel(account),
@@ -322,6 +324,9 @@ export function renderSettings(store, ctx) {
       const stopWatching = watchCloudPanel(sync, root, () => ctx?.rerender());
       signal.addEventListener('abort', stopWatching, { once: true });
 
+      // ---- copia automática diaria (0.18.2) ------------------------------------
+      watchAutoBackup(ctx?.autoBackup ?? null, root, signal);
+
       // ---- miembros del espacio abierto (0.16.0) -----------------------------
       watchMembers(root, store, sync, signal);
 
@@ -348,6 +353,7 @@ export function renderSettings(store, ctx) {
           if (runAccountAction(account, el.dataset.action)) return;
           if (runCloudAction(sync, el.dataset.action, { store, rerender: () => ctx?.rerender(), button: el })) return;
           if (runShareAction({ store, sync, root }, el)) return;
+          if (runAutoBackupAction(ctx?.autoBackup ?? null, el)) return;
           switch (el.dataset.action) {
             case 'tour-replay':
               ctx?.tour.start();

@@ -9,7 +9,7 @@
 
 /**
  * @typedef {'account' | 'profile' | 'device' | 'tour' | 'categories' | 'workspaces' | 'details' | 'members' | 'cloud'
- *   | 'backup' | 'demo' | 'danger' | 'accountDanger' | 'privacy' | 'next'} SettingsBlock
+ *   | 'backup' | 'autoBackup' | 'demo' | 'danger' | 'accountDanger' | 'privacy' | 'next'} SettingsBlock
  */
 
 /**
@@ -27,7 +27,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'general', title: 'General', summary: 'Tu nombre, saldo inicial, modo oscuro, vibración, categorías y recorrido guiado.', icon: 'sliders', blocks: ['profile', 'device', 'categories', 'tour'] },
   { id: 'cuenta', title: 'Cuenta', summary: 'Tu correo, tu contraseña, cerrar sesión y eliminar la cuenta.', icon: 'user', blocks: ['account', 'accountDanger'], needsAccount: true },
   { id: 'espacios', title: 'Espacios y equipo', summary: 'Tus espacios de trabajo, los datos del negocio y quién más los usa.', icon: 'briefcase', blocks: ['workspaces', 'details', 'members'] },
-  { id: 'almacenamiento', title: 'Almacenamiento y copias', summary: 'Copia en la nube, copia de seguridad, datos de demostración y borrar todo.', icon: 'download', blocks: ['cloud', 'backup', 'demo', 'danger'] },
+  { id: 'almacenamiento', title: 'Almacenamiento y copias', summary: 'Copia en la nube, copia de seguridad (también automática), demostración y borrar todo.', icon: 'download', blocks: ['cloud', 'backup', 'autoBackup', 'demo', 'danger'] },
   { id: 'privacidad', title: 'Privacidad y seguridad', summary: 'Dónde están tus datos, cómo se protegen y el estado del almacenamiento.', icon: 'lock', blocks: ['privacy'] },
   { id: 'acerca', title: 'Acerca de ACCONTROL', summary: 'La versión que usas y lo que viene.', icon: 'info', blocks: ['next'] },
 ];

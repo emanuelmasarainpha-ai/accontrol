@@ -40,9 +40,10 @@ describe('proyecto de Android', () => {
     assert.match(manifest, /android:allowBackup="false"/);
     assert.doesNotMatch(manifest, /android:allowBackup="true"/);
   });
-  it('pide solo internet y cámara (lector de códigos), y la cámara no es obligatoria', () => {
+  it('pide solo internet, cámara (lector de códigos) y, en Android 10 o más viejo, archivos (copia automática)', () => {
     const perms = [...manifest.matchAll(/uses-permission android:name="([^"]+)"/g)].map((m) => m[1]).sort();
-    assert.deepEqual(perms, ['android.permission.CAMERA', 'android.permission.INTERNET']);
+    assert.deepEqual(perms, ['android.permission.CAMERA', 'android.permission.INTERNET', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE']);
+    for (const p of ['READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE']) assert.match(manifest, new RegExp(`${p}" android:maxSdkVersion="29"`), p);
     assert.match(manifest, /android\.hardware\.camera" android:required="false"/);
   });
   it('Gradle 9 o más nuevo (el Java 25 de Android Studio no funciona con Gradle 8)', () => {
