@@ -141,3 +141,16 @@ describe('pantalla de entrar sin la nota de abajo (pedido de la persona)', () =>
     assert.ok(String(renderAuth({ ...base, mode: 'signup' })).includes('nunca la ve ACCONTROL'));
   });
 });
+
+describe('login: tema claro/oscuro (pedido de la persona)', () => {
+  const css = readFileSync(new URL('../src/styles/views.css', import.meta.url), 'utf8');
+  it('la curva de arriba cambia de color con el tema: lila con letras oscuras en claro, morado profundo con letras blancas en oscuro', () => {
+    assert.match(css, /body\.is-auth \{[^}]*--auth-band: #ddd0f1;[^}]*--auth-band-ink: #34204f;/s);
+    assert.match(css, /:root\[data-theme='dark'\] body\.is-auth \{[^}]*--auth-band: var\(--kind-deep\);[^}]*--auth-band-ink: #fff;/s);
+    assert.match(css, /\.auth \.welcome__head::before \{[^}]*background: var\(--auth-band\);/s);
+    assert.match(css, /\.auth \.welcome__head \{[^}]*color: var\(--auth-band-ink\);/s);
+  });
+  it('en PC el sol y la luna van fijos en la esquina de arriba a la derecha', () => {
+    assert.match(css, /@media \(min-width: 900px\) \{\s*\.auth__theme \{[^}]*position: fixed;[^}]*top: [^;]+;[^}]*right: [^;]+;/s);
+  });
+});

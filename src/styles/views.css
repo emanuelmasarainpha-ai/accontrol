@@ -1209,6 +1209,16 @@
    La banda es un ::before a todo el ancho de la pantalla; solo se mueve con transform y opacity. */
 body.is-auth {
   overflow-x: clip;
+  /* Colores invertidos según el tema (pedido de la persona): en claro la curva es lila suave con letras
+     moradas oscuras; en oscuro, morado profundo con letras blancas. */
+  --auth-band: #ddd0f1;
+  --auth-band-ink: #34204f;
+  --auth-band-ring: rgb(52 32 79 / 18%);
+}
+:root[data-theme='dark'] body.is-auth {
+  --auth-band: var(--kind-deep);
+  --auth-band-ink: #fff;
+  --auth-band-ring: rgb(255 255 255 / 28%);
 }
 .auth {
   position: relative;
@@ -1218,7 +1228,7 @@ body.is-auth {
   isolation: isolate;
   max-width: none;
   padding: var(--space-6) var(--space-4) calc(var(--space-6) + 12px);
-  color: #fff;
+  color: var(--auth-band-ink);
 }
 .auth .welcome__head::before {
   content: '';
@@ -1229,7 +1239,7 @@ body.is-auth {
   left: 50%;
   width: 100vw;
   margin-left: -50vw;
-  background: var(--kind-deep);
+  background: var(--auth-band);
   border-radius: 0 0 50% 50% / 0 0 44px 44px;
 }
 .auth .welcome__title,
@@ -1240,13 +1250,22 @@ body.is-auth {
   opacity: 0.82;
 }
 .auth .welcome__mark {
-  box-shadow: 0 0 0 2px rgb(255 255 255 / 28%);
+  box-shadow: 0 0 0 2px var(--auth-band-ring);
 }
 /* El sol y la luna quedan sobre la curva. */
 .auth__theme {
   position: relative;
   z-index: 2;
-  color: #fff;
+  color: var(--auth-band-ink);
+}
+/* En PC el sol y la luna van en la esquina de arriba a la derecha de la ventana, no junto al formulario. */
+@media (min-width: 900px) {
+  .auth__theme {
+    position: fixed;
+    top: var(--space-3);
+    right: var(--space-4);
+    margin: 0;
+  }
 }
 /* Botón «Entrar» mientras espera: tres puntos que laten. */
 .btn.is-loading {

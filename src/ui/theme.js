@@ -104,10 +104,19 @@ export function setTheme(theme, storage = defaultStorage()) {
   document.documentElement.dataset.theme = theme;
   saveTheme(theme, storage);
   syncToggles();
-  const deep = getComputedStyle(document.body).getPropertyValue('--kind-deep').trim();
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta && deep) meta.setAttribute('content', deep);
+  paintBrowserBar();
   syncNativeStatusBar();
+}
+
+/**
+ * Tiñe la barra del navegador del celular: en las pantallas de acceso, del color de la curva de arriba
+ * (lila en claro, morado profundo en oscuro); dentro de la app, del color del espacio.
+ */
+export function paintBrowserBar() {
+  const style = getComputedStyle(document.body);
+  const color = (document.body.classList.contains('is-auth') ? style.getPropertyValue('--auth-band') : '').trim() || style.getPropertyValue('--kind-deep').trim();
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta && color) meta.setAttribute('content', color);
 }
 
 /** En la app de Android, los iconos de la barra de estado siguen el tema de ACCONTROL (no el del teléfono). */

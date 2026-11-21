@@ -10,6 +10,7 @@
 import { formatOtpInput, parseOtp } from '../domain/accounts.js';
 import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
 import { setHtml } from '../ui/html.js';
+import { paintBrowserBar } from '../ui/theme.js';
 import { AUTH_TITLES, renderAuth } from '../views/auth.js';
 
 /** @typedef {import('../auth/authClient.js').AuthClient} AuthClient */
@@ -46,6 +47,7 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
     let leaving = false;
 
     document.body.classList.add('is-onboarding', 'is-auth');
+    paintBrowserBar();
 
     /** @param {AuthUser} user */
     function finish(user) {
@@ -53,6 +55,7 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
       if (resendTimer !== null) clearTimeout(resendTimer);
       const done = () => {
         document.body.classList.remove('is-auth');
+        paintBrowserBar();
         resolve(user);
       };
       // Salida suave (0.18.5): la curva sube y el formulario se desvanece; luego la app entra con su propia animación.
