@@ -80,8 +80,10 @@ describe('pantallas de acceso', () => {
     assert.match(page({ mode: 'check-email', email: 'a@b.co' }), /Si ya tenías una cuenta/);
   });
 
-  it('entrar y crear cuenta dicen con honestidad dónde están los datos', () => {
-    for (const mode of ['signin', 'signup']) {
+  // 2026-11-21: la persona pidió quitar esta nota de «Entrar». Se sigue diciendo al crear la cuenta (y en Ajustes →
+  // Privacidad y seguridad), que es cuando hace falta saberlo.
+  it('crear cuenta dice con honestidad dónde están los datos', () => {
+    for (const mode of ['signup']) {
       assert.match(page({ mode }), /se guardan <strong>en este dispositivo<\/strong>/, mode);
       assert.match(page({ mode }), /copia en la nube/, mode);
     }

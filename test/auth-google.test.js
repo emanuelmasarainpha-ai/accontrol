@@ -133,3 +133,11 @@ describe('la pantalla de entrar', () => {
     assert.ok(!page.includes('input-row"><input id="auth-password"'), 'ya no hay botón al lado');
   });
 });
+
+describe('pantalla de entrar sin la nota de abajo (pedido de la persona)', () => {
+  const base = { mode: /** @type {const} */ ('signin'), email: '', displayName: '', notice: null, busy: false, canResend: true };
+  it('«Entrar» ya no trae la nota de la contraseña y los datos; «Crear cuenta» la conserva', () => {
+    assert.ok(!String(renderAuth(base)).includes('nunca la ve ACCONTROL'));
+    assert.ok(String(renderAuth({ ...base, mode: 'signup' })).includes('nunca la ve ACCONTROL'));
+  });
+});

@@ -121,8 +121,7 @@ function signInPage(state) {
       ${googleBlock(state)}
       <p class="auth__links"><button type="button" class="link-btn" data-auth-go="forgot">Olvidé mi contraseña</button></p>
     </form>
-    <p class="auth__switch">¿Todavía no tienes cuenta? <button type="button" class="link-btn" data-auth-go="signup">Crear cuenta</button></p>
-    ${LOCAL_DATA_NOTE}`;
+    <p class="auth__switch">¿Todavía no tienes cuenta? <button type="button" class="link-btn" data-auth-go="signup">Crear cuenta</button></p>`;
 }
 
 /** @param {AuthViewState} state */
