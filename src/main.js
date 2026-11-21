@@ -23,6 +23,7 @@ import { createAuthClient, SESSION_KEY } from './auth/authClient.js';
 import { claimNameAdoption, resolveDatabaseName } from './auth/localOwner.js';
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config.js';
 import { createCloudStore } from './data/cloudStore.js';
+import { askAboutYouOnce } from './views/aboutYouPanel.js';
 import { createIndexedDbStore } from './data/indexedDbStore.js';
 import { centsToInputValue } from './domain/money.js';
 import { installPasswordToggles } from './ui/passwordToggle.js';
@@ -210,19 +211,25 @@ async function main() {
 
   const local = await openDataStore(databaseName);
   // Copia en la nube (0.15.0): solo con cuenta. Apagada, el almacén guarda exactamente igual que siempre.
-  const sync = session
-    ? createSyncController({
-      cloud: createCloudStore({
-        url: SUPABASE_URL, publishableKey: SUPABASE_PUBLISHABLE_KEY,
-        getAccessToken: () => session.auth.getAccessToken(), getUserId: () => session.user.id,
-      }),
-      local, storage: localStorageOrNull(), userId: session.user.id,
+  const cloud = session
+    ? createCloudStore({
+      url: SUPABASE_URL, publishableKey: SUPABASE_PUBLISHABLE_KEY,
+      getAccessToken: () => session.auth.getAccessToken(), getUserId: () => session.user.id,
     })
+    : null;
+  const sync = session && cloud
+    ? createSyncController({ cloud, local, storage: localStorageOrNull(), userId: session.user.id })
+    : null;
+  // «Sobre ti» (0.18.4): respuestas opcionales de bienvenida, en una tabla que solo ve tu cuenta.
+  /** @type {import('./views/aboutYouPanel.js').AboutYouApi | null} */
+  const aboutYou = session && cloud
+    ? { get: () => cloud.getAboutYou(), save: (about) => cloud.saveAboutYou(about), storage: localStorageOrNull(), userId: session.user.id }
     : null;
   const account = session && sync
     ? {
       ...session.account,
       sync: sync.api,
+      aboutYou,
       // Al eliminar la cuenta, el servidor borra sus datos de la nube; aquí se olvida lo pendiente de enviar.
       deleteAccount: async () => {
         const result = await session.account.deleteAccount();
@@ -274,12 +281,21 @@ async function main() {
       });
       // Si dijo «Empezar de cero aquí», ya decidió: no se le vuelve a preguntar por la nube.
       if (offered === 'declined') sync.api.markAsked();
-      // La pregunta «¿Guardar tus datos en la nube?», una sola vez y sin interrumpir el recorrido guiado.
-      const ready = () => store.getState().activeWorkspaceId !== null;
-      const tryAsk = async () => {
-        if ((await askAboutCloudOnce(sync.api, ready)) === 'later') setTimeout(tryAsk, 20_000);
+      // Primero «Sobre ti» (0.18.4) y después «¿Guardar tus datos en la nube?»: cada una una sola vez, sin
+      // interrumpir el recorrido guiado ni otra ventana (se reintenta cada 20 s).
+      const ready = () => store.getState().activeWorkspaceId !== null && !document.body.classList.contains('is-touring');
+      const tryAskCloud = async () => {
+        if ((await askAboutCloudOnce(sync.api, ready)) === 'later') setTimeout(tryAskCloud, 20_000);
       };
-      setTimeout(tryAsk, 4000);
+      const tryAskAboutYou = async () => {
+        const asked = await askAboutYouOnce(aboutYou, ready).catch((error) => {
+          console.error('No se pudo preguntar «Sobre ti»:', error);
+          return 'done';
+        });
+        if (asked === 'later') setTimeout(tryAskAboutYou, 20_000);
+        else setTimeout(tryAskCloud, 1500);
+      };
+      setTimeout(tryAskAboutYou, 4000);
     })();
   }
   registerServiceWorker();

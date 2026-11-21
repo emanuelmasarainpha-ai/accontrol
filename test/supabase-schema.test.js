@@ -19,17 +19,17 @@ const allLower = all.toLowerCase();
 const tables = [...all.matchAll(/create table public\.(\w+)/gi)].map((m) => m[1]);
 
 describe('migraciones de Supabase: orden y contenido', () => {
-  it('hay once migraciones numeradas en orden y sin repetirse (5.ª facturas 0.14.5; 6.ª no revivir 0.15.1; 7.ª invitaciones 0.16.0; 8.ª roles a medida 0.16.1; 9.ª productos para la caja 0.17.0; 10.ª oferta por cantidad 0.17.5; 11.ª monedas 0.18.3)', () => {
-    assert.equal(files.length, 11);
+  it('hay doce migraciones numeradas en orden y sin repetirse (5.ª facturas 0.14.5; 6.ª no revivir 0.15.1; 7.ª invitaciones 0.16.0; 8.ª roles a medida 0.16.1; 9.ª productos para la caja 0.17.0; 10.ª oferta por cantidad 0.17.5; 11.ª monedas 0.18.3; 12.ª «sobre ti» 0.18.4)', () => {
+    assert.equal(files.length, 12);
     const versions = files.map((name) => name.split('_')[0]);
     assert.deepEqual(versions, [...versions].sort());
     assert.equal(new Set(versions).size, versions.length);
     for (const name of files) assert.match(name, /^\d{14}_[a-z_]+\.sql$/);
   });
 
-  it('crea las 21 tablas esperadas (la 20.ª, invitaciones, en la 0.16.0; la 21.ª, roles a medida, en la 0.16.1)', () => {
-    assert.equal(tables.length, 21);
-    assert.equal(new Set(tables).size, 21);
+  it('crea las 22 tablas esperadas (la 20.ª, invitaciones, en la 0.16.0; la 21.ª, roles a medida, en la 0.16.1; la 22.ª, «sobre ti», en la 0.18.4)', () => {
+    assert.equal(tables.length, 22);
+    assert.equal(new Set(tables).size, 22);
     for (const expected of ['profiles', 'workspaces', 'workspace_members', 'builtin_categories', 'movements', 'goals', 'debts', 'invoices', 'invoice_payments']) {
       assert.ok(tables.includes(expected), `falta la tabla ${expected}`);
     }

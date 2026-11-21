@@ -18,6 +18,7 @@
 
 import { CLOUD_KINDS, cloudKind, fromRow, toRow, workspaceFromRow, workspaceToRow } from './cloudRows.js';
 import { normalizePermissions } from '../domain/permissions.js';
+import { emptyAboutYou, validateAboutYou } from '../domain/aboutYou.js';
 
 /** @typedef {import('../domain/types.js').Workspace} Workspace */
 /** @typedef {import('./dataStore.js').Changes} Changes */
@@ -253,6 +254,40 @@ export function createCloudStore(options) {
       const reply = await call('PATCH', '/rest/v1/profiles', {
         query: { user_id: `eq.${userId}` }, prefer: 'return=minimal',
         body: { display_name: profile.displayName, last_workspace_id: profile.lastWorkspaceId },
+      });
+      return reply.ok ? { ok: true } : reply;
+    },
+
+    // ------------------------------------------------------------------ «sobre ti» (0.18.4)
+    /**
+     * Tus respuestas de bienvenida. `about: null` = todavía no se te preguntó. La base solo devuelve TU fila (RLS).
+     * @returns {Promise<{ ok: true, about: import('../domain/aboutYou.js').AboutYou | null } | CloudFailure>}
+     */
+    async getAboutYou() {
+      const userId = options.getUserId();
+      if (!userId) return fail('session', 401);
+      const reply = await call('GET', '/rest/v1/user_about', { query: { select: 'gender,age_range,nationality', user_id: `eq.${userId}` } });
+      if (!reply.ok) return reply;
+      const row = Array.isArray(reply.body) ? reply.body[0] : null;
+      if (!row) return { ok: true, about: null };
+      const checked = validateAboutYou({ gender: row.gender, ageRange: row.age_range, nationality: row.nationality });
+      // Algo raro en la nube no rompe la app: se toma como «Prefiero no decirlo».
+      return { ok: true, about: checked.ok ? checked.value : emptyAboutYou() };
+    },
+
+    /**
+     * Guarda tus respuestas (todo null = omitir: queda constancia de que ya se te preguntó).
+     * @param {import('../domain/aboutYou.js').AboutYou} about
+     * @returns {Promise<{ ok: true } | CloudFailure>}
+     */
+    async saveAboutYou(about) {
+      const userId = options.getUserId();
+      if (!userId) return fail('session', 401);
+      const checked = validateAboutYou(about);
+      if (!checked.ok) return fail('rejected', 400);
+      const reply = await call('POST', '/rest/v1/user_about', {
+        query: { on_conflict: 'user_id' }, prefer: 'resolution=merge-duplicates,return=minimal',
+        body: { user_id: userId, gender: checked.value.gender, age_range: checked.value.ageRange, nationality: checked.value.nationality, updated_at: new Date().toISOString() },
       });
       return reply.ok ? { ok: true } : reply;
     },

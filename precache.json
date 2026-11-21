@@ -1,5 +1,5 @@
 {
-  "version": "2764c7f904fe",
+  "version": "aadf1409e0e2",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -40,6 +40,7 @@
     "src/data/singleWorkspace.js",
     "src/data/workspaceScope.js",
     "src/data/workspaceStore.js",
+    "src/domain/aboutYou.js",
     "src/domain/accounts.js",
     "src/domain/assets.js",
     "src/domain/backup.js",
@@ -133,6 +134,7 @@
     "src/ui/tooltip.js",
     "src/ui/tour.js",
     "src/version.js",
+    "src/views/aboutYouPanel.js",
     "src/views/account.js",
     "src/views/achievements.js",
     "src/views/ai.js",

@@ -30,6 +30,7 @@ import { saveFile } from '../ui/saveFile.js';
 import { sectionFromParams, visibleSections } from '../app/settingsSections.js';
 import { autoBackupPanel, runAutoBackupAction, watchAutoBackup } from './autoBackupPanel.js';
 import { currencyPanel, watchCurrency } from './currencyPanel.js';
+import { aboutYouPanel, watchAboutYou } from './aboutYouPanel.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 
@@ -89,7 +90,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Moneda real para tus espacios';
+const VERSION_NOTE = 'Preguntas de bienvenida (Sobre ti)';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.
@@ -263,6 +264,7 @@ export function renderSettings(store, ctx) {
     danger: dangerBlock,
     accountDanger: accountDangerPanel(account),
     privacy: privacyBlock,
+    aboutYou: aboutYouPanel(account?.aboutYou ?? null),
     next: nextBlock,
   };
   const sectionOptions = { hasAccount: account !== null };
@@ -329,6 +331,9 @@ export function renderSettings(store, ctx) {
 
       // ---- moneda de la cuenta (0.18.3) ----------------------------------------
       watchCurrency(store, root, signal);
+
+      // ---- «sobre ti» (0.18.4) --------------------------------------------------
+      watchAboutYou(account?.aboutYou ?? null, root, signal);
 
       // ---- copia automática diaria (0.18.2) ------------------------------------
       watchAutoBackup(ctx?.autoBackup ?? null, root, signal);

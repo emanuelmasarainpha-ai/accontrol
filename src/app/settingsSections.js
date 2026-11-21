@@ -8,7 +8,7 @@
 // =============================================================================
 
 /**
- * @typedef {'account' | 'profile' | 'currency' | 'device' | 'tour' | 'categories' | 'workspaces' | 'details' | 'members' | 'cloud'
+ * @typedef {'account' | 'profile' | 'currency' | 'aboutYou' | 'device' | 'tour' | 'categories' | 'workspaces' | 'details' | 'members' | 'cloud'
  *   | 'backup' | 'autoBackup' | 'demo' | 'danger' | 'accountDanger' | 'privacy' | 'next'} SettingsBlock
  */
 
@@ -22,13 +22,16 @@
  * @property {boolean} [needsAccount]  Solo si la app tiene cuentas (con SUPABASE_URL)
  */
 
+/** Bloques que solo existen con cuenta, dentro de secciones que se ven siempre. @type {SettingsBlock[]} */
+const ACCOUNT_ONLY_BLOCKS = ['aboutYou'];
+
 /** @type {SettingsSection[]} */
 export const SETTINGS_SECTIONS = [
   { id: 'general', title: 'General', summary: 'Tu nombre, saldo inicial, moneda, modo oscuro, vibración, categorías y recorrido guiado.', icon: 'sliders', blocks: ['profile', 'currency', 'device', 'categories', 'tour'] },
   { id: 'cuenta', title: 'Cuenta', summary: 'Tu correo, tu contraseña, cerrar sesión y eliminar la cuenta.', icon: 'user', blocks: ['account', 'accountDanger'], needsAccount: true },
   { id: 'espacios', title: 'Espacios y equipo', summary: 'Tus espacios de trabajo, los datos del negocio y quién más los usa.', icon: 'briefcase', blocks: ['workspaces', 'details', 'members'] },
   { id: 'almacenamiento', title: 'Almacenamiento y copias', summary: 'Copia en la nube, copia de seguridad (también automática), demostración y borrar todo.', icon: 'download', blocks: ['cloud', 'backup', 'autoBackup', 'demo', 'danger'] },
-  { id: 'privacidad', title: 'Privacidad y seguridad', summary: 'Dónde están tus datos, cómo se protegen y el estado del almacenamiento.', icon: 'lock', blocks: ['privacy'] },
+  { id: 'privacidad', title: 'Privacidad y seguridad', summary: 'Dónde están tus datos, cómo se protegen, el estado del almacenamiento y tus respuestas de «Sobre ti».', icon: 'lock', blocks: ['privacy', 'aboutYou'] },
   { id: 'acerca', title: 'Acerca de ACCONTROL', summary: 'La versión que usas y lo que viene.', icon: 'info', blocks: ['next'] },
 ];
 
@@ -38,9 +41,12 @@ export const SETTINGS_SECTIONS = [
  * @returns {SettingsSection[]}
  */
 export function visibleSections({ hasAccount }) {
-  return SETTINGS_SECTIONS.filter((s) => hasAccount || !s.needsAccount).map((s) =>
-    !hasAccount && s.id === 'general' ? { ...s, blocks: /** @type {SettingsBlock[]} */ (['account', ...s.blocks]) } : s,
-  );
+  return SETTINGS_SECTIONS.filter((s) => hasAccount || !s.needsAccount).map((s) => {
+    if (hasAccount) return s;
+    // Sin cuentas no hay «Sobre ti» (0.18.4): las respuestas viven en la nube de tu cuenta.
+    const blocks = s.blocks.filter((b) => !ACCOUNT_ONLY_BLOCKS.includes(b));
+    return { ...s, blocks: s.id === 'general' ? /** @type {SettingsBlock[]} */ (['account', ...blocks]) : blocks };
+  });
 }
 
 /**
