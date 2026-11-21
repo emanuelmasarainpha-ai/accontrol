@@ -1,5 +1,5 @@
 {
-  "version": "5e1099fda8f5",
+  "version": "41b73e7af853",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -37,6 +37,7 @@
     "src/data/indexedDbStore.js",
     "src/data/memoryStore.js",
     "src/data/memoryWorkspaces.js",
+    "src/data/ratesClient.js",
     "src/data/singleWorkspace.js",
     "src/data/workspaceScope.js",
     "src/data/workspaceStore.js",

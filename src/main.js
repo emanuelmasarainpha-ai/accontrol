@@ -23,6 +23,7 @@ import { createAuthClient, SESSION_KEY } from './auth/authClient.js';
 import { claimNameAdoption, resolveDatabaseName } from './auth/localOwner.js';
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config.js';
 import { createCloudStore } from './data/cloudStore.js';
+import { createRatesClient, setRatesClient } from './data/ratesClient.js';
 import { askAboutYouOnce } from './views/aboutYouPanel.js';
 import { createIndexedDbStore } from './data/indexedDbStore.js';
 import { centsToInputValue } from './domain/money.js';
@@ -211,6 +212,8 @@ async function main() {
 
   const local = await openDataStore(databaseName);
   // Copia en la nube (0.15.0): solo con cuenta. Apagada, el almacén guarda exactamente igual que siempre.
+  // Tasa de referencia automática (0.18.6): la función exchange-rates de Supabase. Sin cuentas no hay a quién preguntar.
+  if (session) setRatesClient(createRatesClient({ url: SUPABASE_URL, publishableKey: SUPABASE_PUBLISHABLE_KEY, storage: localStorageOrNull() }));
   const cloud = session
     ? createCloudStore({
       url: SUPABASE_URL, publishableKey: SUPABASE_PUBLISHABLE_KEY,

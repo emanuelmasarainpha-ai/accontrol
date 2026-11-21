@@ -10,7 +10,8 @@
 //   · originalAmountCents  — lo que se pagó, en centavos de esa moneda (1500).
 //   · exchangeRateMicro    — la tasa × 1,000,000, como número entero (60.50 → 60,500,000). Así no hay decimales
 //                            flotantes que redondeen mal; se admiten hasta 6 decimales (0.016529 para RD$ → US$).
-// La tasa la escribe la persona: la app NO la trae de internet (eso necesita un servicio externo, ver docs/ROADMAP.md).
+// La tasa la escribe la persona. Desde la 0.18.6, con cuenta, se propone sola la tasa de REFERENCIA de ese día
+// (data/ratesClient.js → función exchange-rates de Supabase); la persona la puede cambiar.
 // =============================================================================
 
 import { isCurrencyCode } from './currencies.js';
@@ -84,6 +85,19 @@ export function lastRateFor(movements, currency) {
     if (!best || `${m.date}${m.time}${m.createdAt}` > `${best.date}${best.time}${best.createdAt}`) best = m;
   }
   return best ? /** @type {number} */ (best.exchangeRateMicro) : null;
+}
+
+/**
+ * 0.18.6: la tasa entre dos monedas a partir de «unidades por 1 US$» de cada una (lo que da la tasa automática):
+ * 1 US$ = 60.23 RD$ y 1 US$ = 0.91 € → 1 € = 60.23 ÷ 0.91 RD$. null si falta alguna o no da una tasa válida.
+ * @param {Record<string, number>} unitsPerUsd @param {string} from @param {string} to
+ */
+export function crossRateMicro(unitsPerUsd, from, to) {
+  const a = unitsPerUsd[from];
+  const b = unitsPerUsd[to];
+  if (!(a > 0) || !(b > 0)) return null;
+  const micro = Math.round((b / a) * RATE_SCALE);
+  return micro >= 1 && micro <= MAX_RATE_MICRO ? micro : null;
 }
 
 /** ¿La tasa se aleja mucho de la última usada? (para avisar de un posible error de tecleo). @param {number} micro @param {number | null} last */

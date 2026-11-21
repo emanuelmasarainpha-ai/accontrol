@@ -9,13 +9,14 @@
 
 import { categoriesOfKind } from '../domain/categories.js';
 import { SERVICE_STATUS_LABELS, clientLabel, sortClients } from '../domain/clients.js';
-import { currentTime } from '../domain/dates.js';
+import { currentTime, formatDate } from '../domain/dates.js';
 import { paidByService, summarizeService } from '../domain/freelance.js';
 import { billedByService } from '../domain/invoices.js';
 import { goalProgress, goalSavedCents } from '../domain/goals.js';
 import { centsToInputValue, formatMoney, formatMoneyIn, parseMoney } from '../domain/money.js';
 import { CURRENCY_CODES, CURRENCIES, currencyInfo } from '../domain/currencies.js';
-import { convertCents, formatExchangeRate, hasForeign, lastRateFor, parseRate, rateLooksOdd } from '../domain/exchange.js';
+import { convertCents, crossRateMicro, formatExchangeRate, hasForeign, lastRateFor, parseRate, rateLooksOdd } from '../domain/exchange.js';
+import { ratesClient } from '../data/ratesClient.js';
 import { overallTotals } from '../domain/summaries.js';
 import { CLASSIFICATIONS_BY_TYPE, CLASSIFICATION_LABELS, LIMITS } from '../domain/types.js';
 import { $, $$ } from '../ui/dom.js';
@@ -76,7 +77,7 @@ function foreignFields(base, selected, rateText) {
     <div class="field" data-field="rate" data-fx-rate ${selected === b.code ? 'hidden' : ''}>
       <label for="mv-rate" data-fx-rate-label>Tasa: 1 ${s.symbol} = ¿cuántos ${b.symbol}?</label>
       <input id="mv-rate" name="rateText" class="input" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${rateText}" aria-describedby="mv-rate-hint rate-error" />
-      <p class="hint" id="mv-rate-hint">La del día en que pagaste. La escribes tú: la app no la trae de internet.</p>
+      <p class="hint" id="mv-rate-hint" data-fx-rate-hint>${ratesClient() ? 'La del día en que pagaste. Se pone sola con la tasa de referencia de ese día; si tu banco te cobró otra, cámbiala.' : 'La del día en que pagaste. La escribes tú: sin cuenta, la app no puede traerla de internet.'}</p>
       ${fieldError('rate')}
     </div>
   </div>`;
@@ -95,8 +96,35 @@ function bindForeign(sheet, base, movements) {
   const rateLabel = sheet.querySelector('[data-fx-rate-label]');
   const symbol = sheet.querySelector('#mv-amount')?.closest('.input-money')?.querySelector('.input-money__symbol');
   const preview = sheet.querySelector('[data-preview-for="mv-amount"]');
-  if (!currency || !rate || !amount || !(rateField instanceof HTMLElement) || !rateLabel || !symbol || !preview) return;
+  const rateHint = sheet.querySelector('[data-fx-rate-hint]');
+  const dateInput = /** @type {HTMLInputElement | null} */ (sheet.querySelector('#mv-date'));
+  if (!currency || !rate || !amount || !(rateField instanceof HTMLElement) || !rateLabel || !symbol || !preview || !rateHint) return;
+  const manualHint = rateHint.textContent ?? '';
+  // Tocada = la escribió la persona (o es la de un movimiento que se está editando): ya no se cambia sola.
   let rateTouched = rate.value !== '';
+  let request = 0;
+
+  /** 0.18.6: la tasa de referencia del día del movimiento, si hay a quién preguntarle y la persona no escribió otra. */
+  const autoRate = async () => {
+    const client = ratesClient();
+    const code = currency.value;
+    if (!client || rateTouched || code === base) return;
+    const mine = (request += 1);
+    const day = dateInput?.value ?? '';
+    rateHint.textContent = 'Buscando la tasa de referencia de ese día…';
+    const result = await client.ratesFor(day);
+    if (mine !== request || rateTouched || currency.value !== code) return; // ya cambió algo mientras llegaba
+    const exact = result.ok ? crossRateMicro(result.rates, code, base) : null;
+    // Más fácil de leer: 4 decimales si la tasa pasa de 1 (60.2327); las pequeñas (0.016602) conservan los 6.
+    const micro = exact !== null && exact >= 1_000_000 ? Math.round(exact / 100) * 100 : exact;
+    if (!result.ok || micro === null) {
+      rateHint.textContent = `${result.ok ? 'No se pudo calcular la tasa.' : result.error} ${rate.value ? 'Se dejó la última que usaste.' : ''}`.trim();
+      return;
+    }
+    rate.value = formatExchangeRate(micro);
+    rateHint.textContent = `Tasa de referencia del ${formatDate(result.date)}${result.date !== day ? ' (la más reciente publicada)' : ''}, de ${result.source}. Si tu banco te cobró otra, cámbiala.`;
+    update();
+  };
   const update = () => {
     const code = currency.value;
     const isForeign = code !== base;
@@ -121,10 +149,18 @@ function bindForeign(sheet, base, movements) {
     if (currency.value !== base && !rateTouched) {
       const last = lastRateFor(movements, currency.value);
       rate.value = last ? formatExchangeRate(last) : '';
+      rateHint.textContent = manualHint;
     }
     update();
+    void autoRate();
   });
-  rate.addEventListener('input', () => { rateTouched = rate.value !== ''; update(); });
+  dateInput?.addEventListener('change', () => void autoRate());
+  rate.addEventListener('input', () => {
+    rateTouched = rate.value !== '';
+    request += 1; // lo que estuviera llegando ya no se pone encima de lo que escribió
+    if (rateTouched) rateHint.textContent = manualHint;
+    update();
+  });
   amount.addEventListener('input', update);
   update();
 }

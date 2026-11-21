@@ -90,7 +90,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Ingresos y gastos en otra moneda';
+const VERSION_NOTE = 'Tasa de cambio automática';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.
