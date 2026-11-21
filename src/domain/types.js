@@ -48,6 +48,9 @@
  * @property {string} [clientId]         Solo espacios con clientes. En un ingreso: de quién viene el pago. En un gasto: el cliente al que se le cargó (costo directo). Ausente = sin cliente.
  * @property {string} [serviceId]        Solo ingresos: a qué servicio corresponde el pago (implica el cliente de ese servicio). Un gasto no lleva servicio.
  * @property {string} [departmentId]     Solo gastos de espacios Empresa: a qué departamento se carga. Ausente = sin asignar.
+ * @property {import('./currencies.js').CurrencyCode} [originalCurrency]  0.18.5: pagado en otra moneda (las tres piezas van juntas; ver domain/exchange.js).
+ * @property {number} [originalAmountCents]  0.18.5: lo pagado, en centavos de esa moneda. amountCents es lo convertido.
+ * @property {number} [exchangeRateMicro]    0.18.5: la tasa × 1,000,000 (60.50 → 60500000).
  * @property {string} createdAt          Fecha ISO completa.
  * @property {string} updatedAt          Fecha ISO completa.
  * @property {boolean} [isDemo]          true = dato de demostración (se muestra etiquetado).

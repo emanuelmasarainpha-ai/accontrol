@@ -24,6 +24,7 @@ import { icon } from '../ui/icons.js';
  * @property {{ kind: 'error' | 'info' | 'success', text: string } | null} notice Mensaje arriba del formulario.
  * @property {boolean} busy       Hay una petición en curso.
  * @property {boolean} canResend  Ya se puede volver a pedir el correo de confirmación.
+ * @property {boolean} [intro]    Es la primera vez que se dibuja: la curva de arriba baja con su animación de entrada.
  */
 
 /** Títulos de la pestaña del navegador por pantalla. @type {Record<AuthMode, string>} */
@@ -47,7 +48,7 @@ export function renderAuth(state) {
     'reset-sent': resetSentPage,
   }[state.mode](state);
   // El sol y la luna (modo claro / oscuro) también en las pantallas de acceso (0.14.6).
-  return html`<section class="welcome welcome--form auth" aria-labelledby="auth-title" data-auth-mode="${state.mode}"><div class="auth__theme">${dayNightButton(currentTheme())}</div>${body}</section>`;
+  return html`<section class="welcome welcome--form auth${state.intro ? ' auth--intro' : ''}" aria-labelledby="auth-title" data-auth-mode="${state.mode}"><div class="auth__theme">${dayNightButton(currentTheme())}</div>${body}</section>`;
 }
 
 /** @param {string} title @param {string} sub */

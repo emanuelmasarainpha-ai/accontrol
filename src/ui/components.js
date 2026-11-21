@@ -5,7 +5,8 @@
 // =============================================================================
 
 import { addMonths, formatDate, monthKeyOf, monthLabel, plural } from '../domain/dates.js';
-import { formatMoney, formatPercent, moneyParts } from '../domain/money.js';
+import { formatMoney, formatMoneyIn, formatPercent, moneyParts } from '../domain/money.js';
+import { formatExchangeRate, hasForeign } from '../domain/exchange.js';
 import { GRANULARITIES, GRANULARITY_LABELS } from '../domain/summaries.js';
 import { CLASSIFICATION_LABELS, TYPE_LABELS } from '../domain/types.js';
 import { guillocheRosette } from './guilloche.js';
@@ -203,11 +204,21 @@ export function delta(change, { upIsGood, since }) {
 }
 
 /**
+ * 0.18.5: lo pagado en otra moneda y la tasa («US$ 15.00 a 60.50»), o '' si se pagó en la moneda del espacio.
+ * @param {Movement} m
+ */
+export function foreignNote(m) {
+  if (!hasForeign(m)) return '';
+  return `${formatMoneyIn(/** @type {number} */ (m.originalAmountCents), m.originalCurrency)} a ${formatExchangeRate(/** @type {number} */ (m.exchangeRateMicro))}`;
+}
+
+/**
  * Fila de un ingreso o gasto en la lista de Finanzas.
  * @param {Movement} m @param {Category | undefined} category
  * @param {string} [linkText]  A quién se le cobró («Ana Pérez · Logo»), si el ingreso está vinculado a un cliente.
  */
 export function movementRow(m, category, linkText = '') {
+  // 0.18.5: si se pagó en otra moneda, debajo del monto va lo pagado y la tasa («US$ 15.00 a 60.50»).
   const isIncome = m.type === 'income';
   return html`<li class="row-item">
     <button type="button" class="row" data-action="edit-movement" data-id="${m.id}" aria-label="${TYPE_LABELS[m.type]}: ${m.description}, ${formatMoney(m.amountCents)}. Editar">
@@ -225,6 +236,7 @@ export function movementRow(m, category, linkText = '') {
       </span>
       <span class="row__side">
         <span class="row__amount${isIncome ? ' row__amount--income' : ''}">${formatMoney(isIncome ? m.amountCents : -m.amountCents, { sign: isIncome })}</span>
+        ${foreignNote(m) ? html`<span class="row__fx">${foreignNote(m)}</span>` : ''}
         <span class="row__time">${m.time}</span>
       </span>
     </button>

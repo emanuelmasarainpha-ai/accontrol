@@ -662,6 +662,7 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
           clients: data.clients,
           services: data.services,
           departments: data.departments,
+          baseCurrency: state.workspaces.find((w) => w.id === state.activeWorkspaceId)?.currency ?? 'DOP',
         });
         if (!checked.ok) return checked;
         const value = checked.value;

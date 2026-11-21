@@ -90,7 +90,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Preguntas de bienvenida (Sobre ti)';
+const VERSION_NOTE = 'Ingresos y gastos en otra moneda';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.

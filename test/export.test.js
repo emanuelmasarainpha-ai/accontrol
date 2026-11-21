@@ -262,7 +262,8 @@ test('reporte del mes: resumen, movimientos con signo y marca DEMO', () => {
   assert.ok(table.rows.length > 5);
   for (const row of table.rows) {
     assert.ok(String(row[0]?.date).startsWith('2026-06'));
-    assert.equal(row[7], 'DEMO', 'todo es demostración');
+    assert.equal(row[7], '', 'los datos de demostración se pagaron en la moneda del espacio');
+    assert.equal(row[8], 'DEMO', 'todo es demostración');
   }
   const incomes = table.rows.filter((row) => row[2] === 'Ingreso');
   assert.ok(incomes.every((row) => row[6].money > 0));

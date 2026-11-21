@@ -20,6 +20,9 @@ import { AUTH_TITLES, renderAuth } from '../views/auth.js';
 /** Cuánto hay que esperar para pedir de nuevo el correo de confirmación (el servidor también limita los envíos). */
 export const RESEND_COOLDOWN_MS = 60_000;
 
+/** Lo que dura la salida de la pantalla de acceso (debe coincidir con `auth-out` en views.css). */
+const LEAVE_MS = 260;
+
 /**
  * @param {Object} options
  * @param {AuthClient} options.auth
@@ -38,6 +41,8 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
     /** @type {ReturnType<typeof setTimeout> | null} */
     let resendTimer = null;
     let working = false;
+    let intro = true;
+    let leaving = false;
 
     document.body.classList.add('is-onboarding', 'is-auth');
 
@@ -45,13 +50,26 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
     function finish(user) {
       controller.abort();
       if (resendTimer !== null) clearTimeout(resendTimer);
-      document.body.classList.remove('is-auth');
-      resolve(user);
+      const done = () => {
+        document.body.classList.remove('is-auth');
+        resolve(user);
+      };
+      // Salida suave (0.18.5): la curva sube y el formulario se desvanece; luego la app entra con su propia animación.
+      const screen = root.querySelector('.auth');
+      const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (screen && !calm) {
+        leaving = true;
+        screen.classList.add('auth--leaving');
+        setTimeout(done, LEAVE_MS);
+      } else {
+        done();
+      }
     }
 
     /** @param {boolean} focus Llevar el foco al primer campo (no en el primer dibujo: no abrir el teclado del celular de golpe). */
     function draw(focus) {
-      setHtml(root, renderAuth(state));
+      setHtml(root, renderAuth({ ...state, intro }));
+      intro = false; // la curva solo baja la primera vez; al cambiar de pantalla ya está puesta
       document.title = `${AUTH_TITLES[state.mode]} · ACCONTROL`;
       if (focus) {
         const first = root.querySelector('form input');
@@ -195,7 +213,19 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
         setBusy(form, true);
         const button = form.querySelector('button[type="submit"]');
         const label = button?.textContent ?? '';
-        if (button) button.textContent = 'Un momento…';
+        if (button) {
+          // Tres puntos que laten (CSS) en vez de texto; el lector de pantalla sigue oyendo «Un momento…».
+          button.classList.add('is-loading');
+          button.textContent = '';
+          const dots = document.createElement('span');
+          dots.className = 'btn__dots';
+          dots.setAttribute('aria-hidden', 'true');
+          dots.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
+          const say = document.createElement('span');
+          say.className = 'sr-only';
+          say.textContent = 'Un momento…';
+          button.append(dots, say);
+        }
         try {
           await submit(form, readForm(form));
         } catch (error) {
@@ -203,9 +233,12 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
           if (form.isConnected) showErrors(form, { form: 'Algo salió mal. Inténtalo de nuevo.' });
         } finally {
           working = false;
-          if (form.isConnected) {
+          if (form.isConnected && !leaving) {
             setBusy(form, false);
-            if (button) button.textContent = label;
+            if (button) {
+              button.classList.remove('is-loading');
+              button.textContent = label;
+            }
           }
         }
       },

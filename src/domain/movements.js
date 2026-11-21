@@ -10,6 +10,7 @@
 
 import { validateCategoryName } from './categories.js';
 import { isValidISODate, isValidTime } from './dates.js';
+import { checkForeign } from './exchange.js';
 import { MAX_CENTS, parseMoney } from './money.js';
 import { CLASSIFICATIONS_BY_TYPE, LIMITS } from './types.js';
 
@@ -35,6 +36,8 @@ import { CLASSIFICATIONS_BY_TYPE, LIMITS } from './types.js';
  * @property {string} [clientId]            Ingreso: de qué cliente viene el pago. Gasto: a qué cliente se le carga ("" = ninguno).
  * @property {string} [serviceId]           Solo ingresos: a qué servicio corresponde ("" = ninguno).
  * @property {string} [departmentId]        Solo gastos: a qué departamento se carga ("" = ninguno).
+ * @property {string} [currency]            0.18.5: en qué moneda se pagó ("" o la del espacio = normal). Con otra, amountText es lo pagado en ESA moneda.
+ * @property {string} [rateText]            0.18.5: la tasa de ese día (1 unidad de esa moneda = X de la del espacio).
  */
 
 /**
@@ -51,14 +54,16 @@ import { CLASSIFICATIONS_BY_TYPE, LIMITS } from './types.js';
  * @property {string} clientId              "" si el ingreso no es de un cliente.
  * @property {string} serviceId             "" si el ingreso no es de un servicio.
  * @property {string} departmentId          "" si el gasto no se carga a un departamento.
+ * @property {{ currency: import('./currencies.js').CurrencyCode, amountCents: number, rateMicro: number } | null} foreign  0.18.5: lo pagado en otra moneda (amountCents ya está convertido).
  */
 
 /**
  * @param {MovementInput} input
- * @param {{ categories: Category[], today: string, clients?: Client[], services?: Service[], departments?: Department[] }} context
+ * @param {{ categories: Category[], today: string, clients?: Client[], services?: Service[], departments?: Department[], baseCurrency?: string }} context
+ *   baseCurrency (0.18.5): la moneda del espacio; sin ella no se aceptan pagos en otra moneda.
  * @returns {{ ok: true, value: ValidMovement } | { ok: false, errors: Record<string, string> }}
  */
-export function validateMovement(input, { categories, today, clients = [], services = [], departments = [] }) {
+export function validateMovement(input, { categories, today, clients = [], services = [], departments = [], baseCurrency = '' }) {
   /** @type {Record<string, string>} */
   const errors = {};
 
@@ -75,6 +80,21 @@ export function validateMovement(input, { categories, today, clients = [], servi
     errors.amount = 'El monto es demasiado grande.';
   } else {
     amountCents = money.cents;
+  }
+
+  // 0.18.5: pagado en otra moneda. El monto escrito es el de esa moneda; se guarda convertido con la tasa.
+  /** @type {ValidMovement['foreign']} */
+  let foreign = null;
+  const wantsForeign = input.currency !== undefined && input.currency !== '' && input.currency !== baseCurrency;
+  if (wantsForeign && !baseCurrency) {
+    errors.currency = 'En este espacio no se puede registrar en otra moneda.';
+  } else if (wantsForeign) {
+    const fx = checkForeign({ currency: input.currency, amountCents: amountCents || 1, rateText: input.rateText, baseCurrency });
+    if (!fx.ok) Object.assign(errors, fx.errors);
+    else if (fx.foreign && amountCents > 0) {
+      foreign = { currency: fx.foreign.currency, amountCents, rateMicro: fx.foreign.rateMicro };
+      amountCents = fx.foreign.convertedCents;
+    }
   }
 
   if (!isValidISODate(input.date)) {
@@ -164,6 +184,7 @@ export function validateMovement(input, { categories, today, clients = [], servi
       clientId,
       serviceId,
       departmentId,
+      foreign,
     },
   };
 }
@@ -187,6 +208,7 @@ export function buildMovement(value, { id, categoryId, nowISO }) {
     ...(value.clientId ? { clientId: value.clientId } : {}),
     ...(value.serviceId ? { serviceId: value.serviceId } : {}),
     ...(value.departmentId ? { departmentId: value.departmentId } : {}),
+    ...foreignFields(value.foreign),
     createdAt: nowISO,
     updatedAt: nowISO,
   };
@@ -201,7 +223,8 @@ export function buildMovement(value, { id, categoryId, nowISO }) {
  * @returns {Movement}
  */
 export function applyMovementEdit(existing, value, { categoryId, nowISO }) {
-  const { clientId: _client, serviceId: _service, departmentId: _department, ...rest } = existing; // el vínculo lo decide lo que se acaba de validar
+  // El vínculo y la moneda original los decide lo que se acaba de validar.
+  const { clientId: _client, serviceId: _service, departmentId: _department, originalCurrency: _oc, originalAmountCents: _oa, exchangeRateMicro: _rate, ...rest } = existing;
   return {
     ...rest,
     type: existing.type, // el tipo no cambia al editar
@@ -214,8 +237,16 @@ export function applyMovementEdit(existing, value, { categoryId, nowISO }) {
     ...(value.clientId ? { clientId: value.clientId } : {}),
     ...(value.serviceId ? { serviceId: value.serviceId } : {}),
     ...(value.departmentId ? { departmentId: value.departmentId } : {}),
+    ...foreignFields(value.foreign),
     updatedAt: nowISO,
   };
+}
+
+/** Los tres campos de lo pagado en otra moneda (o ninguno). @param {ValidMovement['foreign']} foreign */
+function foreignFields(foreign) {
+  return foreign
+    ? { originalCurrency: foreign.currency, originalAmountCents: foreign.amountCents, exchangeRateMicro: foreign.rateMicro }
+    : {};
 }
 
 /**

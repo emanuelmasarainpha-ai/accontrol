@@ -13,7 +13,9 @@ import { currentTime } from '../domain/dates.js';
 import { paidByService, summarizeService } from '../domain/freelance.js';
 import { billedByService } from '../domain/invoices.js';
 import { goalProgress, goalSavedCents } from '../domain/goals.js';
-import { centsToInputValue, formatMoney, parseMoney } from '../domain/money.js';
+import { centsToInputValue, formatMoney, formatMoneyIn, parseMoney } from '../domain/money.js';
+import { CURRENCY_CODES, CURRENCIES, currencyInfo } from '../domain/currencies.js';
+import { convertCents, formatExchangeRate, hasForeign, lastRateFor, parseRate, rateLooksOdd } from '../domain/exchange.js';
 import { overallTotals } from '../domain/summaries.js';
 import { CLASSIFICATIONS_BY_TYPE, CLASSIFICATION_LABELS, LIMITS } from '../domain/types.js';
 import { $, $$ } from '../ui/dom.js';
@@ -56,6 +58,78 @@ const CLASSIFICATION_HINTS = {
 // =============================================================================
 
 /**
+ * 0.18.5: «¿En qué moneda pagaste?» y, si no es la del espacio, la tasa de ese día.
+ * @param {string} base @param {string} selected @param {string} rateText
+ */
+function foreignFields(base, selected, rateText) {
+  const b = currencyInfo(base);
+  const s = currencyInfo(selected);
+  return html`<div class="field-row">
+    <div class="field" data-field="currency">
+      <label for="mv-currency">Moneda del pago</label>
+      <select id="mv-currency" name="currency" class="input" aria-describedby="currency-error">
+        <option value="${b.code}" ${selected === b.code ? 'selected' : ''}>${b.label} (${b.symbol})</option>
+        ${CURRENCY_CODES.filter((c) => c !== b.code).map((c) => html`<option value="${c}" ${c === selected ? 'selected' : ''}>${CURRENCIES[c].label} (${CURRENCIES[c].symbol})</option>`)}
+      </select>
+      ${fieldError('currency')}
+    </div>
+    <div class="field" data-field="rate" data-fx-rate ${selected === b.code ? 'hidden' : ''}>
+      <label for="mv-rate" data-fx-rate-label>Tasa: 1 ${s.symbol} = ¿cuántos ${b.symbol}?</label>
+      <input id="mv-rate" name="rateText" class="input" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${rateText}" aria-describedby="mv-rate-hint rate-error" />
+      <p class="hint" id="mv-rate-hint">La del día en que pagaste. La escribes tú: la app no la trae de internet.</p>
+      ${fieldError('rate')}
+    </div>
+  </div>`;
+}
+
+/**
+ * Pone al día el formulario según la moneda elegida: el símbolo del monto, la tasa (propone la última usada con esa
+ * moneda) y lo que se registrará en la moneda del espacio.
+ * @param {HTMLElement} sheet @param {string} base @param {readonly Movement[]} movements
+ */
+function bindForeign(sheet, base, movements) {
+  const currency = /** @type {HTMLSelectElement | null} */ (sheet.querySelector('#mv-currency'));
+  const rate = /** @type {HTMLInputElement | null} */ (sheet.querySelector('#mv-rate'));
+  const amount = /** @type {HTMLInputElement | null} */ (sheet.querySelector('#mv-amount'));
+  const rateField = sheet.querySelector('[data-fx-rate]');
+  const rateLabel = sheet.querySelector('[data-fx-rate-label]');
+  const symbol = sheet.querySelector('#mv-amount')?.closest('.input-money')?.querySelector('.input-money__symbol');
+  const preview = sheet.querySelector('[data-preview-for="mv-amount"]');
+  if (!currency || !rate || !amount || !(rateField instanceof HTMLElement) || !rateLabel || !symbol || !preview) return;
+  let rateTouched = rate.value !== '';
+  const update = () => {
+    const code = currency.value;
+    const isForeign = code !== base;
+    rateField.hidden = !isForeign;
+    symbol.textContent = currencyInfo(code).symbol;
+    rateLabel.textContent = `Tasa: 1 ${currencyInfo(code).symbol} = ¿cuántos ${currencyInfo(base).symbol}?`;
+    if (!isForeign) return;
+    const paid = parseMoney(amount.value.trim());
+    const r = parseRate(rate.value);
+    if (!amount.value.trim() || !paid.ok) return; // el aviso del monto ya lo da la vista previa normal
+    if (!r.ok) {
+      preview.textContent = `${formatMoneyIn(paid.cents, code)}: escribe la tasa para saber cuánto es en ${currencyInfo(base).symbol}.`;
+      return;
+    }
+    const last = lastRateFor(movements, code);
+    const odd = rateLooksOdd(r.micro, last);
+    preview.classList.toggle('hint--warn', odd);
+    preview.textContent = `Se registrará ${formatMoneyIn(convertCents(paid.cents, r.micro), base)} (${formatMoneyIn(paid.cents, code)} a ${formatExchangeRate(r.micro)})`
+      + (odd && last ? `. Ojo: la última vez usaste ${formatExchangeRate(last)}; revisa que la tasa esté bien.` : '');
+  };
+  currency.addEventListener('change', () => {
+    if (currency.value !== base && !rateTouched) {
+      const last = lastRateFor(movements, currency.value);
+      rate.value = last ? formatExchangeRate(last) : '';
+    }
+    update();
+  });
+  rate.addEventListener('input', () => { rateTouched = rate.value !== ''; update(); });
+  amount.addEventListener('input', update);
+  update();
+}
+
+/**
  * @param {Store} store
  * @param {{ type: 'income' | 'expense', movement?: Movement | null, clientId?: string | null, serviceId?: string | null }} options
  *   `clientId` / `serviceId`: vínculo con el que se abre un ingreso nuevo («Registrar pago» desde un cliente o servicio).
@@ -70,6 +144,9 @@ export function openMovementForm(store, { type, movement = null, clientId = null
   const initialClass = movement ? movement.classification : CLASSIFICATIONS_BY_TYPE[kind][1];
   const hints = /** @type {Record<string, string>} */ (CLASSIFICATION_HINTS[kind]);
   const noun = kind === 'income' ? 'ingreso' : 'gasto';
+  // 0.18.5: pagado en otra moneda. La moneda del espacio es la de siempre; con otra se pide la tasa del día.
+  const baseCurrency = store.activeWorkspace()?.currency ?? 'DOP';
+  const foreign = movement !== null && hasForeign(movement);
 
   // Cliente (en ingresos: de quién viene el pago; en gastos: a quién se le carga) y servicio (solo ingresos), si el espacio usa
   // clientes. Se ofrecen los clientes activos y el ya vinculado.
@@ -107,7 +184,9 @@ export function openMovementForm(store, { type, movement = null, clientId = null
   openSheet({
     title: isEdit ? `Editar ${noun}` : kind === 'income' ? 'Añadir ingreso' : 'Añadir gasto',
     content: html`<form class="stack" novalidate data-movement="${kind}">
-      ${moneyField({ id: 'mv-amount', name: 'amountText', label: 'Monto', value: movement ? centsToInputValue(movement.amountCents) : '', errorKey: 'amount', autofocus: !isEdit })}
+      ${moneyField({ id: 'mv-amount', name: 'amountText', label: 'Monto', value: movement ? centsToInputValue(foreign ? /** @type {number} */ (movement.originalAmountCents) : movement.amountCents) : '', errorKey: 'amount', autofocus: !isEdit })}
+
+      ${foreignFields(baseCurrency, foreign ? /** @type {string} */ (movement?.originalCurrency) : baseCurrency, foreign ? formatExchangeRate(/** @type {number} */ (movement?.exchangeRateMicro)) : '')}
 
       <div class="field-row">
         <div class="field" data-field="date">
@@ -204,6 +283,7 @@ export function openMovementForm(store, { type, movement = null, clientId = null
       let classTouched = isEdit;
 
       bindMoneyPreview(sheet, 'mv-amount');
+      bindForeign(sheet, baseCurrency, data.movements.filter((m) => m.id !== movement?.id));
 
       // Cliente → servicio: al elegir otro cliente se ofrecen sus servicios.
       const clientSelect = /** @type {HTMLSelectElement | null} */ (sheet.querySelector('#mv-client'));
@@ -266,6 +346,8 @@ export function openMovementForm(store, { type, movement = null, clientId = null
             clientId: v.clientId ?? '',
             serviceId: v.serviceId ?? '',
             departmentId: v.departmentId ?? '',
+            currency: v.currency ?? '',
+            rateText: v.rateText ?? '',
           },
           movement?.id ?? null,
         );

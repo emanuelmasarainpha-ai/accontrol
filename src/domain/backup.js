@@ -30,6 +30,7 @@ import { CLASSIFICATIONS_BY_TYPE, LIMITS, SCHEMA_VERSION } from './types.js';
 import { isOrganizationEmpty, kindHasOrganization, normalizeOrganization, validateOrganization } from './organization.js';
 import { isWorkspaceKind, normalizeWorkspaceName, sortWorkspaces } from './workspaces.js';
 import { isCurrencyCode } from './currencies.js';
+import { convertCents, MAX_RATE_MICRO } from './exchange.js';
 
 /** @typedef {import('./types.js').AppData} AppData */
 /** @typedef {import('./types.js').Classification} Classification */
@@ -439,6 +440,16 @@ function validateData(d, { today, ids }) {
       if (m.type !== 'expense') throw new Error(`${w}: solo un gasto puede estar cargado a un departamento.`);
       if (typeof m.departmentId !== 'string' || !departmentIds.has(m.departmentId)) throw new Error(`${w}: está cargado a un departamento que no existe en el respaldo.`);
     }
+    // Pagado en otra moneda (0.18.5): las tres piezas juntas, y el monto guardado debe ser justo lo pagado × la tasa.
+    const foreignParts = [m.originalCurrency, m.originalAmountCents, m.exchangeRateMicro].filter((x) => x !== undefined).length;
+    if (foreignParts !== 0 && foreignParts !== 3) throw new Error(`${w}: el pago en otra moneda está incompleto.`);
+    const hasForeign = foreignParts === 3;
+    if (hasForeign) {
+      if (!isCurrencyCode(m.originalCurrency)) throw new Error(`${w}: moneda del pago no válida.`);
+      cents(m.originalAmountCents, w);
+      if (!Number.isSafeInteger(m.exchangeRateMicro) || m.exchangeRateMicro < 1 || m.exchangeRateMicro > MAX_RATE_MICRO) throw new Error(`${w}: tasa de cambio no válida.`);
+      if (convertCents(m.originalAmountCents, m.exchangeRateMicro) !== m.amountCents) throw new Error(`${w}: el monto no coincide con lo pagado y la tasa.`);
+    }
     return {
       id: m.id, type: m.type, amountCents: m.amountCents, date: m.date, time: m.time,
       description: m.description, classification: m.classification, categoryId: m.categoryId,
@@ -446,6 +457,7 @@ function validateData(d, { today, ids }) {
       ...(hasClient ? { clientId: m.clientId } : {}),
       ...(hasService ? { serviceId: m.serviceId } : {}),
       ...(hasDepartment ? { departmentId: m.departmentId } : {}),
+      ...(hasForeign ? { originalCurrency: m.originalCurrency, originalAmountCents: m.originalAmountCents, exchangeRateMicro: m.exchangeRateMicro } : {}),
       ...(m.isDemo === true ? { isDemo: true } : {}),
     };
   });

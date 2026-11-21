@@ -26,6 +26,20 @@ export function currencySymbol() {
   return active.symbol;
 }
 
+/**
+ * Un monto en OTRA moneda que la del espacio (0.18.5: lo que se pagó en dólares, por ejemplo): «US$ 15.00».
+ * @param {number} cents @param {unknown} code
+ */
+export function formatMoneyIn(cents, code) {
+  const before = active;
+  active = currencyInfo(code);
+  try {
+    return formatMoney(cents);
+  } finally {
+    active = before;
+  }
+}
+
 /** El código de esa moneda: «DOP», «USD»… */
 export function currencyCode() {
   return active.code;

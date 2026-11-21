@@ -1,5 +1,5 @@
 {
-  "version": "aadf1409e0e2",
+  "version": "5e1099fda8f5",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -59,6 +59,7 @@
     "src/domain/departments.js",
     "src/domain/diagnosis.js",
     "src/domain/diagnosisCards.js",
+    "src/domain/exchange.js",
     "src/domain/fiado.js",
     "src/domain/finmath.js",
     "src/domain/freelance.js",

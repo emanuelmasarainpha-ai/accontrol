@@ -28,11 +28,15 @@ import {
 } from '../domain/invoices.js';
 import { STOCK_KIND_LABELS, inventorySummary, replayProduct, salesAnalysis, sortEntries, supplierTotals } from '../domain/inventory.js';
 import { RANGE_LABELS, clientCosts, clientRanking, clientSummaries, paidByService, receivables, summarizeService } from '../domain/freelance.js';
-import { formatMoney } from '../domain/money.js';
+import { formatMoney, formatMoneyIn } from '../domain/money.js';
+import { formatExchangeRate, hasForeign } from '../domain/exchange.js';
 import { netWorthSummary } from '../domain/netWorth.js';
 import { GRANULARITY_LABELS, netContributions, monthTotals, totalsByCategory, totalsByClassification, overallTotals } from '../domain/summaries.js';
 import { CLASSIFICATION_LABELS, TYPE_LABELS } from '../domain/types.js';
 import { date, int, money, pct, slugify } from './model.js';
+
+/** 0.18.5: «US$ 15.00 a 60.50» si se pagó en otra moneda; '' si no. @param {import('../domain/types.js').Movement} m */
+const foreignText = (m) => (hasForeign(m) ? `${formatMoneyIn(/** @type {number} */ (m.originalAmountCents), m.originalCurrency)} a ${formatExchangeRate(/** @type {number} */ (m.exchangeRateMicro))}` : '');
 
 /** @typedef {import('../domain/types.js').AppData} AppData */
 /** @typedef {import('./model.js').Report} Report */
@@ -101,7 +105,7 @@ export function monthReport(data, monthKey, today) {
     const category = data.categories.find((c) => c.id === m.categoryId)?.name ?? 'Sin categoría';
     lines.push({
       date: m.date, time: m.time, createdAt: m.createdAt,
-      cells: [date(m.date), m.time, TYPE_LABELS[m.type], category, CLASSIFICATION_LABELS[m.classification], m.description, money(m.type === 'income' ? m.amountCents : -m.amountCents), demoMark(m)],
+      cells: [date(m.date), m.time, TYPE_LABELS[m.type], category, CLASSIFICATION_LABELS[m.classification], m.description, money(m.type === 'income' ? m.amountCents : -m.amountCents), foreignText(m), demoMark(m)],
     });
   }
   for (const c of data.contributions) {
@@ -109,7 +113,7 @@ export function monthReport(data, monthKey, today) {
     const goal = data.goals.find((g) => g.id === c.goalId)?.name ?? 'Meta eliminada';
     lines.push({
       date: c.date, time: c.time, createdAt: c.createdAt,
-      cells: [date(c.date), c.time, c.kind === 'deposit' ? 'Ahorro' : 'Retiro de ahorro', 'Metas', '', `${goal}${c.note ? ` — ${c.note}` : ''}`, money(c.kind === 'deposit' ? -c.amountCents : c.amountCents), demoMark(c)],
+      cells: [date(c.date), c.time, c.kind === 'deposit' ? 'Ahorro' : 'Retiro de ahorro', 'Metas', '', `${goal}${c.note ? ` — ${c.note}` : ''}`, money(c.kind === 'deposit' ? -c.amountCents : c.amountCents), '', demoMark(c)],
     });
   }
   lines.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.createdAt.localeCompare(b.createdAt));
@@ -144,7 +148,7 @@ export function monthReport(data, monthKey, today) {
       blocks: [
         {
           type: 'table',
-          headers: ['Fecha', 'Hora', 'Tipo', 'Categoría', 'Clasificación', 'Descripción', 'Monto', 'Marca'],
+          headers: ['Fecha', 'Hora', 'Tipo', 'Categoría', 'Clasificación', 'Descripción', 'Monto', 'Pagado en otra moneda', 'Marca'],
           rows: lines.map((l) => l.cells),
         },
         { type: 'text', text: 'Los ingresos van en positivo; los gastos y los aportes a metas, en negativo.' },

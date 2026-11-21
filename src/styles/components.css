@@ -796,6 +796,13 @@ a.row:active {
   font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
+/* 0.18.5: lo pagado en otra moneda, debajo del monto («US$ 15.00 a 60.50»). */
+.row__fx {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 .day + .day {
   margin-top: var(--space-4);

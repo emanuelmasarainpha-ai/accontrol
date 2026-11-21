@@ -1158,6 +1158,130 @@
   gap: var(--space-2);
 }
 
+/* ---- Acceso con curva (0.18.5): la cabecera es una banda del color profundo con el borde de abajo curvo ----
+   La banda es un ::before a todo el ancho de la pantalla; solo se mueve con transform y opacity. */
+body.is-auth {
+  overflow-x: clip;
+}
+.auth {
+  position: relative;
+}
+.auth .welcome__head {
+  position: relative;
+  isolation: isolate;
+  max-width: none;
+  padding: var(--space-6) var(--space-4) calc(var(--space-6) + 12px);
+  color: #fff;
+}
+.auth .welcome__head::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -300px;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  background: var(--kind-deep);
+  border-radius: 0 0 50% 50% / 0 0 44px 44px;
+}
+.auth .welcome__title,
+.auth .welcome__sub {
+  color: inherit;
+}
+.auth .welcome__sub {
+  opacity: 0.82;
+}
+.auth .welcome__mark {
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 28%);
+}
+/* El sol y la luna quedan sobre la curva. */
+.auth__theme {
+  position: relative;
+  z-index: 2;
+  color: #fff;
+}
+/* Botón «Entrar» mientras espera: tres puntos que laten. */
+.btn.is-loading {
+  cursor: progress;
+}
+.btn__dots {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.btn__dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* La curva baja una sola vez al abrir; luego el contenido sube escalonado (un poco más largo que
+     el resto de la app: es la primera impresión, ocurre una vez por sesión). */
+  .auth--intro .welcome__head::before {
+    animation: auth-curve 520ms var(--ease-out) backwards;
+  }
+  .auth .welcome__head > * {
+    animation: rise-in 360ms var(--ease-out) backwards;
+  }
+  .auth .welcome__head > :nth-child(1) { animation-delay: 120ms; }
+  .auth .welcome__head > :nth-child(2) { animation-delay: 180ms; }
+  .auth .welcome__head > :nth-child(3) { animation-delay: 240ms; }
+  .auth > :not(.welcome__head):not(.auth__theme) {
+    animation: rise-in 360ms var(--ease-out) backwards;
+    animation-delay: 260ms;
+  }
+  .auth > :nth-child(4) { animation-delay: 320ms; }
+  .auth > :nth-child(5) { animation-delay: 380ms; }
+  .auth > :nth-child(6) { animation-delay: 440ms; }
+  /* Salida al entrar a la app: la curva sube, todo lo demás se desvanece un poco hacia arriba. */
+  .auth.auth--leaving .welcome__head::before {
+    animation: auth-curve-out 260ms var(--ease-in-out) forwards;
+  }
+  .auth.auth--leaving .welcome__head > *,
+  .auth.auth--leaving > :not(.welcome__head) {
+    animation: auth-out 220ms var(--ease-in-out) forwards;
+    animation-delay: 0ms;
+  }
+  .auth.auth--leaving {
+    pointer-events: none;
+  }
+  .btn__dots i {
+    animation: auth-dot 900ms var(--ease-in-out) infinite;
+  }
+  .btn__dots i:nth-child(2) { animation-delay: 150ms; }
+  .btn__dots i:nth-child(3) { animation-delay: 300ms; }
+}
+@keyframes auth-curve {
+  from {
+    transform: translateY(-100%);
+  }
+}
+@keyframes auth-curve-out {
+  to {
+    transform: translateY(-100%);
+  }
+}
+@keyframes auth-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes auth-dot {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
 .kind-grid {
   display: grid;
   gap: var(--space-4);

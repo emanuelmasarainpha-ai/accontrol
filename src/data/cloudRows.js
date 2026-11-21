@@ -50,8 +50,9 @@ export const CLOUD_KINDS = [
   },
   {
     key: 'movements', idsKey: 'movementIds', table: 'movements',
-    fields: ['id', 'type', 'amountCents', 'date', 'time', 'description', 'classification', 'categoryId', 'clientId', 'serviceId', 'departmentId', ...STAMPS],
-    optional: ['clientId', 'serviceId', 'departmentId'], timestamps: STAMPS, integers: ['amountCents'],
+    // 0.18.5: originalCurrency, originalAmountCents y exchangeRateMicro (pagado en otra moneda; migración 20261123000100_foreign_movements).
+    fields: ['id', 'type', 'amountCents', 'date', 'time', 'description', 'classification', 'categoryId', 'clientId', 'serviceId', 'departmentId', 'originalCurrency', 'originalAmountCents', 'exchangeRateMicro', ...STAMPS],
+    optional: ['clientId', 'serviceId', 'departmentId', 'originalCurrency', 'originalAmountCents', 'exchangeRateMicro'], timestamps: STAMPS, integers: ['amountCents', 'originalAmountCents', 'exchangeRateMicro'],
   },
   { key: 'goals', idsKey: 'goalIds', table: 'goals', fields: ['id', 'name', 'description', 'targetCents', 'targetDate', ...STAMPS], timestamps: STAMPS, integers: ['targetCents'] },
   {
