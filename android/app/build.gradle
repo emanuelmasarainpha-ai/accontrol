@@ -13,6 +13,32 @@ def firmaFile = new File(System.getProperty('user.home'), '.accontrol-firma/firm
 def firma = new Properties()
 if (firmaFile.exists()) { firmaFile.withInputStream { firma.load(it) } }
 
+// ACCONTROL (0.18.4): copia src/main/assets (lo que deja `npx cap sync`: la app web y la configuración de
+// Capacitor) a la carpeta de compilación, con lectura normal de archivos, antes de empaquetar. Sin seguimiento de
+// estado (se copia siempre; son unos 4 MB), porque Gradle no puede vigilar los archivos que OneDrive convierte.
+def webAssetsSrc = file('src/main/assets')
+def webAssetsOut = layout.buildDirectory.dir('accontrol-web-assets').get().asFile
+def copyWebAssets = tasks.register('copyWebAssets') {
+    doNotTrackState('OneDrive convierte los archivos de assets en marcadores que Gradle no puede vigilar')
+    doLast {
+        if (webAssetsOut.exists()) webAssetsOut.deleteDir()
+        def src = webAssetsSrc.toPath()
+        def out = webAssetsOut.toPath()
+        java.nio.file.Files.walk(src).withCloseable { paths ->
+            paths.each { p ->
+                def target = out.resolve(src.relativize(p).toString())
+                if (java.nio.file.Files.isDirectory(p)) {
+                    java.nio.file.Files.createDirectories(target)
+                } else {
+                    java.nio.file.Files.createDirectories(target.parent)
+                    java.nio.file.Files.copy(p, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
+        }
+    }
+}
+tasks.matching { it.name ==~ /merge\w*Assets/ }.configureEach { dependsOn copyWebAssets }
+
 android {
     namespace = "com.accontrol.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -34,6 +60,14 @@ android {
     // La app es web: lint revisa código Java/Kotlin de Android, que aquí es el de Capacitor.
     lint {
         checkReleaseBuilds = false
+    }
+    // ACCONTROL (0.18.4): los archivos web se empaquetan desde una COPIA en la carpeta de compilación (fuera de
+    // OneDrive). Gradle se niega a vigilar los marcadores de OneDrive («not a regular file») y el APK fallaba al
+    // juntar los archivos (mergeReleaseAssets). Ver la tarea copyWebAssets más abajo.
+    sourceSets {
+        main {
+            assets.srcDirs = [webAssetsOut]
+        }
     }
     signingConfigs {
         if (firmaFile.exists()) {

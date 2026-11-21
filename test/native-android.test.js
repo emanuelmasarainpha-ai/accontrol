@@ -84,3 +84,13 @@ describe('APK para instalar (firmado)', async () => {
     assert.ok(appGradle.includes('versionName appVersion'));
   });
 });
+
+describe('APK con OneDrive (0.18.4)', () => {
+  const appGradle = readFileSync(new URL('../android/app/build.gradle', import.meta.url), 'utf8');
+  it('empaqueta los archivos web desde una copia fuera de OneDrive, copiada antes de juntarlos', () => {
+    assert.ok(appGradle.includes("tasks.register('copyWebAssets')"));
+    assert.ok(appGradle.includes('doNotTrackState('));
+    assert.ok(appGradle.includes('assets.srcDirs = [webAssetsOut]'));
+    assert.ok(appGradle.includes('configureEach { dependsOn copyWebAssets }'));
+  });
+});
