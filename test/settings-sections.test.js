@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { SETTINGS_SECTIONS, sectionFromParams, visibleSections } from '../src/app/settingsSections.js';
 import { stepsFor } from '../src/app/tourSteps.js';
 
-const ALL_BLOCKS = ['account', 'profile', 'device', 'tour', 'categories', 'workspaces', 'details', 'members', 'cloud', 'backup', 'autoBackup', 'demo', 'danger', 'accountDanger', 'privacy', 'next'];
+const ALL_BLOCKS = ['account', 'profile', 'currency', 'device', 'tour', 'categories', 'workspaces', 'details', 'members', 'cloud', 'backup', 'autoBackup', 'demo', 'danger', 'accountDanger', 'privacy', 'next'];
 
 describe('Ajustes por secciones', () => {
   it('cada bloque de Ajustes está en una sola sección (no se pierde ni se repite nada)', () => {

@@ -29,6 +29,7 @@ import { MAX_CENTS } from './money.js';
 import { CLASSIFICATIONS_BY_TYPE, LIMITS, SCHEMA_VERSION } from './types.js';
 import { isOrganizationEmpty, kindHasOrganization, normalizeOrganization, validateOrganization } from './organization.js';
 import { isWorkspaceKind, normalizeWorkspaceName, sortWorkspaces } from './workspaces.js';
+import { isCurrencyCode } from './currencies.js';
 
 /** @typedef {import('./types.js').AppData} AppData */
 /** @typedef {import('./types.js').Classification} Classification */
@@ -73,14 +74,14 @@ function dataSections(data) {
  * muestra de qué espacio viene, pero los datos se restauran en el espacio que la persona tenga abierto.
  * @param {AppData} data
  * @param {string} nowISO
- * @param {{ kind: WorkspaceKind, name: string }} [workspace]
+ * @param {{ kind: WorkspaceKind, name: string, currency?: import('./currencies.js').CurrencyCode }} [workspace]
  */
 export function createBackup(data, nowISO, workspace) {
   return {
     app: BACKUP_APP_ID,
     schemaVersion: SCHEMA_VERSION,
     exportedAt: nowISO,
-    ...(workspace ? { workspace: { kind: workspace.kind, name: workspace.name } } : {}),
+    ...(workspace ? { workspace: { kind: workspace.kind, name: workspace.name, ...(workspace.currency ? { currency: workspace.currency } : {}) } } : {}),
     data: { ...dataSections(data), settings: data.settings },
   };
 }
@@ -162,7 +163,7 @@ function readEnvelope(text) {
  * así que se exigen las mismas reglas que la app aplica al registrar datos (si no, se podría "fabricar" dinero).
  * @param {string} text Contenido del archivo.
  * @param {{ today?: string }} [options]  `today` ("AAAA-MM-DD"): si se indica, se rechazan registros con fecha futura.
- * @returns {{ ok: true, data: AppData, workspace: { kind: WorkspaceKind, name: string } | null } | { ok: false, error: string }}
+ * @returns {{ ok: true, data: AppData, workspace: { kind: WorkspaceKind, name: string, currency?: import('./currencies.js').CurrencyCode } | null } | { ok: false, error: string }}
  */
 export function parseBackup(text, { today } = {}) {
   const envelope = readEnvelope(text);
@@ -184,7 +185,7 @@ export function parseBackup(text, { today } = {}) {
  * Lee cualquiera de los dos tipos de copia.
  * @param {string} text
  * @param {{ today?: string }} [options]
- * @returns {{ ok: true, kind: 'workspace', data: AppData, workspace: { kind: WorkspaceKind, name: string } | null }
+ * @returns {{ ok: true, kind: 'workspace', data: AppData, workspace: { kind: WorkspaceKind, name: string, currency?: import('./currencies.js').CurrencyCode } | null }
  *   | { ok: true, kind: 'full', profile: Profile, workspaces: { workspace: Workspace, data: AppData }[] }
  *   | { ok: false, error: string }}
  */
@@ -206,7 +207,9 @@ export function parseAnyBackup(text, { today } = {}) {
 function readWorkspaceHint(raw) {
   if (!isObject(raw) || !isWorkspaceKind(raw.kind) || typeof raw.name !== 'string') return null;
   const name = normalizeWorkspaceName(raw.name);
-  return name && name.length <= LIMITS.workspaceName ? { kind: raw.kind, name } : null;
+  if (!name || name.length > LIMITS.workspaceName) return null;
+  // La moneda (0.18.3) es solo informativa, como el resto de la pista; las copias de antes no la traen.
+  return { kind: raw.kind, name, ...(isCurrencyCode(raw.currency) ? { currency: raw.currency } : {}) };
 }
 
 /**
@@ -242,7 +245,8 @@ function validateFull(parsed, today) {
     if (!name || name.length > LIMITS.workspaceName) throw new Error(`${w}: nombre no válido.`);
     if (names.has(name.toLocaleLowerCase('es'))) throw new Error(`${w}: el nombre «${name}» está repetido.`);
     names.add(name.toLocaleLowerCase('es'));
-    if (raw.currency !== 'DOP') throw new Error(`${w}: moneda no válida.`);
+    // Las copias de antes de la 0.18.3 siempre traen DOP; las nuevas, la moneda del espacio.
+    if (!isCurrencyCode(raw.currency)) throw new Error(`${w}: moneda no válida.`);
     if (!Number.isSafeInteger(raw.openingBalanceCents) || raw.openingBalanceCents < 0 || raw.openingBalanceCents > MAX_CENTS) {
       throw new Error(`${w}: saldo inicial no válido.`);
     }
@@ -264,7 +268,7 @@ function validateFull(parsed, today) {
     );
     /** @type {Workspace} */
     const workspace = {
-      id: raw.id, kind: raw.kind, name, currency: 'DOP', openingBalanceCents: raw.openingBalanceCents,
+      id: raw.id, kind: raw.kind, name, currency: raw.currency, openingBalanceCents: raw.openingBalanceCents,
       isDefault: raw.isDefault, ...(organization ? { organization } : {}),
       createdAt: iso(raw.createdAt, w), updatedAt: iso(raw.updatedAt, w),
     };

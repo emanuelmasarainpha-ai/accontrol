@@ -134,7 +134,7 @@ export function openAssetForm(store, { asset }) {
         deleteButton.addEventListener('click', async () => {
           const ok = await confirmDialog({
             title: '¿Eliminar este activo?',
-            message: `Se borrará «${asset.name}» y su historial de valores. Tus ingresos, gastos y deudas no cambian. Si lo vendiste, mejor registra el ingreso y actualiza su valor a RD$ 0 en esa fecha: así tu historial se conserva. Esta acción no se puede deshacer.`,
+            message: `Se borrará «${asset.name}» y su historial de valores. Tus ingresos, gastos y deudas no cambian. Si lo vendiste, mejor registra el ingreso y actualiza su valor a ${formatMoney(0, { decimals: false })} en esa fecha: así tu historial se conserva. Esta acción no se puede deshacer.`,
             confirmLabel: 'Eliminar',
             danger: true,
           });

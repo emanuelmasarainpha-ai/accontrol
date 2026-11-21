@@ -63,7 +63,8 @@ export function winAnsiCode(ch) {
 
 /** @param {string} text @returns {number[]} */
 function toBytes(text) {
-  return [...text.replace(/[\r\n\t]+/g, ' ')].map(winAnsiCode);
+  // El colón costarricense (₡, 0.18.3) no existe en WinAnsi: se escribe con su código para que no salga «?».
+  return [...text.replace(/[\r\n\t]+/g, ' ').replace(/₡/g, 'CRC')].map(winAnsiCode);
 }
 
 /** @param {number} code @param {boolean} bold */

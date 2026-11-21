@@ -10,18 +10,23 @@
 // =============================================================================
 
 import { parseISO } from '../domain/dates.js';
+import { currencySymbol } from '../domain/money.js';
 import { cellText } from './model.js';
 import { buildZip } from './zip.js';
 
 /** @typedef {import('./model.js').Cell} Cell */
 /** @typedef {import('./model.js').Report} Report */
 
-/** Índices de estilo (ver STYLES_XML). */
+/** Índices de estilo (ver stylesXml). */
 const S = { normal: 0, header: 1, money: 2, date: 3, int: 4, pct: 5, title: 6, bold: 7, moneyBold: 8, note: 9, wrap: 10, intBold: 11, pctBold: 12 };
 
-const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+/**
+ * Los estilos del libro. El formato de los montos lleva el símbolo de la moneda del espacio (0.18.3).
+ * @param {string} symbol
+ */
+const stylesXml = (symbol) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<numFmts count="2"><numFmt numFmtId="164" formatCode="&quot;RD$ &quot;#,##0.00;[Red]\\-&quot;RD$ &quot;#,##0.00"/><numFmt numFmtId="165" formatCode="yyyy\\-mm\\-dd"/></numFmts>
+<numFmts count="2"><numFmt numFmtId="164" formatCode="&quot;${xmlEscape(symbol)} &quot;#,##0.00;[Red]\\-&quot;${xmlEscape(symbol)} &quot;#,##0.00"/><numFmt numFmtId="165" formatCode="yyyy\\-mm\\-dd"/></numFmts>
 <fonts count="5">
 <font><sz val="11"/><name val="Calibri"/></font>
 <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
@@ -208,7 +213,7 @@ export function reportToXlsx(report) {
     { name: 'docProps/core.xml', data: core },
     { name: 'xl/workbook.xml', data: workbook },
     { name: 'xl/_rels/workbook.xml.rels', data: workbookRels },
-    { name: 'xl/styles.xml', data: STYLES_XML },
+    { name: 'xl/styles.xml', data: stylesXml(currencySymbol()) },
     ...sheetFiles.map((xml, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, data: xml })),
   ]);
 }

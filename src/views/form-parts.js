@@ -4,7 +4,7 @@
 // Campo de monto, zona de error, vista previa del monto y manejo del resultado.
 // =============================================================================
 
-import { formatMoney, parseMoney } from '../domain/money.js';
+import { currencySymbol, formatMoney, parseMoney } from '../domain/money.js';
 import { $ } from '../ui/dom.js';
 import { setBusy, showErrors } from '../ui/forms.js';
 import { html } from '../ui/html.js';
@@ -20,7 +20,7 @@ export function moneyField({ id, name, label, value, errorKey, autofocus = false
   return html`<div class="field" data-field="${errorKey}">
     <label for="${id}">${label}</label>
     <div class="input-money">
-      <span class="input-money__symbol" aria-hidden="true">RD$</span>
+      <span class="input-money__symbol" aria-hidden="true">${currencySymbol()}</span>
       <input id="${id}" name="${name}" class="input input--money" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${value}" ${autofocus ? 'data-autofocus' : ''} aria-describedby="${id}-hint ${errorKey}-error" />
     </div>
     <p class="hint" id="${id}-hint" data-preview-for="${id}"></p>

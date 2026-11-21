@@ -15,6 +15,7 @@
 // los haga cumplir, serían de mentira.
 // =============================================================================
 
+import { CURRENCIES, DEFAULT_CURRENCY, isCurrencyCode } from './currencies.js';
 import { LIMITS } from './types.js';
 
 /** @typedef {import('./types.js').Workspace} Workspace */
@@ -69,13 +70,22 @@ export const KIND_INFO = {
 };
 
 /**
- * Monedas que existen. Cada espacio guarda la suya, pero hoy solo hay pesos dominicanos (RD$): ampliar la
- * lista exige también cambiar cómo se muestran y se suman los montos en toda la app.
- * @type {Record<'DOP', { code: 'DOP', symbol: string, label: string }>}
+ * Monedas que existen (0.18.3: la lista está en domain/currencies.js). Cada espacio guarda la suya; todos los
+ * espacios de los que eres dueño usan la misma (accountCurrency).
  */
-export const CURRENCY_INFO = {
-  DOP: { code: 'DOP', symbol: 'RD$', label: 'Peso dominicano' },
-};
+export const CURRENCY_INFO = CURRENCIES;
+
+/**
+ * La moneda de la cuenta: la de tus espacios (de los que eres dueño), empezando por el predeterminado. Los espacios
+ * que otra persona compartió contigo usan la moneda de su dueño y no cuentan. Sin espacios propios: RD$.
+ * @param {readonly { currency?: string, isDefault?: boolean, role?: string }[]} workspaces
+ * @returns {import('./currencies.js').CurrencyCode}
+ */
+export function accountCurrency(workspaces) {
+  const owned = workspaces.filter((w) => (w.role ?? 'owner') === 'owner');
+  const pick = owned.find((w) => w.isDefault) ?? owned[0];
+  return isCurrencyCode(pick?.currency) ? pick.currency : DEFAULT_CURRENCY;
+}
 
 /** @param {unknown} value @returns {value is WorkspaceKind} */
 export function isWorkspaceKind(value) {
@@ -151,12 +161,12 @@ export function suggestWorkspaceName(kind, existing) {
 
 /**
  * Arma el registro de un espacio nuevo (sin guardarlo).
- * @param {{ kind: WorkspaceKind, name: string, isDefault?: boolean, openingBalanceCents?: number }} input
+ * @param {{ kind: WorkspaceKind, name: string, isDefault?: boolean, openingBalanceCents?: number, currency?: import('./currencies.js').CurrencyCode }} input
  * @param {{ id: string, nowISO: string }} context
  * @returns {Workspace}
  */
-export function buildWorkspace({ kind, name, isDefault = false, openingBalanceCents = 0 }, { id, nowISO }) {
-  return { id, kind, name, currency: 'DOP', openingBalanceCents, isDefault, createdAt: nowISO, updatedAt: nowISO };
+export function buildWorkspace({ kind, name, isDefault = false, openingBalanceCents = 0, currency = DEFAULT_CURRENCY }, { id, nowISO }) {
+  return { id, kind, name, currency, openingBalanceCents, isDefault, createdAt: nowISO, updatedAt: nowISO };
 }
 
 /** Del más viejo al más nuevo (el orden en que se crearon). @param {Workspace[]} list */

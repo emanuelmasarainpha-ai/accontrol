@@ -21,7 +21,7 @@ import { buildBudget } from '../domain/budget.js';
 import { netWorthSummary } from '../domain/netWorth.js';
 import { debtPortfolio } from '../domain/debts.js';
 import { goalProgress, primaryGoal } from '../domain/goals.js';
-import { centsToInputValue, formatMoney, formatPercent } from '../domain/money.js';
+import { centsToInputValue, currencySymbol, formatMoney, formatPercent } from '../domain/money.js';
 import { compareNewestFirst } from '../domain/movements.js';
 import { computeNotices } from '../domain/notices.js';
 import {
@@ -51,7 +51,7 @@ import { changeText } from './results.js';
  * @param {string} name
  */
 export function microtext(name) {
-  const unit = `${name.toLocaleUpperCase('es')} · ACCONTROL · RD$ · `;
+  const unit = `${name.toLocaleUpperCase('es')} · ACCONTROL · ${currencySymbol()} · `;
   return unit.repeat(Math.max(4, Math.ceil(240 / unit.length)));
 }
 

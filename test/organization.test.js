@@ -102,8 +102,8 @@ test('líneas para reportes: solo lo que esté lleno', () => {
   assert.deepEqual(organizationLines(undefined), []);
 });
 
-test('moneda: hoy solo pesos dominicanos', () => {
-  assert.deepEqual(Object.keys(CURRENCY_INFO), ['DOP']);
+test('moneda: RD$ sigue siendo la primera y la de siempre (0.18.3: hay más)', () => {
+  assert.equal(Object.keys(CURRENCY_INFO)[0], 'DOP');
   assert.equal(CURRENCY_INFO.DOP.symbol, 'RD$');
   for (const kind of ['freelancer', 'entrepreneur', 'company']) {
     assert.ok(KIND_INFO[kind].included.some((t) => /reportes/.test(t)), `${kind}: ya incluye los datos en los reportes`);

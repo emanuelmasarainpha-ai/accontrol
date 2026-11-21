@@ -13,6 +13,7 @@
 import {
   CALCULATORS, calculatorById, computeCalculator, defaultValues, resolveMode, suggestions,
 } from '../domain/calculators.js';
+import { currencySymbol } from '../domain/money.js';
 import { isExportFormat, makeFile } from '../export/index.js';
 import { saveFile } from '../ui/saveFile.js';
 import { cellText, isNumericCell } from '../export/model.js';
@@ -93,7 +94,7 @@ function fieldHtml(f, values) {
   let control;
   if (f.type === 'money') {
     control = html`<div class="input-money">
-      <span class="input-money__symbol" aria-hidden="true">RD$</span>
+      <span class="input-money__symbol" aria-hidden="true">${currencySymbol()}</span>
       <input id="${id}" name="${f.id}" class="input input--money" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${value}" aria-describedby="${describedBy}" />
     </div>`;
   } else if (f.type === 'percent' || f.type === 'number') {

@@ -4,7 +4,7 @@
 // -----------------------------------------------------------------------------
 // Aparece cuando no existe ningún espacio de trabajo: la primera vez que abres la
 // app, en un navegador nuevo y después de «Borrar todos mis datos».
-// Paso 1: elegir la modalidad. Paso 2: ponerle nombre al espacio.
+// Paso 1: elegir la modalidad. Paso 2: ponerle nombre al espacio y elegir la moneda (0.18.3).
 // Quien ya usaba ACCONTROL puede restaurar una copia de seguridad desde aquí.
 // =============================================================================
 
@@ -13,6 +13,7 @@ import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
 import { html } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { toast } from '../ui/toast.js';
+import { currencySelect } from './currencyPanel.js';
 import { kindIcon } from './workspaces.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
@@ -27,7 +28,7 @@ let chosen = null;
  * @returns {import('../app/app.js').RenderedView}
  */
 export function renderOnboarding(store, ctx) {
-  const page = chosen ? nameStep(chosen) : kindStep();
+  const page = chosen ? nameStep(chosen, store.accountCurrency()) : kindStep();
 
   return {
     html: page,
@@ -78,7 +79,8 @@ export function renderOnboarding(store, ctx) {
             event.preventDefault();
             clearErrors(form);
             setBusy(form, true);
-            const result = await store.createWorkspace({ kind, name: readForm(form).name ?? '' });
+            const values = readForm(form);
+            const result = await store.createWorkspace({ kind, name: values.name ?? '', currency: values.currency ?? '' });
             setBusy(form, false);
             if (!result.ok) {
               showErrors(form, result.errors);
@@ -138,8 +140,8 @@ function kindCard(kind) {
   </button>`;
 }
 
-/** Paso 2: el nombre del espacio. @param {WorkspaceKind} kind */
-function nameStep(kind) {
+/** Paso 2: el nombre del espacio y la moneda. @param {WorkspaceKind} kind @param {string} currency */
+function nameStep(kind, currency) {
   const info = KIND_INFO[kind];
   return html`<section class="welcome welcome--form" aria-labelledby="welcome-title">
     <button type="button" class="btn btn--ghost btn--small" data-step="back">${icon('back', 16)}Cambiar modalidad</button>
@@ -154,6 +156,12 @@ function nameStep(kind) {
         <input id="onb-name" name="name" class="input" type="text" maxlength="40" autocomplete="off" value="${suggestWorkspaceName(kind, [])}" aria-describedby="onb-hint name-error" />
         <p class="hint" id="onb-hint">Puedes cambiarlo después en Ajustes → Espacios y equipo.</p>
         <p class="field__error" id="name-error" data-error-for="name" hidden></p>
+      </div>
+      <div class="field" data-field="currency">
+        <label for="onb-currency">¿En qué moneda llevas tus cuentas?</label>
+        ${currencySelect({ id: 'onb-currency', value: currency, describedBy: 'onb-currency-hint currency-error' })}
+        <p class="hint" id="onb-currency-hint">Todos tus espacios usarán esta moneda. Puedes cambiarla después en Ajustes → General (los montos no se convierten).</p>
+        <p class="field__error" id="currency-error" data-error-for="currency" hidden></p>
       </div>
       <p class="field__error field__error--form" data-error-for="form" role="alert" hidden></p>
       <div class="actions"><button type="submit" class="btn btn--primary btn--block">Empezar</button></div>
@@ -181,7 +189,7 @@ async function restoreFromFile(store, file) {
   if (inspected.kind === 'workspace') {
     // La copia de un solo espacio necesita un espacio donde caer: se crea uno como el de origen.
     const kind = inspected.sourceKind ?? 'personal';
-    const made = await store.createWorkspace({ kind, name: inspected.sourceName ?? KIND_INFO[kind].defaultName });
+    const made = await store.createWorkspace({ kind, name: inspected.sourceName ?? KIND_INFO[kind].defaultName, ...(inspected.sourceCurrency ? { currency: inspected.sourceCurrency } : {}) });
     if (!made.ok) {
       toast(made.errors.form ?? made.errors.kind ?? made.errors.name ?? 'No se pudo crear el espacio para la copia.', 'error');
       return;

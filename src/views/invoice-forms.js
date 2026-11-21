@@ -17,7 +17,7 @@ import { sortProducts, stockPositions } from '../domain/inventory.js';
 import {
   customerSuggestions, formatTaxPercent, invoiceLabel, invoicePosition, invoiceTotals, lastCustomerDetails, parseTaxPercent, reminderMessage, serviceBillingRoom, sortInvoicesNewestFirst,
 } from '../domain/invoices.js';
-import { centsToInputValue, formatMoney, parseMoney } from '../domain/money.js';
+import { centsToInputValue, currencySymbol, formatMoney, parseMoney } from '../domain/money.js';
 import { LIMITS } from '../domain/types.js';
 import { $, $$ } from '../ui/dom.js';
 import { openSheet } from '../ui/dialog.js';
@@ -123,7 +123,7 @@ export function openInvoiceForm(store, preset = {}) {
       <div class="field" data-field="line${i}.unit">
         <label for="il-${i}-unit">Precio por unidad</label>
         <div class="input-money">
-          <span class="input-money__symbol" aria-hidden="true">RD$</span>
+          <span class="input-money__symbol" aria-hidden="true">${currencySymbol()}</span>
           <input id="il-${i}-unit" name="line${i}.unit" class="input input--money" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${line.unit}" ${line.unitTouched ? 'data-touched="1"' : ''} data-line-unit aria-describedby="line${i}.unit-error" />
         </div>
         ${fieldError(`line${i}.unit`)}

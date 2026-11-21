@@ -4,9 +4,44 @@
 // -----------------------------------------------------------------------------
 // Todo monto vive como ENTERO EN CENTAVOS (RD$ 1,500.50 -> 150050).
 // Este archivo es el único lugar donde se convierte texto <-> centavos.
+// 0.18.3: el símbolo es el de la moneda del espacio abierto (RD$, US$, €…). La app lo pone al dibujar cada pantalla
+// con setMoneyCurrency(); si nadie lo pone, es RD$, como siempre.
 // =============================================================================
 
-export const CURRENCY_SYMBOL = 'RD$';
+import { CURRENCIES, currencyInfo, DEFAULT_CURRENCY } from './currencies.js';
+
+/** La moneda con la que se muestran los montos ahora. */
+let active = CURRENCIES[DEFAULT_CURRENCY];
+
+/**
+ * Cambia la moneda con la que se muestran los montos (la del espacio abierto). Un código que no existe = RD$.
+ * @param {unknown} code
+ */
+export function setMoneyCurrency(code) {
+  active = currencyInfo(code);
+}
+
+/** El símbolo de la moneda con la que se muestran los montos: «RD$», «US$», «€»… */
+export function currencySymbol() {
+  return active.symbol;
+}
+
+/** El código de esa moneda: «DOP», «USD»… */
+export function currencyCode() {
+  return active.code;
+}
+
+/** @param {string} s */
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+/** Los símbolos que se aceptan delante de un monto pegado, del más largo al más corto («RD$» antes que «$»). */
+const PASTED_SYMBOLS = new RegExp(
+  `^(?:${[...new Set([...Object.values(CURRENCIES).map((c) => c.symbol), '$'])]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp)
+    .join('|')})\\s*(?=[\\d.,-])`,
+  'i',
+);
 
 /** Monto máximo permitido por registro: RD$ 999,999,999.99 (evita errores de tecleo). */
 export const MAX_CENTS = 99_999_999_999;
@@ -23,12 +58,11 @@ export const MAX_CENTS = 99_999_999_999;
  * @returns {{ ok: true, cents: number } | { ok: false, error: string }}
  */
 export function parseMoney(text) {
-  // Se acepta que peguen "RD$ 1,500.50" (tal como lo muestra la app). Los espacios DENTRO de
-  // los números se rechazan: "1 5 0 0" no es un monto que alguien escriba a propósito.
+  // Se acepta que peguen "RD$ 1,500.50" (tal como lo muestra la app, con cualquiera de sus monedas). Los espacios
+  // DENTRO de los números se rechazan: "1 5 0 0" no es un monto que alguien escriba a propósito.
   const raw = String(text ?? '')
     .trim()
-    .replace(/^RD\$\s*/i, '')
-    .replace(/^\$\s*/, '');
+    .replace(PASTED_SYMBOLS, '');
 
   if (raw === '') return fail('Escribe un monto.');
   if (raw.startsWith('-')) {
@@ -82,7 +116,7 @@ export function moneyParts(cents) {
   const abs = Math.abs(rounded);
   return {
     negative: rounded < 0,
-    symbol: CURRENCY_SYMBOL,
+    symbol: active.symbol,
     whole: groupThousands(String(Math.floor(abs / 100))),
     fraction: String(abs % 100).padStart(2, '0'),
   };
@@ -99,7 +133,7 @@ export function formatMoney(cents, { decimals = true, sign = false } = {}) {
     // Sin centavos se REDONDEA al peso más cercano (RD$ 999.99 -> "RD$ 1,000"), no se trunca.
     const pesos = Math.round(Math.abs(Math.round(cents)) / 100);
     const prefix = pesos === 0 ? '' : cents < 0 ? '-' : sign ? '+' : '';
-    return `${prefix}${CURRENCY_SYMBOL} ${groupThousands(String(pesos))}`;
+    return `${prefix}${active.symbol} ${groupThousands(String(pesos))}`;
   }
   const p = moneyParts(cents);
   const prefix = p.negative ? '-' : sign && cents > 0 ? '+' : '';

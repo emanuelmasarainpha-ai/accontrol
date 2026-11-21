@@ -330,7 +330,12 @@ test('copia completa: rechaza modalidad, nombre, moneda y saldo inválidos o rep
   assert.ok(!attempt((f) => { f.workspaces[0].workspace.kind = 'admin'; }).ok);
   assert.ok(!attempt((f) => { f.workspaces[0].workspace.name = '   '; }).ok);
   assert.ok(!attempt((f) => { f.workspaces[1].workspace.name = 'mi espacio PERSONAL'; }).ok);
-  assert.ok(!attempt((f) => { f.workspaces[0].workspace.currency = 'USD'; }).ok);
+  // 0.18.3: hay más monedas, pero una que no existe (o que no usa centavos) se sigue rechazando.
+  assert.ok(!attempt((f) => { f.workspaces[0].workspace.currency = 'XYZ'; }).ok);
+  assert.ok(!attempt((f) => { f.workspaces[0].workspace.currency = 'CLP'; }).ok);
+  assert.ok(!attempt((f) => { delete f.workspaces[0].workspace.currency; }).ok);
+  const usd = attempt((f) => { f.workspaces[0].workspace.currency = 'USD'; });
+  assert.ok(usd.ok && usd.kind === 'full' && usd.workspaces.some((w) => w.workspace.currency === 'USD'), 'una moneda de la lista se conserva');
   assert.ok(!attempt((f) => { f.workspaces[0].workspace.openingBalanceCents = -5; }).ok);
   assert.ok(!attempt((f) => { f.workspaces = []; }).ok);
   assert.ok(!attempt((f) => { delete f.profile; }).ok);

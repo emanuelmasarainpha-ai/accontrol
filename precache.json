@@ -1,5 +1,5 @@
 {
-  "version": "631d2ea8c506",
+  "version": "2764c7f904fe",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -51,6 +51,7 @@
     "src/domain/company.js",
     "src/domain/companyCards.js",
     "src/domain/contact.js",
+    "src/domain/currencies.js",
     "src/domain/dates.js",
     "src/domain/debts.js",
     "src/domain/demo.js",
@@ -142,6 +143,7 @@
     "src/views/client-forms.js",
     "src/views/clients.js",
     "src/views/cloud.js",
+    "src/views/currencyPanel.js",
     "src/views/debt-forms.js",
     "src/views/debts.js",
     "src/views/department-forms.js",

@@ -344,7 +344,7 @@
  * @property {string} id
  * @property {WorkspaceKind} kind
  * @property {string} name
- * @property {'DOP'} currency             Hoy solo pesos dominicanos (RD$); se guarda para poder ampliarlo.
+ * @property {import('./currencies.js').CurrencyCode} currency  Su moneda (0.18.3; antes siempre DOP). Todos tus espacios usan la misma.
  * @property {number} openingBalanceCents Saldo con el que empiezas en este espacio.
  * @property {boolean} isDefault          El que se abre primero si no hay un "último usado".
  * @property {Organization} [organization] Datos del negocio u organización (solo espacios que no son Personal). Ausente = sin completar.

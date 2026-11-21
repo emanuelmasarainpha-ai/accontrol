@@ -6,7 +6,8 @@
 // =============================================================================
 
 import { plural } from '../domain/dates.js';
-import { centsToInputValue } from '../domain/money.js';
+import { currencyLabel } from '../domain/currencies.js';
+import { centsToInputValue, currencySymbol } from '../domain/money.js';
 import { TYPE_LABELS } from '../domain/types.js';
 import { KIND_INFO } from '../domain/workspaces.js';
 import { APP_VERSION } from '../version.js';
@@ -28,6 +29,7 @@ import { runWorkspaceAction, workspacesPanel } from './workspaces.js';
 import { saveFile } from '../ui/saveFile.js';
 import { sectionFromParams, visibleSections } from '../app/settingsSections.js';
 import { autoBackupPanel, runAutoBackupAction, watchAutoBackup } from './autoBackupPanel.js';
+import { currencyPanel, watchCurrency } from './currencyPanel.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 
@@ -87,7 +89,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Copia de seguridad automática';
+const VERSION_NOTE = 'Moneda real para tus espacios';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.
@@ -162,7 +164,7 @@ export function renderSettings(store, ctx) {
         <div class="field" data-field="opening">
           <label for="set-opening">Saldo inicial de «${workspaceName}»</label>
           <div class="input-money">
-            <span class="input-money__symbol" aria-hidden="true">RD$</span>
+            <span class="input-money__symbol" aria-hidden="true">${currencySymbol()}</span>
             <input id="set-opening" name="openingText" class="input input--money" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${opening > 0 ? centsToInputValue(opening) : ''}" aria-describedby="opening-hint opening-error" ${ownsSpace ? '' : 'readonly'} />
           </div>
           <p class="hint" id="opening-hint">${ownsSpace ? 'El dinero que ya tenías (efectivo, cuentas) el día que empiezas a usar este espacio. Se suma a su “Disponible”. Cada espacio tiene el suyo.' : `«${workspaceName}» es de otra persona: solo su dueño puede cambiar su saldo inicial.`}</p>
@@ -247,6 +249,7 @@ export function renderSettings(store, ctx) {
   const blocks = {
     account: accountPanel(account),
     profile: profileBlock,
+    currency: currencyPanel(store),
     device: devicePanel({ vibration: vibrationEnabled(), canVibrate: canVibrate(), theme: currentTheme() }),
     tour: tourPanel(workspace, ctx?.tour.available() ?? false),
     categories: categoriesBlock,
@@ -323,6 +326,9 @@ export function renderSettings(store, ctx) {
       // ---- copia en la nube: el estado se actualiza solo ---------------------
       const stopWatching = watchCloudPanel(sync, root, () => ctx?.rerender());
       signal.addEventListener('abort', stopWatching, { once: true });
+
+      // ---- moneda de la cuenta (0.18.3) ----------------------------------------
+      watchCurrency(store, root, signal);
 
       // ---- copia automática diaria (0.18.2) ------------------------------------
       watchAutoBackup(ctx?.autoBackup ?? null, root, signal);
@@ -467,7 +473,7 @@ async function importFromFile(store, file) {
         })
       : await confirmDialog({
           title: `¿Reemplazar «${store.activeWorkspace()?.name ?? 'este espacio'}» con esta copia?`,
-          message: `El archivo${inspected.sourceName ? ` viene de «${inspected.sourceName}» y` : ''} trae ${countsText(inspected.counts)}. Se borrará lo que tiene ahora el espacio que tienes abierto. Tus otros espacios no se tocan.`,
+          message: `El archivo${inspected.sourceName ? ` viene de «${inspected.sourceName}» y` : ''} trae ${countsText(inspected.counts)}. Se borrará lo que tiene ahora el espacio que tienes abierto. Tus otros espacios no se tocan.${currencyMismatch(inspected.sourceCurrency, store.activeWorkspace()?.currency)}`,
           confirmLabel: 'Reemplazar este espacio',
           danger: true,
         });
@@ -475,6 +481,15 @@ async function importFromFile(store, file) {
   const result = await store.importBackup(text);
   if (result.ok) toast(result.kind === 'full' ? 'Copia completa restaurada.' : 'Copia restaurada.');
   else toast(result.errors.form ?? 'No se pudo importar.', 'error');
+}
+
+/**
+ * Aviso si la copia de un espacio viene en otra moneda (0.18.3): los montos no se convierten. '' si es la misma o no se sabe.
+ * @param {string | null} from @param {string | undefined} to
+ */
+export function currencyMismatch(from, to) {
+  if (!from || !to || from === to) return '';
+  return ` Ojo: la copia está en ${currencyLabel(from)} y este espacio usa ${currencyLabel(to)}. Los montos NO se convierten: se verán con el símbolo de este espacio.`;
 }
 
 /** @param {Store} store */

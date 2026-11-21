@@ -11,7 +11,8 @@
 import {
   ORGANIZATION_FIELDS, isOrganizationEmpty, kindHasOrganization, normalizeOrganization, organizationTitle,
 } from '../domain/organization.js';
-import { CURRENCY_INFO, KIND_INFO } from '../domain/workspaces.js';
+import { currencyInfo } from '../domain/currencies.js';
+import { KIND_INFO } from '../domain/workspaces.js';
 import { openSheet } from '../ui/dialog.js';
 import { $ } from '../ui/dom.js';
 import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
@@ -27,7 +28,7 @@ export function workspaceDetailsPanel(store) {
   const hasOrg = kindHasOrganization(workspace.kind);
   const org = normalizeOrganization(workspace.organization);
   const empty = isOrganizationEmpty(workspace.organization);
-  const currency = CURRENCY_INFO[workspace.currency];
+  const currency = currencyInfo(workspace.currency);
   const filled = ORGANIZATION_FIELDS.filter(({ key }) => org[key] !== '');
 
   return html`<section class="panel" aria-labelledby="set-space" data-tour="settings-organization">
@@ -41,7 +42,7 @@ export function workspaceDetailsPanel(store) {
       <div><dt>Espacio</dt><dd>${workspace.name} · ${KIND_INFO[workspace.kind].label}</dd></div>
       <div>
         <dt>Moneda</dt>
-        <dd>${currency.label} (${currency.symbol})<span class="facts__note">Cada espacio guarda su moneda. Por ahora el peso dominicano es la única disponible.</span></dd>
+        <dd>${currency.label} (${currency.symbol})<span class="facts__note">${(workspace.role ?? 'owner') === 'owner' ? 'Todos tus espacios usan la misma moneda. Se cambia en Ajustes → General.' : 'La eligió el dueño de este espacio.'}</span></dd>
       </div>
       ${filled.map((f) => html`<div><dt>${f.label}</dt><dd>${org[f.key]}</dd></div>`)}
     </dl>

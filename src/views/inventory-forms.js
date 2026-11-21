@@ -13,7 +13,7 @@ import {
   tracksStock,
 } from '../domain/inventory.js';
 import { lineTotalCents } from '../domain/pos.js';
-import { centsToInputValue, formatMoney, parseMoney } from '../domain/money.js';
+import { centsToInputValue, currencySymbol, formatMoney, parseMoney } from '../domain/money.js';
 import { LIMITS } from '../domain/types.js';
 import { $ } from '../ui/dom.js';
 import { confirmDialog, openSheet } from '../ui/dialog.js';
@@ -42,7 +42,8 @@ function textField({ id, name, label, value, max, placeholder = '', type = 'text
 // PRODUCTO
 // =============================================================================
 
-const PACK_HINT = 'Para lo que se vende «2 por RD$15» (como el pan). En la caja, cada grupo completo se cobra a ese precio y lo que sobra, al precio de una unidad. Déjalo vacío si no tiene oferta.';
+/** La ayuda de la oferta, con el símbolo de la moneda del espacio. */
+const packHint = () => `Para lo que se vende «2 por ${currencySymbol()}15» (como el pan). En la caja, cada grupo completo se cobra a ese precio y lo que sobra, al precio de una unidad. Déjalo vacío si no tiene oferta.`;
 
 /**
  * Mientras se escribe la oferta, muestra cómo se cobrará (por ejemplo «2 = RD$15.00 · 3 = RD$23.00 · 6 = RD$45.00»).
@@ -60,7 +61,7 @@ function bindPackPreview(sheet) {
     const price = parseMoney(priceInput.value.trim());
     const unit = parseMoney(unitInput.value.trim());
     if (qty < 2 || !price.ok || price.cents <= 0 || !unit.ok || unit.cents <= 0 || price.cents >= qty * unit.cents) {
-      hint.textContent = PACK_HINT;
+      hint.textContent = packHint();
       return;
     }
     const p = { qty, priceCents: price.cents };
@@ -131,12 +132,12 @@ export function openProductForm(store, { product = null } = {}) {
           <span class="field" data-field="packPrice">
             <label for="pr-pack-price">Precio de esa cantidad</label>
             <span class="input-money">
-              <span class="input-money__symbol" aria-hidden="true">RD$</span>
+              <span class="input-money__symbol" aria-hidden="true">${currencySymbol()}</span>
               <input id="pr-pack-price" name="packPriceText" class="input input--money" type="text" inputmode="decimal" autocomplete="off" placeholder="15.00" value="${pack ? centsToInputValue(pack.priceCents) : ''}" aria-describedby="pr-pack-hint packPrice-error" />
             </span>
           </span>
         </div>
-        <p class="hint" id="pr-pack-hint" data-pack-hint aria-live="polite">${PACK_HINT}</p>
+        <p class="hint" id="pr-pack-hint" data-pack-hint aria-live="polite">${packHint()}</p>
         ${fieldError('packQty')}
         ${fieldError('packPrice')}
       </fieldset>

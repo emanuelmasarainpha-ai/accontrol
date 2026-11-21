@@ -39,7 +39,7 @@ import {
   billedByService, validateInvoice, validateInvoiceEdit, validateInvoicePayment, voidProblem,
 } from '../domain/invoices.js';
 import { creditErrors, creditInvoiceInput, customerKey, customerLedger, fiadoEnabled, validateCustomerPayment } from '../domain/fiado.js';
-import { formatMoney } from '../domain/money.js';
+import { formatMoney, setMoneyCurrency } from '../domain/money.js';
 import { prepareSale, salesCategory } from '../domain/pos.js';
 import { newId } from '../domain/ids.js';
 import { isOrganizationEmpty, kindHasOrganization, validateOrganization } from '../domain/organization.js';
@@ -47,8 +47,9 @@ import { applyMovementEdit, buildMovement, validateMovement } from '../domain/mo
 import { defaultSettings, validateSettings } from '../domain/settings.js';
 import { overallTotals } from '../domain/summaries.js';
 import { CLASSIFICATIONS_BY_TYPE, LIMITS } from '../domain/types.js';
+import { isCurrencyCode } from '../domain/currencies.js';
 import {
-  buildWorkspace, defaultProfile, isWorkspaceKind, oneOfEachMessage, ownedWorkspaceOfKind, pickActiveWorkspace, validateWorkspaceName, withDefault,
+  accountCurrency, buildWorkspace, defaultProfile, isWorkspaceKind, oneOfEachMessage, ownedWorkspaceOfKind, pickActiveWorkspace, validateWorkspaceName, withDefault,
 } from '../domain/workspaces.js';
 import {
   allowsWrite, canEditData, canManageWorkspace, NOT_YOURS_MESSAGE, NOT_YOURS_TO_DELETE, noPermissionMessage, OWNER_ONLY_MESSAGE, permissionsOf,
@@ -172,6 +173,9 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
   const nowISO = () => clock().toISOString();
 
   function emit() {
+    // 0.18.3: los montos se muestran con la moneda del espacio abierto. Se pone ANTES de avisar, así todo lo que se
+    // dibuje o se exporte después (pantallas, reportes, tickets, avisos) ya usa el símbolo correcto.
+    setMoneyCurrency(state.workspaces.find((w) => w.id === state.activeWorkspaceId)?.currency);
     for (const listener of listeners) listener();
   }
 
@@ -463,10 +467,13 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
     canManageWorkspace: () => canManageWorkspace(state.workspaces.find((w) => w.id === state.activeWorkspaceId)),
     /** Tu cuenta (0.16.1): para saber qué registros creaste tú. */
     me: () => userId,
+    /** La moneda de tu cuenta (0.18.3): la de los espacios de los que eres dueño (RD$ si no tienes ninguno). */
+    accountCurrency: () => accountCurrency(state.workspaces),
 
     /**
      * Crea un espacio de trabajo y lo abre. La primera vez (pantalla de elegir modalidad) también sirve.
-     * @param {{ kind: string, name: string }} input
+     * La moneda (0.18.3): la que se elige la primera vez; después, la de la cuenta (todos tus espacios usan la misma).
+     * @param {{ kind: string, name: string, currency?: string }} input
      * @returns {Promise<{ ok: true, workspace: Workspace } | Failure>}
      */
     createWorkspace(input) {
@@ -482,8 +489,12 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         }
         const named = validateWorkspaceName(input.name, { existing: state.workspaces });
         if (!named.ok) return { ok: false, errors: { name: named.error } };
+        const owned = state.workspaces.some((w) => (w.role ?? 'owner') === 'owner');
+        if (input.currency !== undefined && !isCurrencyCode(input.currency)) return { ok: false, errors: { currency: 'Elige una moneda de la lista.' } };
+        // Si ya tienes espacios, el nuevo usa su moneda (una por cuenta); la que se elija solo cuenta para el primero.
+        const currency = owned || input.currency === undefined ? accountCurrency(state.workspaces) : input.currency;
         const workspace = buildWorkspace(
-          { kind: input.kind, name: named.name, isDefault: state.workspaces.length === 0 },
+          { kind: input.kind, name: named.name, isDefault: state.workspaces.length === 0, currency },
           { id: newId(), nowISO: nowISO() },
         );
         const failure = await tryWrite(() => root.createWorkspace(workspace));
@@ -491,6 +502,37 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         const opened = await activateWorkspace(workspace.id);
         if (opened) return opened;
         return { ok: /** @type {const} */ (true), workspace };
+      });
+    },
+
+    /**
+     * Cambia la moneda de la cuenta (0.18.3): la de TODOS los espacios de los que eres dueño. Los montos NO se convierten:
+     * solo cambia el símbolo con el que se muestran. Los espacios que otra persona compartió contigo conservan la moneda
+     * de su dueño.
+     * @param {string} code
+     * @returns {Promise<{ ok: true, changed: number } | Failure>}
+     */
+    setAccountCurrency(code) {
+      return enqueue(async () => {
+        const stale = await reloadFromStorage({ lenient: true });
+        if (stale) return stale;
+        if (!isCurrencyCode(code)) return { ok: false, errors: { currency: 'Elige una moneda de la lista.' } };
+        const mine = state.workspaces.filter((w) => canManageWorkspace(w));
+        if (mine.length === 0) return formFail('No eres dueño de ningún espacio: la moneda la decide el dueño de cada espacio compartido contigo.');
+        const at = nowISO();
+        const changed = mine.filter((w) => w.currency !== code).map((w) => ({ ...w, currency: code, updatedAt: at }));
+        for (const next of changed) {
+          const failure = await tryWrite(() => root.updateWorkspace(next));
+          if (failure) {
+            // Lo que ya se guardó queda guardado; se vuelve a leer para no mostrar una mezcla que no existe.
+            await reloadFromStorage({ lenient: true });
+            return failure;
+          }
+        }
+        const byId = new Map(changed.map((w) => [w.id, w]));
+        state = { ...state, workspaces: state.workspaces.map((w) => byId.get(w.id) ?? w) };
+        emit();
+        return { ok: /** @type {const} */ (true), changed: changed.length };
       });
     },
 
@@ -2063,7 +2105,7 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
      */
     exportBackup() {
       const workspace = state.workspaces.find((w) => w.id === state.activeWorkspaceId) ?? null;
-      const backup = createBackup(state.data, nowISO(), workspace ? { kind: workspace.kind, name: workspace.name } : undefined);
+      const backup = createBackup(state.data, nowISO(), workspace ? { kind: workspace.kind, name: workspace.name, currency: workspace.currency } : undefined);
       const label = workspace && state.workspaces.length > 1 ? workspace.name : undefined;
       return { fileName: backupFileName(today(), label), json: JSON.stringify(backup, null, 2) };
     },
@@ -2087,7 +2129,7 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
      * Revisa un archivo de copia SIN importarlo, para que la pantalla pueda explicar qué va a pasar
      * (¿reemplaza el espacio abierto o reemplaza todo?) antes de pedir confirmación.
      * @param {string} text
-     * @returns {{ ok: true, kind: 'workspace', sourceName: string | null, sourceKind: import('../domain/types.js').WorkspaceKind | null, counts: { movements: number, goals: number, debts: number, assets: number, clients: number, products: number, invoices: number } }
+     * @returns {{ ok: true, kind: 'workspace', sourceName: string | null, sourceKind: import('../domain/types.js').WorkspaceKind | null, sourceCurrency: import('../domain/currencies.js').CurrencyCode | null, counts: { movements: number, goals: number, debts: number, assets: number, clients: number, products: number, invoices: number } }
      *   | { ok: true, kind: 'full', workspaceNames: string[], counts: { movements: number, goals: number, debts: number, assets: number, clients: number, products: number, invoices: number } }
      *   | { ok: false, error: string }}
      */
@@ -2107,7 +2149,7 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
       if (parsed.kind === 'full') {
         return { ok: true, kind: 'full', workspaceNames: parsed.workspaces.map((w) => w.workspace.name), counts: sum(parsed.workspaces.map((w) => w.data)) };
       }
-      return { ok: true, kind: 'workspace', sourceName: parsed.workspace?.name ?? null, sourceKind: parsed.workspace?.kind ?? null, counts: sum([parsed.data]) };
+      return { ok: true, kind: 'workspace', sourceName: parsed.workspace?.name ?? null, sourceKind: parsed.workspace?.kind ?? null, sourceCurrency: parsed.workspace?.currency ?? null, counts: sum([parsed.data]) };
     },
 
     /**

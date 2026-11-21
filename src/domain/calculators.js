@@ -28,7 +28,7 @@ import { statsIndicators } from './summaries.js';
  * @property {string} id
  * @property {string} label
  * @property {'money' | 'percent' | 'number' | 'duration' | 'select'} type
- *   money = monto en RD$ · percent = porcentaje · number = número (años...) · duration = número + unidad (años o meses) · select = lista
+ *   money = monto (en la moneda del espacio) · percent = porcentaje · number = número (años...) · duration = número + unidad (años o meses) · select = lista
  * @property {boolean} [optional]    Si se deja vacío no pasa nada (vale 0 o "no aplica").
  * @property {boolean} [allowZero]   Acepta 0 (por defecto los campos deben ser mayores que cero).
  * @property {number} [max]          Máximo (porcentajes: 1000; números: 100).
@@ -441,7 +441,7 @@ const loanCalc = {
       mode === 'term' ? null : { label: 'Duración', value: durationText(months), note: plural(months, 'cuota', 'cuotas') },
       { label: 'Total a pagar', value: m(totalPaid), note: 'Todas las cuotas sumadas' },
       { label: 'Intereses totales', value: m(totalInterest) },
-      { label: 'Intereses por cada RD$ 100 prestados', value: m(per100), note: 'Lo que cuesta el crédito' },
+      { label: `Intereses por cada ${m0(10_000)} prestados`, value: m(per100), note: 'Lo que cuesta el crédito' },
     ].filter((x) => x !== null);
     return {
       ok: true,
@@ -544,7 +544,7 @@ const inflationCalc = {
   },
   how: [
     'Lo que hoy cuesta M costará M × (1 + inflación)^años dentro de ese tiempo.',
-    'Y M pesos de dentro de ese tiempo comprarán solo lo que hoy compran M ÷ (1 + inflación)^años.',
+    'Y M de dentro de ese tiempo comprarán solo lo que hoy compran M ÷ (1 + inflación)^años.',
     'Rendimiento real = (1 + tasa de tu ahorro) ÷ (1 + inflación) − 1. Si es negativo, aunque tu saldo crezca, cada vez compras menos.',
   ],
   example: { amount: '10000', inflation: '5', time: '10', timeUnit: 'years', savings: '3' },
@@ -559,7 +559,7 @@ const inflationCalc = {
     /** @type {ResultItem[]} */
     const items = [
       { label: `Lo que hoy cuesta ${m0(amount)} costará`, value: m(r.futureCostCents), note: `dentro de ${durationText(months)}` },
-      { label: `${m0(amount)} de entonces comprarán lo que hoy compran`, value: m(r.purchasingPowerCents), note: 'Su poder de compra en pesos de hoy' },
+      { label: `${m0(amount)} de entonces comprarán lo que hoy compran`, value: m(r.purchasingPowerCents), note: 'Su poder de compra en dinero de hoy' },
     ];
     if (r.realRatePercent !== null) {
       items.push({
@@ -608,7 +608,7 @@ const futureCalc = {
   how: [
     'Valor futuro = Capital × (1 + i)^n + Aporte × ((1 + i)^n − 1) ÷ i, con i = rendimiento anual ÷ 12 y n = meses.',
     'Los aportes se hacen al final de cada mes. Para saber el aporte necesario o el tiempo, se despeja esa misma fórmula.',
-    'Para la jubilación conviene usar un rendimiento real (después de inflación) para que el resultado esté en pesos de hoy.',
+    'Para la jubilación conviene usar un rendimiento real (después de inflación) para que el resultado esté en dinero de hoy.',
   ],
   example: { present: '20000', payment: '3000', target: '500000', rate: '8', time: '10', timeUnit: 'years' },
   compute(p, mode) {
@@ -708,8 +708,8 @@ const presentCalc = {
   },
   how: [
     'Valor presente = Dinero futuro ÷ (1 + tasa)^años. Es el camino inverso del interés compuesto.',
-    'Un peso de hoy vale más que uno de mañana: puedes invertirlo y crecerá, y la inflación come el poder de compra del que llega tarde.',
-    'Sirve para comparar: ¿me conviene RD$ 90,000 hoy o RD$ 100,000 dentro de un año? Descuenta el segundo y compara.',
+    'El dinero de hoy vale más que el de mañana: puedes invertirlo y crecerá, y la inflación come el poder de compra del que llega tarde.',
+    'Sirve para comparar: ¿me conviene recibir 90,000 hoy o 100,000 dentro de un año? Descuenta el segundo y compara.',
   ],
   example: { future: '100000', payment: '5000', rate: '8', time: '5', timeUnit: 'years', y1: '10000', y2: '10000', y3: '10000', y4: '10000', y5: '60000' },
   compute(p, mode) {
@@ -767,7 +767,7 @@ const presentCalc = {
         items: [
           { label: 'Dinero futuro', value: m(future), note: `Dentro de ${durationText(months)}` },
           { label: 'Lo que «pierdes» por esperar', value: m(future - pv) },
-          { label: 'Cada peso futuro vale hoy', value: m(Math.round((pv / future) * 100)), note: 'Por cada RD$ 1.00 que llegará' },
+          { label: `Cada ${m0(100)} futuro vale hoy`, value: m(Math.round((pv / future) * 100)), note: `Por cada ${m(100)} que llegará` },
         ],
         sentence: `${m0(future)} que recibirás dentro de ${durationText(months)} valen hoy ${m0(pv)} con un descuento de ${pct(rate)} anual.`,
         notes: [SIMULATION_NOTE],
@@ -828,7 +828,7 @@ const roiCalc = {
           const loss = -bad.gainCents;
           items.push({ label: 'Lo máximo que perderías en ese caso', value: m(loss) });
           if (r.gainCents > 0) {
-            items.push({ label: 'Relación ganancia / pérdida', value: `${Math.round((r.gainCents / loss) * 100) / 100} a 1`, note: 'Por cada peso que podrías perder, el que podrías ganar' });
+            items.push({ label: 'Relación ganancia / pérdida', value: `${Math.round((r.gainCents / loss) * 100) / 100} a 1`, note: 'Por cada unidad que podrías perder, lo que podrías ganar' });
           }
         } else notes.push('En el «peor caso» que escribiste igual ganas: revisa si de verdad es el peor escenario posible.');
       }
@@ -858,7 +858,7 @@ const independenceCalc = {
       percentField('withdrawal', 'Retiro anual seguro', { default: '4', max: 20, hint: 'La regla práctica del 4 %: cada año retiras ese porcentaje del capital.' }),
       moneyField('current', 'Capital que ya tienes invertido', { optional: true, allowZero: true }),
       moneyField('contribution', 'Aporte mensual', { optional: true, allowZero: true }),
-      percentField('return', 'Rendimiento anual real esperado', { default: '5', allowZero: true, hint: 'Descontada la inflación, para que el resultado esté en pesos de hoy.' }),
+      percentField('return', 'Rendimiento anual real esperado', { default: '5', allowZero: true, hint: 'Descontada la inflación, para que el resultado esté en dinero de hoy.' }),
       { id: 'years', label: 'Quieres lograrlo en (años, opcional)', type: 'number', optional: true, max: 100, suffix: 'años', hint: 'Para saber cuánto tendrías que aportar al mes.' },
     ];
   },
@@ -904,7 +904,7 @@ const independenceCalc = {
         sentence: `Para cubrir ${m0(expense)} al mes retirando ${pct(withdrawal)} al año necesitas unos ${m0(r.targetCents)} invertidos.${r.monthsNeeded !== null && !r.reached ? ` Con tu aporte y un ${pct(annualReturn)} real anual llegarías en ${durationText(r.monthsNeeded)}.` : ''}`,
         notes: [
           'Es un cálculo orientativo. Los rendimientos no están garantizados y los gastos cambian con los años: no es asesoría financiera.',
-          'Usa un rendimiento REAL (después de inflación) y el gasto de hoy; así todo queda en pesos de hoy.',
+          'Usa un rendimiento REAL (después de inflación) y el gasto de hoy; así todo queda en dinero de hoy.',
         ],
       },
     };

@@ -14,7 +14,7 @@ import {
   periodBounds, periodComparison, projectResults,
 } from '../domain/business.js';
 import { addMonths, monthLabel, monthShortLabel, plural } from '../domain/dates.js';
-import { formatMoney, formatPercent } from '../domain/money.js';
+import { currencySymbol, formatMoney, formatPercent } from '../domain/money.js';
 import { GRANULARITY_LABELS, overallTotals } from '../domain/summaries.js';
 import { columnChart, hBarChart } from '../ui/charts.js';
 import { demoBanner, emptyState, exportButtons, financeTabs, legend, money, periodSwitch, tableView } from '../ui/components.js';
@@ -152,8 +152,8 @@ export function renderResults(store, ctx) {
       <div class="panel__head"><h2 class="panel__title" id="ind-title">Indicadores</h2></div>
       <dl class="kpis">
         <div class="kpi"><dt>Beneficio de ${bounds.granularity === 'month' ? 'este mes' : 'este período'}</dt><dd>${money(statement.netCents, { tone: 'auto' })}</dd><dd class="kpi__note">${periodTitle}</dd></div>
-        <div class="kpi"><dt>Margen de ganancia</dt><dd>${pct(statement.marginPercent)}</dd><dd class="kpi__note">${statement.marginPercent === null ? 'Sin ingresos en el período' : 'Del beneficio, por cada RD$ 100 que ingresan'}</dd></div>
-        <div class="kpi"><dt>Rentabilidad</dt><dd>${pct(statement.profitabilityPercent)}</dd><dd class="kpi__note">${statement.profitabilityPercent === null ? 'Sin gastos en el período' : `Beneficio por cada peso que gastas (RD$ ${(statement.profitabilityPercent / 100).toFixed(2)})`}</dd></div>
+        <div class="kpi"><dt>Margen de ganancia</dt><dd>${pct(statement.marginPercent)}</dd><dd class="kpi__note">${statement.marginPercent === null ? 'Sin ingresos en el período' : `Del beneficio, por cada ${formatMoney(10_000, { decimals: false })} que ingresan`}</dd></div>
+        <div class="kpi"><dt>Rentabilidad</dt><dd>${pct(statement.profitabilityPercent)}</dd><dd class="kpi__note">${statement.profitabilityPercent === null ? 'Sin gastos en el período' : `Beneficio por cada ${currencySymbol()} 1 que gastas (${currencySymbol()} ${(statement.profitabilityPercent / 100).toFixed(2)})`}</dd></div>
         <div class="kpi"><dt>Beneficio acumulado de ${accumulated.year}</dt><dd>${money(accumulated.yearToDateCents, { tone: 'auto' })}</dd><dd class="kpi__note">${accumulated.firstMonth ? `Desde el primer registro (${monthLabel(accumulated.firstMonth)}): ${formatMoney(accumulated.sinceStartCents)}` : 'Sin registros todavía'}</dd></div>
       </dl>
       <p class="panel__foot">Margen = beneficio ÷ ingresos. Rentabilidad = beneficio ÷ gastos. Son cuentas con reglas fijas sobre lo que registraste, no inteligencia artificial.</p>
