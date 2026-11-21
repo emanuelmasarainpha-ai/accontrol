@@ -64,3 +64,38 @@ export function installBackButton(cap) {
     else void cap.nativePromise('App', 'minimizeApp', {}).catch(() => undefined);
   });
 }
+
+// ---- Entrar con Google en la app de Android (0.18.7) --------------------------------------------------------------
+// Google no deja entrar desde dentro de una app (WebView): la app abre el navegador del teléfono y, al terminar, Google
+// (por medio de Supabase) vuelve a esta dirección propia de la app. AndroidManifest.xml la reconoce y abre ACCONTROL.
+
+/** Adónde vuelve el teléfono después de entrar con Google. Debe estar en la lista de direcciones permitidas de Supabase. */
+export const NATIVE_LOGIN_RETURN = 'com.accontrol.app://login-callback';
+
+/**
+ * Lo que trae la vuelta de Google («code=…» o «error=…»), o null si la dirección no es la de entrar.
+ * @param {unknown} url
+ */
+export function loginReturnQuery(url) {
+  if (typeof url !== 'string' || !url.startsWith(NATIVE_LOGIN_RETURN)) return null;
+  const rest = url.slice(NATIVE_LOGIN_RETURN.length);
+  const query = rest.startsWith('?') ? rest.slice(1) : rest.startsWith('/?') ? rest.slice(2) : '';
+  return query.split('#')[0];
+}
+
+/**
+ * Avisa cuando el teléfono abre la app con la vuelta de Google: con la app ya abierta (appUrlOpen) o al arrancarla
+ * desde esa dirección (getLaunchUrl).
+ * @param {Bridge} cap @param {(query: string) => void} onReturn
+ */
+export function listenLoginReturn(cap, onReturn) {
+  cap.nativeCallback('App', 'addListener', { eventName: 'appUrlOpen' }, (data, error) => {
+    if (error) return;
+    const query = loginReturnQuery(data?.url);
+    if (query !== null) onReturn(query);
+  });
+  void cap.nativePromise('App', 'getLaunchUrl', {}).then((data) => {
+    const query = loginReturnQuery(/** @type {any} */ (data)?.url);
+    if (query !== null) onReturn(query);
+  }).catch(() => undefined);
+}

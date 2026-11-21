@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { PASSWORD_HINT } from '../domain/accounts.js';
-import { eyeToggle } from '../ui/passwordToggle.js';
+import { passwordInput } from '../ui/passwordToggle.js';
 import { confirmDialog, openSheet } from '../ui/dialog.js';
 import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
 import { html } from '../ui/html.js';
@@ -70,18 +70,18 @@ export function passwordForm() {
   return html`<form class="stack" data-form="password" novalidate>
       <div class="field" data-field="currentPassword">
         <label for="pw-current">Contraseña actual</label>
-        <div class="input-row"><input id="pw-current" name="currentPassword" class="input" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" data-autofocus aria-describedby="pw-current-error" />${eyeToggle('pw-current', 'contraseña actual')}</div>
+        ${passwordInput({ id: 'pw-current', name: 'currentPassword', autocomplete: 'current-password', describedBy: 'pw-current-error', label: 'contraseña actual', autofocus: true })}
         <p class="field__error" id="pw-current-error" data-error-for="currentPassword" hidden></p>
       </div>
       <div class="field" data-field="password">
         <label for="pw-new">Contraseña nueva</label>
-        <div class="input-row"><input id="pw-new" name="password" class="input" type="password" autocomplete="new-password" autocapitalize="none" spellcheck="false" aria-describedby="pw-new-hint pw-new-error" />${eyeToggle('pw-new', 'contraseña nueva')}</div>
+        ${passwordInput({ id: 'pw-new', name: 'password', autocomplete: 'new-password', describedBy: 'pw-new-hint pw-new-error', label: 'contraseña nueva' })}
         <p class="hint" id="pw-new-hint">${PASSWORD_HINT}</p>
         <p class="field__error" id="pw-new-error" data-error-for="password" hidden></p>
       </div>
       <div class="field" data-field="password2">
         <label for="pw-new2">Repite la contraseña nueva</label>
-        <div class="input-row"><input id="pw-new2" name="password2" class="input" type="password" autocomplete="new-password" autocapitalize="none" spellcheck="false" aria-describedby="pw-new2-error" />${eyeToggle('pw-new2', 'contraseña repetida')}</div>
+        ${passwordInput({ id: 'pw-new2', name: 'password2', autocomplete: 'new-password', describedBy: 'pw-new2-error', label: 'contraseña repetida' })}
         <p class="field__error" id="pw-new2-error" data-error-for="password2" hidden></p>
       </div>
       <p class="field__error field__error--form" data-error-for="form" role="alert" hidden></p>

@@ -1092,6 +1092,53 @@
 .auth .panel {
   margin: 0;
 }
+/* 0.18.7 (pedido de la persona): sin el panel cuadrado alrededor de los campos; quedan sueltos sobre el fondo. */
+.auth form.panel {
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+/* «o» entre «Entrar» y «Continuar con Google». */
+.auth__or {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.auth__or::before,
+.auth__or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+/* Botón de Google con la «G» de colores, en las dos versiones que dan sus normas de marca: clara y oscura. */
+.btn--google {
+  --google-bg: #ffffff;
+  --google-ink: #1f1f1f;
+  --google-line: #747775;
+  gap: var(--space-2);
+  background: var(--google-bg);
+  color: var(--google-ink);
+  border: 1px solid var(--google-line);
+}
+:root[data-theme='dark'] .btn--google {
+  --google-bg: #131314;
+  --google-ink: #e3e3e3;
+  --google-line: #8e918f;
+}
+.btn--google:disabled {
+  opacity: 0.55;
+}
+.btn--google .google-g {
+  flex: none;
+}
+.auth__google-note {
+  margin: 0;
+  text-align: center;
+}
 /* El sol y la luna arriba a la derecha de las pantallas de acceso (0.14.6). */
 .auth__theme {
   display: flex;

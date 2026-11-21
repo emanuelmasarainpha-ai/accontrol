@@ -15,7 +15,7 @@ import { createAccountApi } from './app/accountApi.js';
 import { startApp } from './app/app.js';
 import { createTourMemory, LOCAL_ACCOUNT } from './app/tourMemory.js';
 import { emailReturnAddress, isNativeApp } from './app/platform.js';
-import { installBackButton } from './app/nativeShell.js';
+import { installBackButton, listenLoginReturn, NATIVE_LOGIN_RETURN } from './app/nativeShell.js';
 import { browserTarget, createAutoBackup, nativeTarget } from './app/autoBackup.js';
 import { runAuthGate } from './app/authGate.js';
 import { createStore } from './app/store.js';
@@ -126,6 +126,11 @@ function appAddress() {
   return emailReturnAddress(window.location, isNativeApp());
 }
 
+/** Quita de la barra de direcciones el código de la vuelta de Google (?code=…: no debe quedarse a la vista). */
+function cleanSearch() {
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.hash}`);
+}
+
 /** Quita de la barra de direcciones lo que dejó un enlace de correo (contiene tokens: no debe quedarse a la vista). */
 function cleanAddress() {
   window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
@@ -170,16 +175,32 @@ async function signIn(view, intro) {
   const auth = createAuthClient({ url: SUPABASE_URL, publishableKey: SUPABASE_PUBLISHABLE_KEY, redirectTo: appAddress() });
   auth.init();
 
+  // Entrar con Google (0.18.7). En el navegador, Google vuelve a esta página con ?code=…; en la app de Android, a la
+  // dirección propia de la app (que llega por appUrlOpen): ahí se cambia el código por la sesión y se recarga la app.
+  const native = isNativeApp();
+  const googleReturn = native ? NATIVE_LOGIN_RETURN : `${window.location.origin}${window.location.pathname}`;
+  if (native) {
+    listenLoginReturn(/** @type {any} */ (window).Capacitor, (query) => {
+      void auth.consumeOAuthCode(query).then((result) => {
+        if (result.kind === 'signed-in') window.location.reload();
+        else if (result.kind === 'error') toast(result.message, 'error');
+      });
+    });
+  }
+  const google = await auth.consumeOAuthCode(window.location.search);
+  if (google.kind !== 'none') cleanSearch();
+
   // ¿Se abrió desde un enlace de un correo (confirmar cuenta, recuperar contraseña)?
   const link = await auth.consumeUrlHash(window.location.hash);
   if (link.kind !== 'none') cleanAddress();
+  const problem = link.kind === 'error' ? link.message : google.kind === 'error' ? google.message : '';
 
   let user = auth.getUser();
   if ((link.kind === 'recovery' && user) || !user) await intro;
   if (link.kind === 'recovery' && user) {
     user = await runAuthGate({ auth, root: view, start: 'recovery' });
   } else if (!user) {
-    user = await runAuthGate({ auth, root: view, notice: link.kind === 'error' ? { kind: 'error', text: link.message } : null });
+    user = await runAuthGate({ auth, root: view, googleReturn, notice: problem ? { kind: 'error', text: problem } : null });
   }
 
   // Desde aquí, si la sesión se cierra (en Ajustes, en otra pestaña, o porque el servidor la anuló), se vuelve a la

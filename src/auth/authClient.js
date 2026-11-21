@@ -40,6 +40,27 @@ const MAX_TOKEN_LENGTH = 8192;
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
 /**
+ * Entrar con Google (0.18.7): la clave de un solo uso (PKCE) que se guarda al ir a Google y se usa al volver. Solo con
+ * ella el servidor cambia el permiso que trae la dirección por una sesión: un permiso robado no sirve en otro equipo.
+ */
+export const OAUTH_VERIFIER_KEY = 'accontrol.auth.pkce.v1';
+/** Cuánto vale esa clave: si la vuelta de Google tarda más, hay que empezar otra vez. */
+const OAUTH_TTL_MS = 10 * 60 * 1000;
+
+/** Bytes → base64 «para direcciones» (sin +, / ni =). @param {Uint8Array} bytes */
+export function base64Url(bytes) {
+  let text = '';
+  for (const b of bytes) text += String.fromCharCode(b);
+  return btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** El «desafío» que se manda a Google: SHA-256 de la clave, en base64url. @param {string} verifier */
+export async function pkceChallenge(verifier) {
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return base64Url(new Uint8Array(digest));
+}
+
+/**
  * @typedef {Object} AuthUser
  * @property {string} id           UUID de la cuenta.
  * @property {string} email
@@ -661,6 +682,61 @@ export function createAuthClient(options) {
         'signed-in',
       );
       return { kind: params.get('type') === 'recovery' ? 'recovery' : 'signed-in' };
+    },
+
+    /**
+     * ¿Qué formas de entrar tiene activadas el servidor? (Google se activa en el panel de Supabase.)
+     * @returns {Promise<{ ok: true, google: boolean } | Failure>}
+     */
+    async providers() {
+      const reply = await request('GET', '/auth/v1/settings');
+      if (!reply.ok) return reply;
+      return { ok: true, google: reply.body?.external?.google === true };
+    },
+
+    /**
+     * La dirección para entrar con Google. Guarda en el dispositivo la clave de un solo uso (PKCE) y manda a Google
+     * solo su huella. `returnTo`: adónde vuelve (la página de la app, o la dirección de la app de Android).
+     * @param {string} returnTo
+     */
+    async googleSignInUrl(returnTo) {
+      const verifier = base64Url(globalThis.crypto.getRandomValues(new Uint8Array(48)));
+      if (!storage) throw new Error('Sin almacenamiento');
+      storage.setItem(OAUTH_VERIFIER_KEY, JSON.stringify({ verifier, at: nowMs() }));
+      const query = new URLSearchParams({
+        provider: 'google', redirect_to: returnTo, code_challenge: await pkceChallenge(verifier), code_challenge_method: 's256',
+      });
+      return `${base}/auth/v1/authorize?${query.toString()}`;
+    },
+
+    /**
+     * Al volver de Google: la dirección trae ?code=… (o ?error=…). Se cambia por una sesión con la clave guardada, que
+     * se borra (sirve una sola vez). El llamador limpia la dirección después.
+     * @param {string} search  window.location.search, o lo que viene después de «?» en la dirección de la app de Android
+     * @returns {Promise<{ kind: 'none' } | { kind: 'signed-in' } | { kind: 'error', message: string }>}
+     */
+    async consumeOAuthCode(search) {
+      const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+      const code = params.get('code');
+      const oauthError = params.get('error_description') ?? params.get('error');
+      if (!code && !oauthError) return { kind: 'none' };
+      /** @type {{ verifier?: unknown, at?: unknown } | null} */
+      let saved = null;
+      try {
+        saved = JSON.parse(storage?.getItem(OAUTH_VERIFIER_KEY) ?? 'null');
+      } catch {
+        saved = null;
+      }
+      storage?.removeItem(OAUTH_VERIFIER_KEY);
+      if (oauthError) return { kind: 'error', message: 'No se pudo entrar con Google. Inténtalo de nuevo o entra con tu correo.' };
+      if (!saved || typeof saved.verifier !== 'string' || typeof saved.at !== 'number' || nowMs() - saved.at > OAUTH_TTL_MS) {
+        return { kind: 'error', message: 'Por seguridad, empieza otra vez «Continuar con Google» en este dispositivo.' };
+      }
+      if (!code || code.length > MAX_TOKEN_LENGTH) return { kind: 'error', message: authErrorMessage('invalid_response') };
+      const reply = await request('POST', '/auth/v1/token', { query: { grant_type: 'pkce' }, body: { auth_code: code, code_verifier: saved.verifier } });
+      if (!reply.ok) return { kind: 'error', message: reply.error.message };
+      const adopted = adoptSession(reply);
+      return adopted.ok ? { kind: 'signed-in' } : { kind: 'error', message: adopted.error.message };
     },
 
     /** Detiene la renovación automática (para pruebas y al cerrar). */

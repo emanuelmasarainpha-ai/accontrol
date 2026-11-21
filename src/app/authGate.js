@@ -30,12 +30,13 @@ const LEAVE_MS = 260;
  * @param {AuthMode} [options.start]        Pantalla inicial (por defecto «entrar»).
  * @param {AuthViewState['notice']} [options.notice]  Mensaje inicial (por ejemplo, «el enlace venció»).
  * @param {() => void} [options.onDraw]     Se llama después de cada dibujo (para pruebas).
+ * @param {string} [options.googleReturn]   0.18.7: adónde vuelve «Continuar con Google» ('' = sin el botón).
  * @returns {Promise<AuthUser>}
  */
-export function runAuthGate({ auth, root, start = 'signin', notice = null, onDraw }) {
+export function runAuthGate({ auth, root, start = 'signin', notice = null, onDraw, googleReturn = '' }) {
   return new Promise((resolve) => {
     /** @type {AuthViewState} */
-    let state = { mode: start, email: '', displayName: '', notice, busy: false, canResend: true };
+    let state = { mode: start, email: '', displayName: '', notice, busy: false, canResend: true, google: googleReturn ? 'checking' : 'none' };
     const controller = new AbortController();
     const { signal } = controller;
     /** @type {ReturnType<typeof setTimeout> | null} */
@@ -76,7 +77,30 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
         if (first instanceof HTMLElement) first.focus();
         else root.querySelector('#auth-title')?.setAttribute('tabindex', '-1');
       }
+      showGoogle();
       onDraw?.();
+    }
+
+    /**
+     * 0.18.7: el botón de Google según lo que diga el servidor. Se cambia en su sitio (sin redibujar) para no borrar
+     * lo que la persona ya escribió.
+     */
+    function showGoogle() {
+      const button = root.querySelector('[data-auth-google]');
+      const note = root.querySelector('[data-auth-google-note]');
+      if (!(button instanceof HTMLButtonElement) || !(note instanceof HTMLElement)) return;
+      button.disabled = state.google !== 'on';
+      note.hidden = state.google === 'on' || state.google === 'checking';
+      note.textContent = state.google === 'off'
+        ? 'Entrar con Google todavía no está activado en ACCONTROL. Por ahora entra con tu correo.'
+        : 'No se pudo comprobar si se puede entrar con Google. Revisa tu conexión.';
+    }
+
+    if (googleReturn) {
+      void auth.providers().then((result) => {
+        state = { ...state, google: result.ok ? (result.google ? 'on' : 'off') : 'unknown' };
+        showGoogle();
+      });
     }
 
     /** Guarda lo escrito antes de cambiar de pantalla, para no obligar a escribirlo otra vez. */
@@ -254,6 +278,19 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
         const go_ = target.closest('[data-auth-go]');
         if (go_ instanceof HTMLElement) {
           go(/** @type {AuthMode} */ (go_.dataset.authGo));
+          return;
+        }
+
+        // «Continuar con Google» (0.18.7): se va a Google (en la app de Android, al navegador del teléfono) y vuelve.
+        if (target.closest('[data-auth-google]') && state.google === 'on' && !working) {
+          working = true;
+          try {
+            window.location.assign(await auth.googleSignInUrl(googleReturn));
+          } catch {
+            working = false;
+            state = { ...state, notice: { kind: 'error', text: 'No se pudo abrir Google en este dispositivo. Entra con tu correo.' } };
+            draw(false);
+          }
           return;
         }
 

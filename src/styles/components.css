@@ -2251,6 +2251,36 @@ a.row:active {
   }
 }
 
+/* 0.18.7: el ojo DENTRO del campo, al final; solo aparece cuando hay algo escrito (ui/passwordToggle.js → syncEye).
+   El campo mide lo mismo que el del correo. */
+.input-pass {
+  position: relative;
+}
+.input-pass .input {
+  width: 100%;
+  padding-right: calc(var(--tap) + 4px);
+}
+/* Edge trae su propio ojo dentro del campo: se quita para que no haya dos. */
+.input-pass .input::-ms-reveal,
+.input-pass .input::-ms-clear {
+  display: none;
+}
+.input-pass .eye-toggle {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  translate: 0 -50%;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+.input-pass .eye-toggle[aria-pressed='true'] {
+  color: var(--kind-ink);
+}
+.eye-toggle[hidden] {
+  display: none;
+}
+
 /* ---- Roles en espacios compartidos (0.16.0) ---------------------------------- */
 .banner--role {
   margin-bottom: var(--space-4);
