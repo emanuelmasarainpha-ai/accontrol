@@ -7,4 +7,12 @@
   } catch (error) {
     // Sin acceso al almacenamiento: se queda en claro.
   }
+  // Intro del logo (0.18.5): una vez por sesión y nunca con «reducir movimiento». Se decide aquí, antes de dibujar,
+  // para que la pantalla de la intro tape la app desde el primer instante. La reproduce src/ui/intro.js.
+  try {
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!calm && sessionStorage.getItem('accontrol.intro.v1') !== 'seen') document.documentElement.classList.add('has-intro');
+  } catch (error) {
+    // Sin acceso al almacenamiento: sin intro.
+  }
 })();

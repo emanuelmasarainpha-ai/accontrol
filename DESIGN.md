@@ -258,6 +258,15 @@ Mascota del recorrido: robotcito de traje negro con lentes dorados y regla. Vist
 ### El billete (signature)
 La tarjeta de «Disponible» en Inicio: hoja blanca con doble filete del color del espacio, roseta de guilloché a la derecha (opacidad 0.34, enmascarada), etiqueta DISPONIBLE, valor Display en tinta del espacio, línea explicativa, botones Registrar ingreso / Registrar gasto y una fila de microtexto de 7 px abajo. Al llegar, la roseta entra girando un poco y el valor cuenta hasta su cifra exacta (el lector de pantalla recibe la cifra final de una vez).
 
+### Intro del logo (excepción aprobada)
+Al abrir la app (una vez por sesión) sale la intro de `src/ui/intro.js`: la A entra desde la izquierda y la C desde la derecha, chocan con destello y chispas, la raya lavanda las cruza y aparece «ACCONTROL»; luego la A sale por la izquierda, la C por la derecha y la raya crece hasta tapar la pantalla con el color del papel, y entra el login (o Inicio).
+
+**Rompe a propósito dos reglas**, con aprobación del dueño del producto:
+- **Dura ~3.9 s** (no 300 ms) y usa curvas con un leve rebote en el nombre: es una pantalla de presentación, no una interacción de uso diario.
+- **Fondo con degradado radial** (#34204f a #1d1130) y los colores fijos del logo: es la marca, no el papel de la app.
+
+Lo que sí respeta: solo transform y opacidad, no sale con «reducir movimiento», un toque la adelanta a la salida y nunca bloquea la app (si falla, la app abre igual). **Esta excepción vale solo para la intro**; no se extiende a ninguna otra pantalla.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -269,8 +278,8 @@ La tarjeta de «Disponible» en Inicio: hoja blanca con doble filete del color d
 
 ### Don't:
 - **Don't** usar rojo para gastos ni para decorar.
-- **Don't** usar curvas con rebote ni animaciones de más de 300 ms.
-- **Don't** poner degradados ni sombras en el papel de fondo.
+- **Don't** usar curvas con rebote ni animaciones de más de 300 ms (única excepción: la intro del logo, ver arriba).
+- **Don't** poner degradados ni sombras en el papel de fondo (la intro del logo no es el papel: ver arriba).
 - **Don't** añadir bordes laterales gruesos de color como acento de tarjetas.
 - **Don't** cargar letras ni librerías de servicios externos.
 - **Don't** escribir `#fff` como fondo de hojas o controles (usa `--surface`) ni usar una escala -600/-900 como fondo con texto blanco (usa `--solid-*`): de noche se invertiría.

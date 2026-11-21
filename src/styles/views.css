@@ -1282,6 +1282,78 @@ body.is-auth {
   }
 }
 
+/* ---- Intro del logo al abrir la app (0.18.5, src/ui/intro.js) ----
+   Tapa todo desde el primer instante (theme-boot.js pone has-intro antes de dibujar). Los colores son los del
+   logo (icons/icon.svg), que no cambian con el tema: es la marca, no una superficie de la app.
+   Excepción a la regla del fondo plano: es una pantalla de presentación, no el papel de la app. */
+.intro {
+  display: none;
+}
+.has-intro .intro {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 45%, #34204f 0%, #1d1130 70%);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.has-intro body {
+  overflow: hidden;
+}
+.intro__inner {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  transform: translateY(-4vh);
+}
+.intro__logo {
+  display: block;
+  width: min(80vw, 440px);
+  height: auto;
+  overflow: visible;
+}
+.intro__word {
+  display: flex;
+  margin-right: -0.32em;
+  font-family: var(--font-value);
+  font-weight: 700;
+  font-size: clamp(1.4rem, 6.4vw, 2rem);
+  letter-spacing: 0.32em;
+  color: #f4f1ea;
+}
+.intro__word span {
+  display: inline-block;
+  opacity: 0;
+}
+.intro__spark {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c9b3f0;
+  box-shadow: 0 0 12px 2px rgb(201 179 240 / 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+.intro__flash {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 340px;
+  height: 340px;
+  margin: -170px 0 0 -170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(244 241 234 / 55%) 0%, rgb(201 179 240 / 18%) 40%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 .kind-grid {
   display: grid;
   gap: var(--space-4);

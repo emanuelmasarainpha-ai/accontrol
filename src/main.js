@@ -27,6 +27,7 @@ import { createRatesClient, setRatesClient } from './data/ratesClient.js';
 import { askAboutYouOnce } from './views/aboutYouPanel.js';
 import { createIndexedDbStore } from './data/indexedDbStore.js';
 import { centsToInputValue } from './domain/money.js';
+import { playIntro } from './ui/intro.js';
 import { installPasswordToggles } from './ui/passwordToggle.js';
 import { installThemeToggle } from './ui/theme.js';
 import { toast } from './ui/toast.js';
@@ -162,8 +163,9 @@ function localStorageOrNull() {
 /**
  * Pide la sesión si hace falta y devuelve la cuenta, o null si la app corre sin cuentas (SUPABASE_URL vacío).
  * @param {HTMLElement} view
+ * @param {Promise<void>} intro  La intro del logo: el login se dibuja cuando termina, para que se vea su entrada.
  */
-async function signIn(view) {
+async function signIn(view, intro) {
   if (!SUPABASE_URL) return null;
   const auth = createAuthClient({ url: SUPABASE_URL, publishableKey: SUPABASE_PUBLISHABLE_KEY, redirectTo: appAddress() });
   auth.init();
@@ -173,6 +175,7 @@ async function signIn(view) {
   if (link.kind !== 'none') cleanAddress();
 
   let user = auth.getUser();
+  if ((link.kind === 'recovery' && user) || !user) await intro;
   if (link.kind === 'recovery' && user) {
     user = await runAuthGate({ auth, root: view, start: 'recovery' });
   } else if (!user) {
@@ -207,7 +210,9 @@ async function main() {
   // App de Android: el botón «atrás» cierra ventanas y vuelve atrás en vez de cerrar la app de golpe.
   if (isNativeApp()) installBackButton(/** @type {any} */ (window).Capacitor);
   const view = /** @type {HTMLElement} */ (document.getElementById('view'));
-  const session = await signIn(view);
+  // Intro del logo (0.18.5): corre mientras la app se prepara; el login o Inicio se dibujan cuando termina.
+  const intro = playIntro();
+  const session = await signIn(view, intro);
   const databaseName = session ? resolveDatabaseName(localStorageOrNull(), session.user.id) : undefined;
 
   const local = await openDataStore(databaseName);
@@ -251,6 +256,7 @@ async function main() {
     target: isNativeApp() ? nativeTarget(/** @type {any} */ (window).Capacitor) : browserTarget(),
     storage: localStorageOrNull(),
   });
+  await intro; // con sesión abierta, Inicio entra con su animación justo cuando se va la intro
   startApp(store, { account, tourMemory, autoBackup });
   await store.init();
   autoBackup.start();
