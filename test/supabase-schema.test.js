@@ -19,17 +19,17 @@ const allLower = all.toLowerCase();
 const tables = [...all.matchAll(/create table public\.(\w+)/gi)].map((m) => m[1]);
 
 describe('migraciones de Supabase: orden y contenido', () => {
-  it('hay catorce migraciones numeradas en orden y sin repetirse (5.ª facturas 0.14.5; 6.ª no revivir 0.15.1; 7.ª invitaciones 0.16.0; 8.ª roles a medida 0.16.1; 9.ª productos para la caja 0.17.0; 10.ª oferta por cantidad 0.17.5; 11.ª monedas 0.18.3; 12.ª «sobre ti» 0.18.4; 13.ª pagos en otra moneda 0.18.5; 14.ª tasas de referencia 0.18.6)', () => {
-    assert.equal(files.length, 14);
+  it('hay quince migraciones numeradas en orden y sin repetirse (5.ª facturas 0.14.5; 6.ª no revivir 0.15.1; 7.ª invitaciones 0.16.0; 8.ª roles a medida 0.16.1; 9.ª productos para la caja 0.17.0; 10.ª oferta por cantidad 0.17.5; 11.ª monedas 0.18.3; 12.ª «sobre ti» 0.18.4; 13.ª pagos en otra moneda 0.18.5; 14.ª tasas de referencia 0.18.6; 15.ª planes 0.20.0)', () => {
+    assert.equal(files.length, 15);
     const versions = files.map((name) => name.split('_')[0]);
     assert.deepEqual(versions, [...versions].sort());
     assert.equal(new Set(versions).size, versions.length);
     for (const name of files) assert.match(name, /^\d{14}_[a-z_]+\.sql$/);
   });
 
-  it('crea las 23 tablas esperadas (la 20.ª, invitaciones, en la 0.16.0; la 21.ª, roles a medida, en la 0.16.1; la 22.ª, «sobre ti», en la 0.18.4; la 23.ª, tasas de referencia, en la 0.18.6)', () => {
-    assert.equal(tables.length, 23);
-    assert.equal(new Set(tables).size, 23);
+  it('crea las 24 tablas esperadas (la 20.ª, invitaciones, en la 0.16.0; la 21.ª, roles a medida, en la 0.16.1; la 22.ª, «sobre ti», en la 0.18.4; la 23.ª, tasas de referencia, en la 0.18.6; la 24.ª, planes, en la 0.20.0)', () => {
+    assert.equal(tables.length, 24);
+    assert.equal(new Set(tables).size, 24);
     for (const expected of ['profiles', 'workspaces', 'workspace_members', 'builtin_categories', 'movements', 'goals', 'debts', 'invoices', 'invoice_payments']) {
       assert.ok(tables.includes(expected), `falta la tabla ${expected}`);
     }
@@ -217,5 +217,27 @@ describe('migración de invitaciones (0.16.0): compartir un espacio con segurida
     const start = flat.indexOf('create or replace function public.delete_my_account()');
     assert.ok(start >= 0);
     assert.ok(flat.slice(start).includes('other.user_id <> uid'));
+  });
+});
+
+describe('migración de los planes (0.20.0)', () => {
+  const plans = sql('20261125000100_account_plans.sql').toLowerCase().replace(/\s+/g, ' ');
+  it('cada cuenta solo LEE su plan y nadie lo escribe desde la app', () => {
+    assert.ok(plans.includes('grant select on public.account_plans to authenticated;'));
+    assert.doesNotMatch(plans, /grant[^;]*(insert|update|delete)[^;]*on public\.account_plans/);
+    assert.ok(plans.includes('create policy account_plans_select on public.account_plans for select to authenticated using (user_id = (select auth.uid()))'));
+  });
+  it('el interruptor de la prueba abierta está fuera del alcance de la app', () => {
+    assert.ok(plans.includes('create table private.billing_settings'));
+    assert.ok(plans.includes('revoke all on private.billing_settings from public, anon, authenticated;'));
+  });
+  it('solo los espacios de Negocio NUEVOS piden el plan (los que ya existen no se tocan)', () => {
+    assert.ok(plans.includes("new.kind <> 'personal' and new.deleted_at is null and not exists (select 1 from public.workspaces w where w.id = new.id) and private.plan_of(new.created_by) <> 'business'"));
+    assert.ok(plans.includes('new.updated_at <= old.deleted_at'), 'conserva la regla de no revivir lo borrado');
+  });
+  it('tiene su archivo para deshacerla, que deja la regla como antes', () => {
+    const undo = readFileSync(new URL('../supabase/rollback/20261125000100_account_plans_deshacer.sql', import.meta.url), 'utf8').toLowerCase().replace(/--[^\n]*/g, '');
+    assert.ok(undo.includes('drop table if exists public.account_plans;'));
+    assert.ok(!undo.includes('plan_of(new'));
   });
 });

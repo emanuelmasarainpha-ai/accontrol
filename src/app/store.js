@@ -28,7 +28,7 @@ import { defaultCategories, ensureDebtCategory, validateCategoryName } from '../
 import { currentTime, todayISO } from '../domain/dates.js';
 import { buildBusinessDemo, buildCompanyDemo, buildDemoData, buildDepartmentDemo, buildFreelancerDemo, buildFreelancerInvoiceDemo, buildInventoryDemo, buildInvoiceDemo } from '../domain/demo.js';
 import { applyDepartmentEdit, buildDepartment, departmentsEnabled, departmentUsage, validateDepartment } from '../domain/departments.js';
-import { debtStatus, paymentMovementFields, paymentsFitDebt, validateDebt, validatePayment } from '../domain/debts.js';
+import { paymentMovementFields, paymentsFitDebt, validateDebt, validatePayment } from '../domain/debts.js';
 import { goalSavedCents, validateContribution, validateGoal } from '../domain/goals.js';
 import {
   applyProductEdit, applySupplierEdit, buildProduct, buildStockEntry, buildStockMovement, buildSupplier, deletionProblem, inventoryEnabled,
@@ -42,7 +42,7 @@ import { creditErrors, creditInvoiceInput, customerKey, customerLedger, fiadoEna
 import { formatMoney, setMoneyCurrency } from '../domain/money.js';
 import { prepareSale, salesCategory } from '../domain/pos.js';
 import { newId } from '../domain/ids.js';
-import { canCreateWorkspaceKind, canUse, featureMessage, limitFor, limitMessage } from '../domain/plans.js';
+import { canCreateWorkspaceKind, canUse, featureMessage, limitMessage, limitReached } from '../domain/plans.js';
 import { isOrganizationEmpty, kindHasOrganization, validateOrganization } from '../domain/organization.js';
 import { applyMovementEdit, buildMovement, validateMovement } from '../domain/movements.js';
 import { defaultSettings, validateSettings } from '../domain/settings.js';
@@ -737,11 +737,7 @@ export function createStore(source, clock = () => new Date(), { userId = null, p
         const checked = validateGoal(input, { today: today(), existing });
         if (!checked.ok) return checked;
         // Planes (0.20.0): en Gratis, hasta 2 metas sin cumplir.
-        const goalLimit = limitFor(plan(), 'goals', activeKind());
-        if (!existing && goalLimit !== null) {
-          const active = state.data.goals.filter((g) => goalSavedCents(g.id, state.data.contributions) < g.targetCents).length;
-          if (active >= goalLimit) return formFail(limitMessage('goals'));
-        }
+        if (!existing && limitReached(plan(), 'goals', state.data, today(), activeKind())) return formFail(limitMessage('goals'));
 
         const now = nowISO();
         /** @type {Goal} */
@@ -917,11 +913,7 @@ export function createStore(source, clock = () => new Date(), { userId = null, p
         const checked = validateDebt(input);
         if (!checked.ok) return checked;
         // Planes (0.20.0): en Gratis, hasta 2 deudas sin pagar.
-        const debtLimit = limitFor(plan(), 'debts', activeKind());
-        if (!existing && debtLimit !== null) {
-          const active = data.debts.filter((x) => !debtStatus(x, data.debtPayments.filter((p) => p.debtId === x.id), today()).paid).length;
-          if (active >= debtLimit) return formFail(limitMessage('debts'));
-        }
+        if (!existing && limitReached(plan(), 'debts', data, today(), activeKind())) return formFail(limitMessage('debts'));
 
         const now = nowISO();
         /** @type {Debt} */

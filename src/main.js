@@ -23,6 +23,7 @@ import { createAuthClient, SESSION_KEY } from './auth/authClient.js';
 import { claimNameAdoption, resolveDatabaseName } from './auth/localOwner.js';
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config.js';
 import { createCloudStore } from './data/cloudStore.js';
+import { currentPlan, refreshPlan, startPlan } from './app/plan.js';
 import { createRatesClient, setRatesClient } from './data/ratesClient.js';
 import { askAboutYouOnce } from './views/aboutYouPanel.js';
 import { createIndexedDbStore } from './data/indexedDbStore.js';
@@ -267,7 +268,10 @@ async function main() {
       },
     }
     : null;
-  const store = createStore(sync ? sync.store : local, undefined, { userId: session ? session.user.id : null });
+  // Planes (0.20.0): con cuenta, lo último que se supo en este dispositivo (sin nada: Gratis) y enseguida se pregunta a la
+  // nube. Sin cuentas no hay planes (todo abierto).
+  if (session) startPlan(localStorageOrNull(), session.user.id);
+  const store = createStore(sync ? sync.store : local, undefined, { userId: session ? session.user.id : null, plan: currentPlan });
   // El recorrido guiado se recuerda por cuenta (y por tipo de espacio) en este dispositivo.
   const tourMemory = createTourMemory(localStorageOrNull(), session ? session.user.id : LOCAL_ACCOUNT);
   // Copia automática diaria (0.18.2): por cuenta; en la app de Android, en Documentos/ACCONTROL; en el navegador, en su memoria.
@@ -279,6 +283,10 @@ async function main() {
   });
   await intro; // con sesión abierta, Inicio entra con su animación justo cuando se va la intro
   startApp(store, { account, tourMemory, autoBackup });
+  const checkPlan = () => {
+    if (session && cloud) void refreshPlan(cloud, localStorageOrNull(), session.user.id);
+  };
+  checkPlan();
   await store.init();
   autoBackup.start();
   const tellOtherTabs = keepTabsInSync(store, databaseName ?? 'accontrol');
@@ -298,7 +306,10 @@ async function main() {
     });
     // Al volver a la app (por ejemplo, el teléfono despierta), se revisa la nube.
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') void sync.api.syncNow();
+      if (document.visibilityState === 'visible') {
+        void sync.api.syncNow();
+        checkPlan();
+      }
     });
   }
   sync?.start();

@@ -31,6 +31,8 @@ import { sectionFromParams, visibleSections } from '../app/settingsSections.js';
 import { autoBackupPanel, runAutoBackupAction, watchAutoBackup } from './autoBackupPanel.js';
 import { currencyPanel, watchCurrency } from './currencyPanel.js';
 import { aboutYouPanel, watchAboutYou } from './aboutYouPanel.js';
+import { planPanel } from './plans.js';
+import { currentPlan, currentPlanRow } from '../app/plan.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 
@@ -43,7 +45,7 @@ const ROADMAP = [
   { stage: 'Etapa 5', text: 'IA Financiera: coach, evaluación de riesgo y asistente conversacional (el diagnóstico y la viabilidad de metas con reglas fijas ya existen, ver Ampliación).' },
   { stage: 'Etapa 6', text: 'Aplicaciones de Android, iOS y escritorio, notificaciones inteligentes (los logros, rachas y niveles ya existen, ver Ampliación).' },
   { stage: 'Etapa 7', text: 'Módulos para freelancers y emprendedores (hechos en la ampliación).' },
-  { stage: 'Etapa 8', text: 'Versión premium, pagos, panel administrativo y conexión bancaria.' },
+  { stage: 'Etapa 8', text: 'Planes Gratis, Premium y Negocio (hechos; durante la prueba abierta todas las cuentas tienen Negocio gratis). Faltan: pagar con Google Play y en la web, panel administrativo y conexión bancaria.', current: true },
 ];
 
 /**
@@ -90,7 +92,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Pantalla de entrar renovada y entrar con Google';
+const VERSION_NOTE = 'Planes Gratis, Premium y Negocio (todavía sin pagos)';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.
@@ -248,6 +250,7 @@ export function renderSettings(store, ctx) {
 
   /** @type {Record<import('../app/settingsSections.js').SettingsBlock, unknown>} */
   const blocks = {
+    plan: planPanel(currentPlan(), currentPlanRow()),
     account: accountPanel(account),
     profile: profileBlock,
     currency: currencyPanel(store),

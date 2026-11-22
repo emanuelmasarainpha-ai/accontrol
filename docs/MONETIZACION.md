@@ -26,11 +26,10 @@
 | Calculadoras financieras | — | Sí | Sí |
 | Exportar a PDF, Excel y CSV | — | Sí | Sí |
 | Pagos en otra moneda y tasa automática | — | Sí | Sí |
-| Nube | Copia en la nube, **1 dispositivo** | **Varios dispositivos** | Varios dispositivos |
-| Compartir el espacio (pareja, familia) | — | Sí | Sí |
+| Nube | Copia en la nube, **1 dispositivo** (límite pendiente) | **Varios dispositivos** | Varios dispositivos |
 | Clientes, servicios y facturas internas | — | — | Sí |
 | Caja, ticket, lector de códigos, inventario, fiado | — | — | Sí |
-| Departamentos, miembros y roles a medida | — | — | Sí |
+| Departamentos, miembros y roles a medida (compartir el espacio) | — | — | Sí |
 | Precio sugerido (a validar) | RD$0 | **US$ 2.99–3.99 al mes** (o un año con descuento) | **US$ 9.99–14.99 al mes** |
 
 **Por qué esos precios** (solo como punto de partida):

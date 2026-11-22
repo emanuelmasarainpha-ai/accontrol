@@ -17,6 +17,9 @@ import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
 import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { toast } from '../ui/toast.js';
+import { canCreateWorkspaceKind } from '../domain/plans.js';
+import { currentPlan } from '../app/plan.js';
+import { openUpgrade } from './plans.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 /** @typedef {import('../domain/types.js').Workspace} Workspace */
@@ -132,11 +135,13 @@ export function kindChoices(selected, workspaces = []) {
     ${WORKSPACE_KINDS.map((kind) => {
       const info = KIND_INFO[kind];
       const taken = ownedWorkspaceOfKind(workspaces, kind);
-      return html`<label class="kind-choice${taken ? ' kind-choice--taken' : ''}">
-        <input type="radio" name="kind" value="${kind}" ${selected === kind && !taken ? 'checked' : ''} ${taken ? 'disabled' : ''} />
+      // Planes (0.20.0): sin Negocio, los tipos de negocio salen desactivados y lo dicen.
+      const locked = !taken && !canCreateWorkspaceKind(currentPlan(), kind);
+      return html`<label class="kind-choice${taken || locked ? ' kind-choice--taken' : ''}">
+        <input type="radio" name="kind" value="${kind}" ${selected === kind && !taken && !locked ? 'checked' : ''} ${taken || locked ? 'disabled' : ''} />
         <span class="kind-choice__body">
           <span class="kind-choice__icon">${icon(info.icon, 20)}</span>
-          <span><strong>${info.label}</strong><small>${taken ? `Ya lo tienes: «${taken.name}»` : info.tagline}</small></span>
+          <span><strong>${info.label}</strong><small>${taken ? `Ya lo tienes: «${taken.name}»` : locked ? 'Del plan Negocio' : info.tagline}</small></span>
         </span>
       </label>`;
     })}
@@ -149,6 +154,11 @@ export function openCreateWorkspace(store) {
   const free = availableKinds(workspaces);
   if (free.length === 0) {
     toast('Ya tienes un espacio de cada tipo (Personal, Freelancer, Emprendedor y Empresa). Solo se puede tener uno de cada uno.', 'info');
+    return;
+  }
+  // Planes (0.20.0): si lo único que falta son espacios de Negocio y tu plan no los trae, se explica en vez de abrir el formulario.
+  if (!free.some((kind) => canCreateWorkspaceKind(currentPlan(), kind))) {
+    openUpgrade({ feature: 'businessSpaces' });
     return;
   }
   openSheet({

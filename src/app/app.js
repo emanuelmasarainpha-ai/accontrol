@@ -42,6 +42,10 @@ import {
   OWNER_ONLY_MESSAGE, permissionsOf, readOnlyMessage, roleLabel,
 } from '../domain/roles.js';
 import { atLeast, MODULE_IDS } from '../domain/permissions.js';
+import { todayISO } from '../domain/dates.js';
+import { canUse, limitReached, ROUTE_FEATURE } from '../domain/plans.js';
+import { lockedScreen, openUpgrade } from '../views/plans.js';
+import { currentPlan, onPlanChange } from './plan.js';
 import { toast } from '../ui/toast.js';
 import { runCommonAction } from './actions.js';
 import { ROUTES, routeById, routeFromHash, routeParams } from './router.js';
@@ -175,7 +179,13 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     if (routeChanged || routeId !== lastRoute) view.dataset.enter = '';
     else delete view.dataset.enter;
     const context = { rerender: () => render(false), params: routeParams(window.location.hash), account, tour, autoBackup };
-    const rendered = onboarding ? renderOnboarding(store, context) : VIEWS[routeId](store, context);
+    // Planes (0.20.0): una pantalla que tu plan no trae se cambia por la del candado (dentro de un espacio de Negocio, todo abierto).
+    const lockedFeature = onboarding ? undefined : ROUTE_FEATURE[routeId];
+    const rendered = onboarding
+      ? renderOnboarding(store, context)
+      : lockedFeature && !canUse(currentPlan(), lockedFeature, activeWs?.kind ?? null)
+        ? lockedScreen(lockedFeature, route.label)
+        : VIEWS[routeId](store, context);
     setHtml(view, readOnly && activeWs ? html`${roleBanner(activeWs)}${rendered.html}` : rendered.html);
     cleanup = rendered.mount?.(view, controller.signal);
     revealActiveSubtab();
@@ -194,6 +204,8 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
 
   window.addEventListener('hashchange', () => render(true));
   store.subscribe(() => render(false));
+  // Si la nube dice otro plan (por ejemplo, al volver a la app), la pantalla se vuelve a dibujar.
+  onPlanChange(() => render(false));
 
   // Roles (0.16.0): un botón que tu rol no permite no hace nada más que explicar por qué. Se escucha en la fase de
   // «captura» (antes que la pantalla), así ningún formulario llega a abrirse. Es la segunda defensa: los botones ya
@@ -204,10 +216,21 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     if (!name) return;
     const active = store.activeWorkspace();
     const blocked = OWNER_ACTIONS.includes(name) && !canManageWorkspace(active) ? OWNER_ONLY_MESSAGE : writeRefusal(store, name, element);
-    if (!blocked) return;
+    if (blocked) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      toast(blocked, 'info');
+      return;
+    }
+    // Planes (0.20.0): lo que tu plan no trae abre el aviso con los planes en vez del formulario.
+    const upgrade = planRefusal(store, name);
+    if (!upgrade) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    toast(blocked, 'info');
+    // Si venía del menú «Añadir», ese menú se cierra: el aviso queda solo.
+    const menu = element.closest('dialog');
+    if (menu instanceof HTMLDialogElement) menu.close();
+    openUpgrade(upgrade);
   }, { capture: true });
 
   // Un solo oyente para los botones comunes (añadir, editar, demostración...),
@@ -240,6 +263,22 @@ function writeRefusal(store, name, element) {
     const record = (/** @type {any} */ (store.getState().data))[kind]?.find((/** @type {any} */ r) => r.id === element.dataset.id);
     if (record && !isMine(record, store.me())) return NOT_YOURS_MESSAGE;
   }
+  return null;
+}
+
+/**
+ * ¿Trae tu plan lo que pide este botón? (0.20.0) Devuelve por qué no, o null. Las copias de seguridad nunca se bloquean.
+ * @param {Store} store @param {string} name
+ * @returns {{ feature: import('../domain/plans.js').Feature } | { limit: 'goals' | 'debts' } | null}
+ */
+export function planRefusal(store, name) {
+  const plan = currentPlan();
+  const kind = store.activeWorkspace()?.kind ?? null;
+  if (name === 'export' && !canUse(plan, 'reports', kind)) return { feature: 'reports' };
+  if (name === 'new-asset' && !canUse(plan, 'netWorth', kind)) return { feature: 'netWorth' };
+  const { data } = store.getState();
+  if (name === 'new-goal' && limitReached(plan, 'goals', data, todayISO(new Date()), kind)) return { limit: 'goals' };
+  if (name === 'new-debt' && limitReached(plan, 'debts', data, todayISO(new Date()), kind)) return { limit: 'debts' };
   return null;
 }
 

@@ -15,6 +15,9 @@ import { icon } from '../ui/icons.js';
 import { toast } from '../ui/toast.js';
 import { currencySelect } from './currencyPanel.js';
 import { kindIcon } from './workspaces.js';
+import { canCreateWorkspaceKind } from '../domain/plans.js';
+import { currentPlan } from '../app/plan.js';
+import { openUpgrade } from './plans.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 /** @typedef {import('../domain/types.js').WorkspaceKind} WorkspaceKind */
@@ -40,6 +43,11 @@ export function renderOnboarding(store, ctx) {
           if (!target) return;
           const card = target.closest('[data-kind]');
           if (card instanceof HTMLElement) {
+            // Planes (0.20.0): Freelancer, Emprendedor y Empresa son del plan Negocio.
+            if (!canCreateWorkspaceKind(currentPlan(), card.dataset.kind ?? '')) {
+              openUpgrade({ feature: 'businessSpaces' });
+              return;
+            }
             chosen = /** @type {WorkspaceKind} */ (card.dataset.kind);
             ctx.rerender();
             return;
@@ -128,9 +136,10 @@ function kindStep() {
 /** @param {WorkspaceKind} kind */
 function kindCard(kind) {
   const info = KIND_INFO[kind];
-  return html`<button type="button" class="kind-card" data-kind="${kind}">
+  const locked = !canCreateWorkspaceKind(currentPlan(), kind);
+  return html`<button type="button" class="kind-card${locked ? ' kind-card--locked' : ''}" data-kind="${kind}">
     <span class="kind-card__icon">${kindIcon(kind, 26)}</span>
-    <span class="kind-card__title">${info.label}</span>
+    <span class="kind-card__title">${info.label}${locked ? html`<span class="badge badge--plan">${icon('lock', 12)}Plan Negocio</span>` : ''}</span>
     <span class="kind-card__tagline">${info.tagline}</span>
     <span class="kind-card__label">Incluye hoy</span>
     <ul class="kind-card__list">${info.included.map((x) => html`<li>${x}</li>`)}</ul>

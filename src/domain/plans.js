@@ -18,6 +18,9 @@
 // Los precios son de referencia (docs/MONETIZACION.md); todavía NO se cobra nada (el botón dice «Próximamente»).
 // =============================================================================
 
+import { debtStatus } from './debts.js';
+import { goalSavedCents } from './goals.js';
+
 /** @typedef {'free' | 'premium' | 'business'} PlanId */
 /** @typedef {'stats' | 'netWorth' | 'diagnosis' | 'calculators' | 'reports' | 'foreignCurrency' | 'businessSpaces'} Feature */
 /** @typedef {'goals' | 'debts'} LimitedThing */
@@ -165,4 +168,24 @@ export function effectivePlan(row, now) {
     if (!Number.isFinite(end) || end <= now.getTime()) return 'free';
   }
   return plan;
+}
+
+/**
+ * Cuántas metas o deudas cuentan para el límite: las metas sin cumplir y las deudas sin pagar del espacio abierto.
+ * @param {LimitedThing} thing
+ * @param {{ goals: import('./types.js').Goal[], contributions: import('./types.js').Contribution[], debts: import('./types.js').Debt[], debtPayments: import('./types.js').DebtPayment[] }} data
+ * @param {string} today
+ */
+export function activeCount(thing, data, today) {
+  if (thing === 'goals') return data.goals.filter((g) => goalSavedCents(g.id, data.contributions) < g.targetCents).length;
+  return data.debts.filter((d) => !debtStatus(d, data.debtPayments.filter((p) => p.debtId === d.id), today).paid).length;
+}
+
+/**
+ * ¿Llegaste al límite de tu plan? (null = puedes crear otra)
+ * @param {PlanId} plan @param {LimitedThing} thing @param {Parameters<typeof activeCount>[1]} data @param {string} today @param {string | null} [workspaceKind]
+ */
+export function limitReached(plan, thing, data, today, workspaceKind = null) {
+  const limit = limitFor(plan, thing, workspaceKind);
+  return limit !== null && activeCount(thing, data, today) >= limit;
 }

@@ -28,6 +28,9 @@ import { haptic } from '../ui/haptics.js';
 import { toast } from '../ui/toast.js';
 import { ACTION_MODULE, canEditData, permissionsOf } from '../domain/roles.js';
 import { atLeast } from '../domain/permissions.js';
+import { canUse, featureMessage } from '../domain/plans.js';
+import { currentPlan } from '../app/plan.js';
+import { PLANS_HREF } from './plans.js';
 import { openAssetForm } from './asset-forms.js';
 import { openCreditForm } from './fiado-forms.js';
 import { openProductForm } from './inventory-forms.js';
@@ -222,7 +225,9 @@ export function openMovementForm(store, { type, movement = null, clientId = null
     content: html`<form class="stack" novalidate data-movement="${kind}">
       ${moneyField({ id: 'mv-amount', name: 'amountText', label: 'Monto', value: movement ? centsToInputValue(foreign ? /** @type {number} */ (movement.originalAmountCents) : movement.amountCents) : '', errorKey: 'amount', autofocus: !isEdit })}
 
-      ${foreignFields(baseCurrency, foreign ? /** @type {string} */ (movement?.originalCurrency) : baseCurrency, foreign ? formatExchangeRate(/** @type {number} */ (movement?.exchangeRateMicro)) : '')}
+      ${foreign || canUse(currentPlan(), 'foreignCurrency', store.activeWorkspace()?.kind ?? null)
+        ? foreignFields(baseCurrency, foreign ? /** @type {string} */ (movement?.originalCurrency) : baseCurrency, foreign ? formatExchangeRate(/** @type {number} */ (movement?.exchangeRateMicro)) : '')
+        : html`<p class="hint plan-hint" data-plan-lock="foreignCurrency">${icon('lock', 14)}<span>${featureMessage('foreignCurrency')} <a href="${PLANS_HREF}" data-close>Ver los planes</a></span></p>`}
 
       <div class="field-row">
         <div class="field" data-field="date">

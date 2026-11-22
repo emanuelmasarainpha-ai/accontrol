@@ -292,6 +292,22 @@ export function createCloudStore(options) {
       return reply.ok ? { ok: true } : reply;
     },
 
+    // ------------------------------------------------------------------ tu plan (0.20.0)
+    /**
+     * Lo que dice la nube de tu plan. `row: null` = no hay fila (plan Gratis). La base solo devuelve TU fila (RLS) y
+     * nadie la puede cambiar desde la app.
+     * @returns {Promise<{ ok: true, row: import('../domain/plans.js').PlanRow | null } | CloudFailure>}
+     */
+    async getPlan() {
+      const userId = options.getUserId();
+      if (!userId) return fail('session', 401);
+      const reply = await call('GET', '/rest/v1/account_plans', { query: { select: 'plan,source,expires_at', user_id: `eq.${userId}` } });
+      if (!reply.ok) return reply;
+      const row = Array.isArray(reply.body) ? reply.body[0] : null;
+      if (!row) return { ok: true, row: null };
+      return { ok: true, row: { plan: row.plan, source: String(row.source ?? ''), expiresAt: typeof row.expires_at === 'string' ? row.expires_at : null } };
+    },
+
     // ------------------------------------------------------------------ datos de un espacio
     /**
      * Sube cambios y borrados de un espacio. Los datos de demostración no se suben.

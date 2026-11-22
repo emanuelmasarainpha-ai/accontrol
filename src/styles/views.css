@@ -3219,3 +3219,105 @@ html[data-pos] .view {
   font-size: 1.5rem;
   line-height: 1;
 }
+
+/* =============================================================================
+   PLANES (0.20.0): «Tu plan» en Ajustes, pantalla con candado y aviso «Esto es Premium»
+   ============================================================================= */
+.plan-grid {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+@media (min-width: 760px) {
+  .plan-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.plan-card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.plan-card--current {
+  border-color: var(--kind);
+  box-shadow: inset 0 0 0 1px var(--kind);
+}
+.plan-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.plan-card__name {
+  margin: 0;
+  color: var(--kind-ink);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.plan-card__price {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.plan-card__tagline {
+  margin: 0;
+  color: var(--text-muted);
+}
+.plan-card__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-card__list li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+.plan-card__list .icon {
+  flex: none;
+  margin-top: 3px;
+  color: var(--kind-ink);
+}
+.badge--plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--kind-soft);
+  color: var(--kind-ink);
+  vertical-align: middle;
+}
+.kind-card__title .badge--plan {
+  margin-left: var(--space-2);
+}
+.plan-note,
+.upgrade__message,
+.plan-hint {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin: 0;
+}
+.plan-note .icon,
+.upgrade__message .icon,
+.plan-hint .icon {
+  flex: none;
+  margin-top: 3px;
+  color: var(--kind-ink);
+}
+.upgrade {
+  display: grid;
+  gap: var(--space-3);
+}
+.upgrade__message {
+  font-weight: 600;
+}
+.panel--locked > * + * {
+  margin-top: var(--space-3);
+}

@@ -148,3 +148,50 @@ describe('el almacén respeta el plan', () => {
     must(await store.createWorkspace({ kind: 'company', name: 'ABC' }));
   });
 });
+
+describe('el plan de la sesión (app/plan.js) y la nube (cloudStore.getPlan)', async () => {
+  const { currentPlan, onPlanChange, refreshPlan, setPlan, startPlan } = await import('../src/app/plan.js');
+  const { createCloudStore } = await import('../src/data/cloudStore.js');
+  const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), m }; };
+  const UID = '6f1c2b6e-3a4d-4c5e-9f00-1a2b3c4d5e6f';
+
+  it('sin nada guardado en el dispositivo empieza en Gratis; con lo guardado, ese plan (respetando la fecha de fin)', () => {
+    const storage = memory();
+    startPlan(storage, UID, NOW);
+    assert.equal(currentPlan(), 'free');
+    storage.setItem(`accontrol.plan.v1:${UID}`, JSON.stringify({ plan: 'premium', source: 'web', expiresAt: '2026-12-01T00:00:00Z' }));
+    startPlan(storage, UID, NOW);
+    assert.equal(currentPlan(), 'premium');
+    startPlan(storage, UID, new Date('2026-12-02T00:00:00Z'));
+    assert.equal(currentPlan(), 'free', 'vencido también sin internet');
+  });
+
+  it('la nube manda: guarda lo que dice y avisa del cambio; sin conexión se queda con lo que había', async () => {
+    const storage = memory();
+    setPlan('free', null);
+    let changes = 0;
+    const stop = onPlanChange(() => { changes += 1; });
+    assert.equal(await refreshPlan({ getPlan: async () => ({ ok: true, row: { plan: 'business', source: 'beta', expiresAt: null } }) }, storage, UID, NOW), true);
+    assert.equal(currentPlan(), 'business');
+    assert.equal(changes, 1);
+    assert.match(storage.getItem(`accontrol.plan.v1:${UID}`) ?? '', /"business"/);
+    assert.equal(await refreshPlan({ getPlan: async () => ({ ok: false }) }, storage, UID, NOW), false);
+    assert.equal(await refreshPlan({ getPlan: async () => { throw new Error('sin red'); } }, storage, UID, NOW), false);
+    assert.equal(currentPlan(), 'business');
+    stop();
+    setPlan('business', null);
+  });
+
+  it('cloudStore.getPlan pide SOLO tu fila y entiende «sin fila»', async () => {
+    const calls = [];
+    let body = [{ plan: 'premium', source: 'manual', expires_at: '2027-01-01T00:00:00+00:00' }];
+    const cloud = createCloudStore({
+      url: 'https://p.supabase.co', publishableKey: 'k', getAccessToken: async () => 't', getUserId: () => UID,
+      fetch: /** @type {any} */ (async (url) => { calls.push(String(url)); return { ok: true, status: 200, text: async () => JSON.stringify(body) }; }),
+    });
+    assert.deepEqual(await cloud.getPlan(), { ok: true, row: { plan: 'premium', source: 'manual', expiresAt: '2027-01-01T00:00:00+00:00' } });
+    assert.match(calls[0], /\/rest\/v1\/account_plans\?select=plan%2Csource%2Cexpires_at&user_id=eq\.6f1c2b6e/);
+    body = [];
+    assert.deepEqual(await cloud.getPlan(), { ok: true, row: null });
+  });
+});
