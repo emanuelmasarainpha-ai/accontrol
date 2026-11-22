@@ -28,7 +28,7 @@ import { defaultCategories, ensureDebtCategory, validateCategoryName } from '../
 import { currentTime, todayISO } from '../domain/dates.js';
 import { buildBusinessDemo, buildCompanyDemo, buildDemoData, buildDepartmentDemo, buildFreelancerDemo, buildFreelancerInvoiceDemo, buildInventoryDemo, buildInvoiceDemo } from '../domain/demo.js';
 import { applyDepartmentEdit, buildDepartment, departmentsEnabled, departmentUsage, validateDepartment } from '../domain/departments.js';
-import { paymentMovementFields, paymentsFitDebt, validateDebt, validatePayment } from '../domain/debts.js';
+import { debtStatus, paymentMovementFields, paymentsFitDebt, validateDebt, validatePayment } from '../domain/debts.js';
 import { goalSavedCents, validateContribution, validateGoal } from '../domain/goals.js';
 import {
   applyProductEdit, applySupplierEdit, buildProduct, buildStockEntry, buildStockMovement, buildSupplier, deletionProblem, inventoryEnabled,
@@ -42,6 +42,7 @@ import { creditErrors, creditInvoiceInput, customerKey, customerLedger, fiadoEna
 import { formatMoney, setMoneyCurrency } from '../domain/money.js';
 import { prepareSale, salesCategory } from '../domain/pos.js';
 import { newId } from '../domain/ids.js';
+import { canCreateWorkspaceKind, canUse, featureMessage, limitFor, limitMessage } from '../domain/plans.js';
 import { isOrganizationEmpty, kindHasOrganization, validateOrganization } from '../domain/organization.js';
 import { applyMovementEdit, buildMovement, validateMovement } from '../domain/movements.js';
 import { defaultSettings, validateSettings } from '../domain/settings.js';
@@ -153,9 +154,11 @@ const formFail = (message) => ({ ok: false, errors: { form: message } });
  * @param {WorkspaceStore | DataStore} source  El almacén de espacios de trabajo. (Un almacén suelto también vale:
  *   se trata como una app con un solo espacio. Así se prueban las acciones sin montar espacios.)
  * @param {() => Date} [clock]  Reloj (se puede reemplazar en las pruebas).
- * @param {{ userId?: string | null }} [options]  userId: tu cuenta (0.16.1), para saber qué registros creaste tú.
+ * @param {{ userId?: string | null, plan?: () => import('../domain/plans.js').PlanId }} [options]
+ *   userId: tu cuenta (0.16.1), para saber qué registros creaste tú.
+ *   plan: tu plan (0.20.0), mirado en el momento de guardar. Sin cuentas (modo local, pruebas) no hay planes: todo abierto.
  */
-export function createStore(source, clock = () => new Date(), { userId = null } = {}) {
+export function createStore(source, clock = () => new Date(), { userId = null, plan = () => 'business' } = {}) {
   /** @type {WorkspaceStore} */
   const root = 'forWorkspace' in source ? source : singleWorkspace(source);
   /** El almacén del espacio abierto: cambia cuando la persona cambia de espacio. @type {DataStore} */
@@ -481,6 +484,8 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         const stale = await reloadFromStorage({ lenient: true });
         if (stale) return stale;
         if (!isWorkspaceKind(input.kind)) return { ok: false, errors: { kind: 'Elige para qué vas a usar ACCONTROL.' } };
+        // Planes (0.20.0): Freelancer, Emprendedor y Empresa son del plan Negocio (la nube también lo exige).
+        if (!canCreateWorkspaceKind(plan(), input.kind)) return { ok: false, errors: { kind: featureMessage('businessSpaces') } };
         // Un espacio de cada tipo por cuenta (0.17.4): los compartidos contigo no cuentan.
         const taken = ownedWorkspaceOfKind(state.workspaces, input.kind);
         if (taken) return { ok: false, errors: { kind: oneOfEachMessage(/** @type {Workspace} */ (taken)) } };
@@ -666,6 +671,10 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         });
         if (!checked.ok) return checked;
         const value = checked.value;
+        // Planes (0.20.0): pagar en otra moneda es de Premium. Lo que ya estaba en otra moneda se puede seguir editando.
+        if (value.foreign && !existing?.originalCurrency && !canUse(plan(), 'foreignCurrency', activeKind())) {
+          return formFail(featureMessage('foreignCurrency'));
+        }
 
         /** @type {Category | null} */
         let newCategory = null;
@@ -727,6 +736,12 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
 
         const checked = validateGoal(input, { today: today(), existing });
         if (!checked.ok) return checked;
+        // Planes (0.20.0): en Gratis, hasta 2 metas sin cumplir.
+        const goalLimit = limitFor(plan(), 'goals', activeKind());
+        if (!existing && goalLimit !== null) {
+          const active = state.data.goals.filter((g) => goalSavedCents(g.id, state.data.contributions) < g.targetCents).length;
+          if (active >= goalLimit) return formFail(limitMessage('goals'));
+        }
 
         const now = nowISO();
         /** @type {Goal} */
@@ -901,6 +916,12 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
 
         const checked = validateDebt(input);
         if (!checked.ok) return checked;
+        // Planes (0.20.0): en Gratis, hasta 2 deudas sin pagar.
+        const debtLimit = limitFor(plan(), 'debts', activeKind());
+        if (!existing && debtLimit !== null) {
+          const active = data.debts.filter((x) => !debtStatus(x, data.debtPayments.filter((p) => p.debtId === x.id), today()).paid).length;
+          if (active >= debtLimit) return formFail(limitMessage('debts'));
+        }
 
         const now = nowISO();
         /** @type {Debt} */
@@ -955,6 +976,8 @@ export function createStore(source, clock = () => new Date(), { userId = null } 
         if (stale) return stale;
         const existing = editingId ? state.data.assets.find((a) => a.id === editingId) : null;
         if (editingId && !existing) return formFail('Ese activo ya no existe.');
+        // Planes (0.20.0): el patrimonio neto es de Premium (lo que ya registraste se sigue viendo en la copia de seguridad).
+        if (!canUse(plan(), 'netWorth', activeKind())) return formFail(featureMessage('netWorth'));
 
         const checked = validateAsset(input, { today: today(), existing });
         if (!checked.ok) return checked;
