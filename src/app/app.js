@@ -62,8 +62,9 @@ import { createTourMemory, LOCAL_ACCOUNT } from './tourMemory.js';
  * @property {() => Promise<void>} signOut                       Cierra la sesión (la página se recarga sola y vuelve a pedir el acceso).
  * @property {(input: { currentPassword: string, newPassword: string }) => Promise<{ ok: true } | { ok: false, error: string, field?: string }>} changePassword
  *   Pide la contraseña actual (el servidor también la comprueba). `field`: 'currentPassword' | 'password' si el error es de un campo.
- * @property {() => Promise<{ ok: true, email?: string } | { ok: false, error: string }>} requestDeletionCode
- *   0.20.3: manda al correo de la cuenta el código para confirmar la eliminación.
+ * @property {() => Promise<{ ok: true, email?: string } | { ok: false, error: string, rateLimited?: boolean }>} requestDeletionCode
+ *   0.20.3: manda al correo de la cuenta el código para confirmar la eliminación. `rateLimited`: se pidió otro hace
+ *   menos de un minuto (el anterior sigue valiendo).
  * @property {(code: string) => Promise<{ ok: true } | { ok: false, error: string }>} confirmDeletionCode
  *   0.20.3: comprueba ese código (el servidor exige esta confirmación de hace 15 minutos o menos para borrar).
  * @property {() => Promise<{ ok: true } | { ok: false, error: string }>} deleteAccount

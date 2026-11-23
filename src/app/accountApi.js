@@ -28,7 +28,10 @@ export function createAccountApi(auth, user) {
     // 0.20.3: eliminar la cuenta = pedir el código al correo → escribirlo → borrar.
     async requestDeletionCode() {
       const result = await auth.requestDeletionCode();
-      return result.ok ? result : { ok: false, error: result.error.message };
+      if (result.ok) return result;
+      // Supabase deja pedir un código al mismo correo cada 60 s: el anterior sigue valiendo.
+      const rateLimited = result.error.code === 'over_email_send_rate_limit' || result.error.code === 'over_request_rate_limit';
+      return { ok: false, error: result.error.message, rateLimited };
     },
     async confirmDeletionCode(code) {
       const result = await auth.confirmDeletionCode(code);

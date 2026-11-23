@@ -155,12 +155,42 @@ async function deleteAccount(account) {
     requireText: 'ELIMINAR',
   });
   if (!ok) return;
-  const sent = await account.requestDeletionCode();
-  if (!sent.ok) {
-    toast(sent.error, 'error');
+  const step = await askDeletionCode(account, Date.now());
+  if (step.kind === 'error') {
+    toast(step.error, 'error');
     return;
   }
-  openDeletionCodeSheet(account);
+  openDeletionCodeSheet(account, step.notice);
+}
+
+/** Cuándo se pidió el último código para eliminar, por correo (en esta pestaña). @type {Map<string, number>} */
+const lastCodeAt = new Map();
+
+/** Aviso cuando ya hay un código reciente en el correo. */
+export const RECENT_CODE_NOTICE = 'Hace un momento te enviamos un código: usa ese (mira también en spam). Si no llegó, podrás pedir otro en un minuto.';
+
+/**
+ * Pide el código para eliminar SIN pasarse del límite de Supabase (un correo por dirección cada 60 s): si se pidió
+ * hace menos de un minuto, no pide otro y avisa que use ese; si Supabase dice «espera», también sigue con el anterior.
+ * @param {AccountApi} account
+ * @param {number} nowMs
+ * @returns {Promise<{ kind: 'sent', notice: string } | { kind: 'error', error: string }>}
+ */
+export async function askDeletionCode(account, nowMs) {
+  const before = lastCodeAt.get(account.email);
+  if (before !== undefined && nowMs - before < RESEND_WAIT_MS) return { kind: 'sent', notice: RECENT_CODE_NOTICE };
+  const sent = await account.requestDeletionCode();
+  if (sent.ok) {
+    lastCodeAt.set(account.email, nowMs);
+    return { kind: 'sent', notice: '' };
+  }
+  if (sent.rateLimited) return { kind: 'sent', notice: RECENT_CODE_NOTICE };
+  return { kind: 'error', error: sent.error };
+}
+
+/** Solo para pruebas: olvida cuándo se pidieron los códigos. */
+export function forgetDeletionCodes() {
+  lastCodeAt.clear();
 }
 
 /**
@@ -177,10 +207,11 @@ export async function submitDeletionCode(account, code) {
   return result.ok ? result : { ok: false, errors: { form: result.error } };
 }
 
-/** Formulario «Confirma en tu correo» (0.20.3). @param {string} email */
-export function deletionCodeForm(email) {
+/** Formulario «Confirma en tu correo» (0.20.3). @param {string} email @param {string} [notice] */
+export function deletionCodeForm(email, notice = '') {
   return html`<form class="stack" data-form="delete-code" novalidate>
       <p>Te enviamos un correo a <strong>${email}</strong> con un <strong>código de 6 dígitos</strong> para confirmar que quieres <strong>eliminar tu cuenta</strong>. Si no lo ves, mira en spam.</p>
+      ${notice ? html`<p class="hint" role="status" data-code-notice>${notice}</p>` : ''}
       <div class="field" data-field="code">
         <label for="del-code">Código del correo</label>
         <input id="del-code" name="code" class="input otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000-000" autocapitalize="none" spellcheck="false" aria-describedby="del-code-hint del-code-error" autofocus />
@@ -196,11 +227,11 @@ export function deletionCodeForm(email) {
     </form>`;
 }
 
-/** @param {AccountApi} account */
-function openDeletionCodeSheet(account) {
+/** @param {AccountApi} account @param {string} [notice] */
+function openDeletionCodeSheet(account, notice = '') {
   openSheet({
     title: 'Confirma en tu correo',
-    content: deletionCodeForm(account.email),
+    content: deletionCodeForm(account.email, notice),
     onMount: (sheet) => {
       const form = sheet.querySelector('form');
       const resend = sheet.querySelector('[data-resend-code]');
@@ -213,7 +244,8 @@ function openDeletionCodeSheet(account) {
       resend.addEventListener('click', async () => {
         waitThenAllow();
         const again = await account.requestDeletionCode();
-        toast(again.ok ? 'Te enviamos otro código.' : again.error, again.ok ? undefined : 'error');
+        if (again.ok) lastCodeAt.set(account.email, Date.now());
+        toast(again.ok ? 'Te enviamos otro código.' : again.rateLimited ? RECENT_CODE_NOTICE : again.error, again.ok ? undefined : 'error');
       });
       let working = false;
       form.addEventListener('submit', async (event) => {

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  accountDangerPanel, accountPanel, deletionCodeForm, passwordForm, runAccountAction, submitDeletionCode, submitPasswordChange,
+  accountDangerPanel, accountPanel, askDeletionCode, deletionCodeForm, forgetDeletionCodes, passwordForm, RECENT_CODE_NOTICE,
+  runAccountAction, submitDeletionCode, submitPasswordChange,
 } from '../src/views/account.js';
 import { AUTH_TITLES, renderAuth } from '../src/views/auth.js';
 
@@ -168,6 +169,30 @@ describe('Ajustes → Eliminar mi cuenta con el código del correo (0.20.3)', ()
     const result = await submitDeletionCode(/** @type {any} */ (account), '000000');
     assert.deepEqual(result, { ok: false, errors: { code: 'El código no es correcto, venció o ya se usó.' } });
     assert.deepEqual(account.calls, ['código 000000'], 'no llegó a borrar');
+  });
+  it('no pide otro código si se pidió hace menos de un minuto (límite de Supabase): usa el anterior', async () => {
+    forgetDeletionCodes();
+    const account = fakeAccount({ ok: true });
+    assert.deepEqual(await askDeletionCode(/** @type {any} */ (account), 1_000_000), { kind: 'sent', notice: '' });
+    const again = await askDeletionCode(/** @type {any} */ (account), 1_000_000 + 30_000);
+    assert.deepEqual(again, { kind: 'sent', notice: RECENT_CODE_NOTICE });
+    assert.deepEqual(account.calls, ['pedir'], 'solo un correo');
+    await askDeletionCode(/** @type {any} */ (account), 1_000_000 + 61_000);
+    assert.deepEqual(account.calls, ['pedir', 'pedir'], 'pasado el minuto sí pide otro');
+  });
+  it('si Supabase dice «espera», sigue con el código anterior en vez de dar error', async () => {
+    forgetDeletionCodes();
+    const account = { ...fakeAccount({ ok: true }), requestDeletionCode: async () => ({ ok: false, error: 'Se enviaron demasiados correos.', rateLimited: true }) };
+    assert.deepEqual(await askDeletionCode(/** @type {any} */ (account), 5), { kind: 'sent', notice: RECENT_CODE_NOTICE });
+  });
+  it('otros errores al pedir el código sí se muestran (y no abren la ventana)', async () => {
+    forgetDeletionCodes();
+    const account = { ...fakeAccount({ ok: true }), requestDeletionCode: async () => ({ ok: false, error: 'No hay conexión.' }) };
+    assert.deepEqual(await askDeletionCode(/** @type {any} */ (account), 5), { kind: 'error', error: 'No hay conexión.' });
+  });
+  it('el aviso del código anterior se ve en la ventana', () => {
+    assert.match(String(deletionCodeForm('ana@correo.com', RECENT_CODE_NOTICE)), /data-code-notice>Hace un momento te enviamos un código/);
+    assert.doesNotMatch(String(deletionCodeForm('ana@correo.com')), /data-code-notice/);
   });
   it('el formulario dice a qué correo se mandó, que es para ELIMINAR la cuenta, y trae el campo del código', () => {
     const form = String(deletionCodeForm('ana@correo.com'));
