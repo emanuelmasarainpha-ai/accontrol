@@ -28,4 +28,4 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_j5eQoSOnCfDoaLC9jCDRrw_w
  * Providers → Google → Client IDs) y tener la dirección de la app como «Authorized redirect URI» en Google Cloud.
  * Vacío = como antes (pasando por Supabase). La app de Android sigue pasando por Supabase.
  */
-export const GOOGLE_WEB_CLIENT_ID = '';
+export const GOOGLE_WEB_CLIENT_ID = '398052259507-glk5ml9alkkr0veosf6ubvk25av3ej9h.apps.googleusercontent.com';
