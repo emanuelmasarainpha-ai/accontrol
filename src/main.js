@@ -21,7 +21,7 @@ import { runAuthGate } from './app/authGate.js';
 import { createStore } from './app/store.js';
 import { createAuthClient, SESSION_KEY } from './auth/authClient.js';
 import { claimNameAdoption, resolveDatabaseName } from './auth/localOwner.js';
-import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config.js';
+import { GOOGLE_WEB_CLIENT_ID, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config.js';
 import { createCloudStore } from './data/cloudStore.js';
 import { currentPlan, refreshPlan, startPlan } from './app/plan.js';
 import { createRatesClient, setRatesClient } from './data/ratesClient.js';
@@ -190,18 +190,25 @@ async function signIn(view, intro) {
   }
   const google = await auth.consumeOAuthCode(window.location.search);
   if (google.kind !== 'none') cleanSearch();
+  // 0.20.1: la vuelta de «Continuar con Google» directo (sin pasar por Supabase) trae #id_token=…: se usa y se borra.
+  const googleDirect = await auth.consumeGoogleIdToken(window.location.hash);
+  if (googleDirect.kind !== 'none') cleanAddress();
 
   // ¿Se abrió desde un enlace de un correo (confirmar cuenta, recuperar contraseña)?
   const link = await auth.consumeUrlHash(window.location.hash);
   if (link.kind !== 'none') cleanAddress();
-  const problem = link.kind === 'error' ? link.message : google.kind === 'error' ? google.message : '';
+  const problem = link.kind === 'error' ? link.message : google.kind === 'error' ? google.message
+    : googleDirect.kind === 'error' ? googleDirect.message : '';
 
   let user = auth.getUser();
   if ((link.kind === 'recovery' && user) || !user) await intro;
   if (link.kind === 'recovery' && user) {
     user = await runAuthGate({ auth, root: view, start: 'recovery' });
   } else if (!user) {
-    user = await runAuthGate({ auth, root: view, googleReturn, notice: problem ? { kind: 'error', text: problem } : null });
+    user = await runAuthGate({
+      auth, root: view, googleReturn, googleClientId: native ? '' : GOOGLE_WEB_CLIENT_ID,
+      notice: problem ? { kind: 'error', text: problem } : null,
+    });
   }
 
   // Desde aquí, si la sesión se cierra (en Ajustes, en otra pestaña, o porque el servidor la anuló), se vuelve a la

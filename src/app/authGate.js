@@ -32,9 +32,11 @@ const LEAVE_MS = 260;
  * @param {AuthViewState['notice']} [options.notice]  Mensaje inicial (por ejemplo, «el enlace venció»).
  * @param {() => void} [options.onDraw]     Se llama después de cada dibujo (para pruebas).
  * @param {string} [options.googleReturn]   0.18.7: adónde vuelve «Continuar con Google» ('' = sin el botón).
+ * @param {string} [options.googleClientId] 0.20.1: con él (solo en el navegador), Google directo, sin pasar por la
+ *                                          dirección de Supabase. Vacío = como antes.
  * @returns {Promise<AuthUser>}
  */
-export function runAuthGate({ auth, root, start = 'signin', notice = null, onDraw, googleReturn = '' }) {
+export function runAuthGate({ auth, root, start = 'signin', notice = null, onDraw, googleReturn = '', googleClientId = '' }) {
   return new Promise((resolve) => {
     /** @type {AuthViewState} */
     let state = { mode: start, email: '', displayName: '', notice, busy: false, canResend: true, google: googleReturn ? 'checking' : 'none' };
@@ -285,10 +287,13 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
         }
 
         // «Continuar con Google» (0.18.7): se va a Google (en la app de Android, al navegador del teléfono) y vuelve.
+        // 0.20.1: en el navegador, con el Client ID, directo a Google (Google muestra la dirección de ACCONTROL).
         if (target.closest('[data-auth-google]') && state.google === 'on' && !working) {
           working = true;
           try {
-            window.location.assign(await auth.googleSignInUrl(googleReturn));
+            window.location.assign(googleClientId
+              ? await auth.googleIdTokenUrl(googleReturn, googleClientId)
+              : await auth.googleSignInUrl(googleReturn));
           } catch {
             working = false;
             state = { ...state, notice: { kind: 'error', text: 'No se pudo abrir Google en este dispositivo. Entra con tu correo.' } };

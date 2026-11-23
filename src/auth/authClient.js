@@ -61,6 +61,18 @@ export async function pkceChallenge(verifier) {
 }
 
 /**
+ * Entrar con Google directo, sin pasar por la dirección de Supabase (0.20.1, solo en el navegador): aquí se guardan
+ * el «nonce» (código de un solo uso que Google mete en su respuesta firmada) y el «state» (marca de ida y vuelta).
+ */
+export const GOOGLE_IDT_KEY = 'accontrol.auth.google-idt.v1';
+
+/** SHA-256 en hexadecimal (lo que Supabase compara con el nonce del token de Google). @param {string} text */
+export async function sha256Hex(text) {
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+  return Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
  * @typedef {Object} AuthUser
  * @property {string} id           UUID de la cuenta.
  * @property {string} email
@@ -707,6 +719,63 @@ export function createAuthClient(options) {
         provider: 'google', redirect_to: returnTo, code_challenge: await pkceChallenge(verifier), code_challenge_method: 's256',
       });
       return `${base}/auth/v1/authorize?${query.toString()}`;
+    },
+
+    /**
+     * 0.20.1 (navegador): la dirección para entrar con Google SIN pasar por la de Supabase, así Google muestra la
+     * dirección de ACCONTROL. Google vuelve a `returnTo` con #id_token=… (su respuesta firmada) y la app se la da a
+     * Supabase, que la comprueba. Se guardan en el dispositivo el nonce (de un solo uso; a Google solo va su huella)
+     * y el state (para aceptar solo la vuelta del intento que empezó aquí).
+     * @param {string} returnTo  la página de la app; debe estar registrada en Google como dirección de vuelta
+     * @param {string} clientId  el «Client ID» web de Google (público)
+     */
+    async googleIdTokenUrl(returnTo, clientId) {
+      if (!storage) throw new Error('Sin almacenamiento');
+      const nonce = base64Url(globalThis.crypto.getRandomValues(new Uint8Array(32)));
+      const state = base64Url(globalThis.crypto.getRandomValues(new Uint8Array(24)));
+      storage.setItem(GOOGLE_IDT_KEY, JSON.stringify({ nonce, state, at: nowMs() }));
+      const query = new URLSearchParams({
+        client_id: clientId, redirect_uri: returnTo, response_type: 'id_token', scope: 'openid email profile',
+        nonce: await sha256Hex(nonce), state, prompt: 'select_account',
+      });
+      return `https://accounts.google.com/o/oauth2/v2/auth?${query.toString()}`;
+    },
+
+    /**
+     * 0.20.1: al volver de Google directo. La dirección trae #id_token=…&state=… (o #error=…&state=…). Solo se acepta
+     * si el state coincide con el guardado y no pasó demasiado tiempo; el nonce se borra (sirve una sola vez).
+     * El llamador limpia la dirección después.
+     * @param {string} hash  window.location.hash
+     * @returns {Promise<{ kind: 'none' } | { kind: 'signed-in' } | { kind: 'error', message: string }>}
+     */
+    async consumeGoogleIdToken(hash) {
+      const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+      const idToken = params.get('id_token');
+      const state = params.get('state');
+      const googleError = params.get('error');
+      if (!state || (!idToken && !googleError)) return { kind: 'none' };
+      /** @type {{ nonce?: unknown, state?: unknown, at?: unknown } | null} */
+      let saved = null;
+      try {
+        saved = JSON.parse(storage?.getItem(GOOGLE_IDT_KEY) ?? 'null');
+      } catch {
+        saved = null;
+      }
+      storage?.removeItem(GOOGLE_IDT_KEY);
+      if (!saved || typeof saved.state !== 'string' || saved.state !== state) {
+        return { kind: 'error', message: 'Por seguridad, empieza otra vez «Continuar con Google» en este dispositivo.' };
+      }
+      if (googleError) return { kind: 'error', message: 'No se pudo entrar con Google. Inténtalo de nuevo o entra con tu correo.' };
+      if (typeof saved.nonce !== 'string' || typeof saved.at !== 'number' || nowMs() - saved.at > OAUTH_TTL_MS) {
+        return { kind: 'error', message: 'Por seguridad, empieza otra vez «Continuar con Google» en este dispositivo.' };
+      }
+      if (!idToken || idToken.length > MAX_TOKEN_LENGTH) return { kind: 'error', message: authErrorMessage('invalid_response') };
+      const reply = await request('POST', '/auth/v1/token', {
+        query: { grant_type: 'id_token' }, body: { provider: 'google', id_token: idToken, nonce: saved.nonce },
+      });
+      if (!reply.ok) return { kind: 'error', message: reply.error.message };
+      const adopted = adoptSession(reply);
+      return adopted.ok ? { kind: 'signed-in' } : { kind: 'error', message: adopted.error.message };
     },
 
     /**

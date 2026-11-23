@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { base64Url, createAuthClient, OAUTH_VERIFIER_KEY, pkceChallenge } from '../src/auth/authClient.js';
+import { base64Url, createAuthClient, GOOGLE_IDT_KEY, OAUTH_VERIFIER_KEY, pkceChallenge, sha256Hex } from '../src/auth/authClient.js';
 import { loginReturnQuery, NATIVE_LOGIN_RETURN } from '../src/app/nativeShell.js';
 import { renderAuth } from '../src/views/auth.js';
 import { passwordInput } from '../src/ui/passwordToggle.js';
@@ -93,6 +93,80 @@ describe('la vuelta de Google', () => {
     assert.deepEqual(await on.auth.providers(), { ok: true, google: true });
     const off = setup(() => ({ status: 200, body: { external: { google: false } } }));
     assert.deepEqual(await off.auth.providers(), { ok: true, google: false });
+  });
+});
+
+describe('0.20.1: Google directo en el navegador (sin pasar por la dirección de Supabase)', () => {
+  const CLIENT = '123-abc.apps.googleusercontent.com';
+  const BACK = 'https://accontrol.example/';
+  /** Va a Google y devuelve lo que se guardó y la dirección. */
+  async function start(auth, items) {
+    const url = new URL(await auth.googleIdTokenUrl(BACK, CLIENT));
+    const saved = JSON.parse(items.get(GOOGLE_IDT_KEY));
+    return { url, saved };
+  }
+
+  it('el nonce que va a Google es el SHA-256 en hexadecimal (comparado con node:crypto)', async () => {
+    for (const v of ['abc', 'x'.repeat(43), 'ñandú-🙂']) assert.equal(await sha256Hex(v), createHash('sha256').update(v).digest('hex'), v);
+  });
+  it('ir a Google: directo a accounts.google.com, vuelve a la app, pide solo nombre y correo; a Google va la huella del nonce', async () => {
+    const { auth, items, calls } = setup();
+    const { url, saved } = await start(auth, items);
+    assert.equal(url.origin + url.pathname, 'https://accounts.google.com/o/oauth2/v2/auth');
+    assert.equal(url.searchParams.get('client_id'), CLIENT);
+    assert.equal(url.searchParams.get('redirect_uri'), BACK, 'vuelve a ACCONTROL, no a supabase.co');
+    assert.equal(url.searchParams.get('response_type'), 'id_token');
+    assert.equal(url.searchParams.get('scope'), 'openid email profile');
+    assert.equal(url.searchParams.get('state'), saved.state);
+    assert.equal(url.searchParams.get('nonce'), await sha256Hex(saved.nonce));
+    assert.notEqual(url.searchParams.get('nonce'), saved.nonce, 'el nonce sin cifrar nunca sale del dispositivo hacia Google');
+    assert.ok(saved.nonce.length >= 40 && saved.state.length >= 30, 'aleatorios largos');
+    assert.equal(calls.length, 0, 'ir a Google no le pregunta nada a Supabase');
+  });
+  it('al volver, da el token a Supabase con el nonce sin cifrar y abre sesión; sirve una sola vez', async () => {
+    const { auth, items, calls } = setup(() => ({ status: 200, body: SESSION_BODY }));
+    const { saved } = await start(auth, items);
+    assert.deepEqual(await auth.consumeGoogleIdToken(`#state=${saved.state}&id_token=eyJ.token.firma`), { kind: 'signed-in' });
+    const call = calls.at(-1);
+    assert.equal(call.url, `${URL_}/auth/v1/token?grant_type=id_token`);
+    assert.deepEqual(call.body, { provider: 'google', id_token: 'eyJ.token.firma', nonce: saved.nonce });
+    assert.equal(auth.getUser()?.email, 'ana@gmail.com');
+    assert.equal(items.has(GOOGLE_IDT_KEY), false);
+    assert.equal((await auth.consumeGoogleIdToken(`#state=${saved.state}&id_token=otro`)).kind, 'error', 'repetir la vuelta no vale');
+  });
+  it('una vuelta con otra marca (state) no abre sesión ni se le pregunta a Supabase', async () => {
+    const { auth, items, calls } = setup(() => ({ status: 200, body: SESSION_BODY }));
+    await start(auth, items);
+    const r = await auth.consumeGoogleIdToken('#state=ajena&id_token=eyJ.robado');
+    assert.equal(r.kind, 'error');
+    assert.equal(calls.length, 0);
+    assert.equal(auth.getUser(), null);
+    const sin = setup(() => ({ status: 200, body: SESSION_BODY }));
+    assert.equal((await sin.auth.consumeGoogleIdToken('#state=x&id_token=eyJ.robado')).kind, 'error', 'sin intento guardado tampoco');
+    assert.equal(sin.calls.length, 0);
+  });
+  it('si tardó más de 10 minutos, hay que empezar de nuevo', async () => {
+    let now = NOW;
+    const { auth, items, calls } = setup(() => ({ status: 200, body: SESSION_BODY }), () => now);
+    const { saved } = await start(auth, items);
+    now += 11 * 60 * 1000;
+    assert.match(/** @type {any} */ (await auth.consumeGoogleIdToken(`#state=${saved.state}&id_token=t`)).message, /empieza otra vez/);
+    assert.equal(calls.length, 0);
+  });
+  it('si la persona canceló en Google lo dice; si Supabase rechaza el token, no abre sesión', async () => {
+    const a = setup();
+    const { saved } = await start(a.auth, a.items);
+    assert.match(/** @type {any} */ (await a.auth.consumeGoogleIdToken(`#error=access_denied&state=${saved.state}`)).message, /No se pudo entrar con Google/);
+    const b = setup(() => ({ status: 400, body: { error_code: 'bad_jwt', msg: 'nonce mismatch' } }));
+    const s2 = await start(b.auth, b.items);
+    assert.equal((await b.auth.consumeGoogleIdToken(`#state=${s2.saved.state}&id_token=t`)).kind, 'error');
+    assert.equal(b.auth.getUser(), null);
+  });
+  it('lo demás no es de Google: rutas de la app y enlaces de correo siguen su camino', async () => {
+    const { auth } = setup();
+    for (const h of ['', '#/inicio', '#access_token=a&refresh_token=r&type=recovery', '#error=otp_expired&error_code=otp_expired']) {
+      assert.deepEqual(await auth.consumeGoogleIdToken(h), { kind: 'none' }, h);
+    }
   });
 });
 

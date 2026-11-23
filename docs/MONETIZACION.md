@@ -87,9 +87,9 @@
 | Paso | Qué | Notas de seguridad |
 |---|---|---|
 | **0.20.0** | **Planes dentro de la app.** Lista fija de qué trae cada plan (`src/domain/plans.js`). Las funciones de pago muestran «Esto es Premium / Negocio». Pantalla *Planes* con precios y el botón **«Próximamente»**: no se simula ningún pago. Tabla en Supabase con el plan de cada cuenta: cada uno **solo puede leer el suyo**. | **Nadie puede darse un plan a sí mismo**: solo el servidor escribe en esa tabla. Los límites importantes, como crear espacios de Negocio o añadir miembros, se revisan también **en la base de datos** (RLS), no solo en la pantalla. Para las pruebas, el plan se da a mano desde Supabase a quien ayude a probar. |
-| **0.20.1** | **Cobro con Google Play** en la app de Android. Una función del servidor comprueba cada compra con Google antes de activar el plan. | La llave de Google para comprobar compras va **solo en Supabase**, nunca en la app. |
-| **0.20.2** | **Cobro en la web** con Paddle o Polar. Su aviso de pago llega a una función del servidor, que activa el plan. | Se comprueba la firma de cada aviso, para que nadie pueda falsificar un pago. |
-| **0.20.3** | **Panel para el dueño de ACCONTROL**: cuántas cuentas hay, cuántas pagan y cuánto entra. | Solo lo ve tu cuenta. Muestra números, no los datos financieros de nadie. |
+| **0.20.2** | **Cobro con Google Play** en la app de Android. Una función del servidor comprueba cada compra con Google antes de activar el plan. | La llave de Google para comprobar compras va **solo en Supabase**, nunca en la app. |
+| **0.20.3** | **Cobro en la web** con Paddle o Polar. Su aviso de pago llega a una función del servidor, que activa el plan. | Se comprueba la firma de cada aviso, para que nadie pueda falsificar un pago. |
+| **0.20.4** | **Panel para el dueño de ACCONTROL**: cuántas cuentas hay, cuántas pagan y cuánto entra. | Solo lo ve tu cuenta. Muestra números, no los datos financieros de nadie. |
 
 ## 7. Lo que tiene que hacer la persona (fuera de la app)
 
