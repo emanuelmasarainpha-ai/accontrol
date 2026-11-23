@@ -1,4 +1,6 @@
-# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.1)
+# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.2)
+
+**Novedad de la 0.20.2.** **«Continuar con Google» solo para quien ya tiene cuenta** (como GitHub; pedido de la persona). Una cuenta nueva se crea con correo y contraseña; después se puede entrar con Google con ese mismo correo (Supabase une Google a la cuenta). Si alguien sin cuenta toca «Continuar con Google», el servidor lo frena y la app lo lleva a *Crear cuenta* con su correo de Google ya escrito y la explicación. La regla está en el servidor (gancho «Before User Created», función `public.hook_google_solo_cuentas`, migración `20261126000100_google_solo_cuentas`), así que no se puede saltar desde la app. **Hay que encender el gancho en el panel de Supabase** (Authentication → Hooks).
 
 **Novedad de la 0.20.1.** **«Continuar con Google» sin la dirección de Supabase a la vista.** En el navegador, el botón va directo a Google y vuelve a ACCONTROL; así Google muestra la dirección de la app y no `…supabase.co` (ni en su pantalla ni en el correo «compartiste datos con…»). La app entrega a Supabase la respuesta firmada de Google para que la compruebe, con un código de un solo uso (nonce) y una marca de ida y vuelta (state). No se carga código de Google en la app. Activado con el «Client ID» web de Google en `src/config.js`; la app de Android sigue como antes.
 

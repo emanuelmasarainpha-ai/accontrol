@@ -3,7 +3,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { base64Url, createAuthClient, GOOGLE_IDT_KEY, OAUTH_VERIFIER_KEY, pkceChallenge, sha256Hex } from '../src/auth/authClient.js';
+import {
+  base64Url, createAuthClient, emailFromIdToken, GOOGLE_IDT_KEY, GOOGLE_NO_ACCOUNT_MARK, OAUTH_VERIFIER_KEY, pkceChallenge, sha256Hex,
+} from '../src/auth/authClient.js';
 import { loginReturnQuery, NATIVE_LOGIN_RETURN } from '../src/app/nativeShell.js';
 import { renderAuth } from '../src/views/auth.js';
 import { passwordInput } from '../src/ui/passwordToggle.js';
@@ -167,6 +169,66 @@ describe('0.20.1: Google directo en el navegador (sin pasar por la dirección de
     for (const h of ['', '#/inicio', '#access_token=a&refresh_token=r&type=recovery', '#error=otp_expired&error_code=otp_expired']) {
       assert.deepEqual(await auth.consumeGoogleIdToken(h), { kind: 'none' }, h);
     }
+  });
+});
+
+describe('0.20.2: Google solo para quien ya tiene cuenta (como GitHub)', () => {
+  const CLIENT = '123-abc.apps.googleusercontent.com';
+  const HOOK_SQL = readFileSync(new URL('../supabase/migrations/20261126000100_google_solo_cuentas.sql', import.meta.url), 'utf8');
+  /** Un id_token de mentira con el correo dentro (como los de Google: cabecera.datos.firma en base64url). */
+  const fakeIdToken = (email) => `eyJhbGciOiJSUzI1NiJ9.${Buffer.from(JSON.stringify({ email, sub: '1' })).toString('base64url')}.firma`;
+  const REJECTED = { status: 403, body: { code: 403, error_code: 'unexpected_failure', msg: 'sin_cuenta_google: esta cuenta de Google todavía no tiene cuenta en ACCONTROL.' } };
+
+  it('la regla del servidor rechaza cuentas nuevas que no vienen del correo, y solo la puede usar el servidor de cuentas', () => {
+    assert.match(HOOK_SQL, /create or replace function public\.hook_google_solo_cuentas\(event jsonb\)/);
+    assert.match(HOOK_SQL, /if provider <> 'email' then/);
+    assert.match(HOOK_SQL, /'http_code', 403/);
+    assert.ok(HOOK_SQL.includes(GOOGLE_NO_ACCOUNT_MARK), 'el mensaje lleva la marca que la app reconoce');
+    assert.match(HOOK_SQL, /set search_path = ''/);
+    assert.match(HOOK_SQL, /grant execute on function public\.hook_google_solo_cuentas\(jsonb\) to supabase_auth_admin/);
+    assert.match(HOOK_SQL, /revoke execute on function public\.hook_google_solo_cuentas\(jsonb\) from authenticated, anon, public/);
+    assert.doesNotMatch(HOOK_SQL, /security definer|insert |update |delete /i, 'no toca datos');
+  });
+  it('web: si Google no tiene cuenta, lo explica, manda a «Crear cuenta» y deja escrito el correo de Google', async () => {
+    const { auth, items } = setup(() => REJECTED);
+    const url = new URL(await auth.googleIdTokenUrl('https://accontrol.example/', CLIENT));
+    const r = /** @type {any} */ (await auth.consumeGoogleIdToken(`#state=${url.searchParams.get('state')}&id_token=${fakeIdToken('nuevo@gmail.com')}`));
+    assert.equal(r.kind, 'error');
+    assert.equal(r.signup, true);
+    assert.equal(r.email, 'nuevo@gmail.com');
+    assert.match(r.message, /Primero crea tu cuenta con tu correo/);
+    assert.equal(auth.getUser(), null, 'no abre sesión');
+    assert.equal(items.has(GOOGLE_IDT_KEY), false);
+  });
+  it('otros errores de Supabase no mandan a «Crear cuenta»', async () => {
+    const { auth } = setup(() => ({ status: 400, body: { error_code: 'bad_jwt', msg: 'nonce mismatch' } }));
+    const url = new URL(await auth.googleIdTokenUrl('https://accontrol.example/', CLIENT));
+    const r = /** @type {any} */ (await auth.consumeGoogleIdToken(`#state=${url.searchParams.get('state')}&id_token=${fakeIdToken('a@b.com')}`));
+    assert.equal(r.kind, 'error');
+    assert.equal(r.signup, undefined);
+  });
+  it('Android (por Supabase): el rechazo llega en la dirección y también se reconoce', async () => {
+    const { auth } = setup();
+    await auth.googleSignInUrl('https://accontrol.example/');
+    const r = /** @type {any} */ (await auth.consumeOAuthCode(`?error=server_error&error_description=${encodeURIComponent('sin_cuenta_google: esta cuenta…')}`));
+    assert.equal(r.kind, 'error');
+    assert.equal(r.signup, true);
+    assert.match(r.message, /Primero crea tu cuenta/);
+  });
+  it('el correo de la respuesta de Google se lee aunque tenga tildes; si viene roto, queda vacío', () => {
+    assert.equal(emailFromIdToken(fakeIdToken('josé@gmail.com')), 'josé@gmail.com');
+    assert.equal(emailFromIdToken('no-es-un-token'), '');
+    assert.equal(emailFromIdToken('a.%%%.c'), '');
+  });
+  it('quien ya tiene cuenta entra normal con Google (la regla solo actúa al CREAR una cuenta)', async () => {
+    const { auth } = setup(() => ({ status: 200, body: SESSION_BODY }));
+    const url = new URL(await auth.googleIdTokenUrl('https://accontrol.example/', CLIENT));
+    assert.deepEqual(await auth.consumeGoogleIdToken(`#state=${url.searchParams.get('state')}&id_token=${fakeIdToken('ana@gmail.com')}`), { kind: 'signed-in' });
+  });
+  it('la pantalla de «Crear cuenta» se puede abrir con el correo ya escrito y no ofrece Google', () => {
+    const page = String(renderAuth({ mode: 'signup', email: 'nuevo@gmail.com', displayName: '', notice: { kind: 'info', text: 'x' }, busy: false, canResend: true, google: 'on' }));
+    assert.match(page, /value="nuevo@gmail\.com"/);
+    assert.doesNotMatch(page, /data-auth-google/);
   });
 });
 

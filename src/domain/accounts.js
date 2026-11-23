@@ -106,6 +106,8 @@ const ERROR_TEXTS = {
   invalid_credentials: 'Correo o contraseña incorrectos.',
   email_not_confirmed: 'Todavía no confirmas tu correo. Escribe el código de 6 dígitos que te enviamos (mira también en spam).',
   user_already_exists: 'Ese correo ya tiene una cuenta. Entra con tu contraseña o recupérala.',
+  // 0.20.2: el servidor no deja crear cuentas nuevas con Google (gancho «Before User Created»).
+  google_sin_cuenta: 'Esa cuenta de Google todavía no está registrada en ACCONTROL. Primero crea tu cuenta con tu correo y una contraseña (puede ser el mismo correo de Google); después podrás entrar con Google.',
   email_exists: 'Ese correo ya tiene una cuenta. Entra con tu contraseña o recupérala.',
   weak_password: 'Esa contraseña no cumple las reglas: al menos 8 caracteres con una minúscula, una mayúscula, un número y un símbolo.',
   same_password: 'La contraseña nueva debe ser distinta de la actual.',

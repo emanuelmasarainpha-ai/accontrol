@@ -199,6 +199,9 @@ async function signIn(view, intro) {
   if (link.kind !== 'none') cleanAddress();
   const problem = link.kind === 'error' ? link.message : google.kind === 'error' ? google.message
     : googleDirect.kind === 'error' ? googleDirect.message : '';
+  // 0.20.2: esa cuenta de Google no tiene cuenta en ACCONTROL → directo a «Crear cuenta», con su correo ya escrito.
+  const needsSignup = (google.kind === 'error' && google.signup === true) || (googleDirect.kind === 'error' && googleDirect.signup === true);
+  const signupEmail = googleDirect.kind === 'error' ? googleDirect.email ?? '' : '';
 
   let user = auth.getUser();
   if ((link.kind === 'recovery' && user) || !user) await intro;
@@ -207,7 +210,8 @@ async function signIn(view, intro) {
   } else if (!user) {
     user = await runAuthGate({
       auth, root: view, googleReturn, googleClientId: native ? '' : GOOGLE_WEB_CLIENT_ID,
-      notice: problem ? { kind: 'error', text: problem } : null,
+      notice: problem ? { kind: needsSignup ? 'info' : 'error', text: problem } : null,
+      ...(needsSignup ? { start: 'signup', email: signupEmail } : {}),
     });
   }
 

@@ -66,6 +66,25 @@ export async function pkceChallenge(verifier) {
  */
 export const GOOGLE_IDT_KEY = 'accontrol.auth.google-idt.v1';
 
+/** 0.20.2: la marca del mensaje con que el servidor rechaza una cuenta NUEVA por Google (supabase/migrations/…_google_solo_cuentas.sql). */
+export const GOOGLE_NO_ACCOUNT_MARK = 'sin_cuenta_google';
+
+/**
+ * El correo dentro de la respuesta firmada de Google (solo para dejarlo escrito en «Crear cuenta»; NO se usa para
+ * confiar en nada: eso lo comprueba Supabase). '' si no se puede leer.
+ * @param {string} idToken
+ */
+export function emailFromIdToken(idToken) {
+  try {
+    const part = idToken.split('.')[1] ?? '';
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '='));
+    const email = JSON.parse(new TextDecoder().decode(Uint8Array.from(json, (c) => c.charCodeAt(0)))).email;
+    return typeof email === 'string' && email.length <= 254 ? email : '';
+  } catch {
+    return '';
+  }
+}
+
 /** SHA-256 en hexadecimal (lo que Supabase compara con el nonce del token de Google). @param {string} text */
 export async function sha256Hex(text) {
   const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
@@ -169,6 +188,8 @@ function userFromBody(user) {
  */
 function errorCodeOf(body, status) {
   if (body && typeof body === 'object') {
+    // 0.20.2: el gancho del servidor que no deja crear cuentas nuevas con Google (lo reconoce por su marca).
+    if (`${body.msg ?? ''} ${body.error_description ?? ''} ${body.message ?? ''}`.includes(GOOGLE_NO_ACCOUNT_MARK)) return 'google_sin_cuenta';
     if (typeof body.error_code === 'string' && body.error_code) return body.error_code;
     const text = `${body.msg ?? ''} ${body.error_description ?? ''} ${body.message ?? ''}`.toLowerCase();
     if (text.includes('invalid login credentials')) return 'invalid_credentials';
@@ -746,7 +767,9 @@ export function createAuthClient(options) {
      * si el state coincide con el guardado y no pasó demasiado tiempo; el nonce se borra (sirve una sola vez).
      * El llamador limpia la dirección después.
      * @param {string} hash  window.location.hash
-     * @returns {Promise<{ kind: 'none' } | { kind: 'signed-in' } | { kind: 'error', message: string }>}
+     * @returns {Promise<{ kind: 'none' } | { kind: 'signed-in' } | { kind: 'error', message: string, signup?: boolean, email?: string }>}
+     *   0.20.2: `signup` = esa cuenta de Google no tiene cuenta en ACCONTROL (hay que crearla con correo); `email`, el
+     *   de Google, para dejarlo escrito.
      */
     async consumeGoogleIdToken(hash) {
       const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
@@ -773,6 +796,9 @@ export function createAuthClient(options) {
       const reply = await request('POST', '/auth/v1/token', {
         query: { grant_type: 'id_token' }, body: { provider: 'google', id_token: idToken, nonce: saved.nonce },
       });
+      if (!reply.ok && reply.error.code === 'google_sin_cuenta') {
+        return { kind: 'error', message: reply.error.message, signup: true, email: emailFromIdToken(idToken) };
+      }
       if (!reply.ok) return { kind: 'error', message: reply.error.message };
       const adopted = adoptSession(reply);
       return adopted.ok ? { kind: 'signed-in' } : { kind: 'error', message: adopted.error.message };
@@ -782,7 +808,7 @@ export function createAuthClient(options) {
      * Al volver de Google: la dirección trae ?code=… (o ?error=…). Se cambia por una sesión con la clave guardada, que
      * se borra (sirve una sola vez). El llamador limpia la dirección después.
      * @param {string} search  window.location.search, o lo que viene después de «?» en la dirección de la app de Android
-     * @returns {Promise<{ kind: 'none' } | { kind: 'signed-in' } | { kind: 'error', message: string }>}
+     * @returns {Promise<{ kind: 'none' } | { kind: 'signed-in' } | { kind: 'error', message: string, signup?: boolean }>}
      */
     async consumeOAuthCode(search) {
       const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
@@ -797,13 +823,14 @@ export function createAuthClient(options) {
         saved = null;
       }
       storage?.removeItem(OAUTH_VERIFIER_KEY);
+      if (oauthError?.includes(GOOGLE_NO_ACCOUNT_MARK)) return { kind: 'error', message: authErrorMessage('google_sin_cuenta'), signup: true };
       if (oauthError) return { kind: 'error', message: 'No se pudo entrar con Google. Inténtalo de nuevo o entra con tu correo.' };
       if (!saved || typeof saved.verifier !== 'string' || typeof saved.at !== 'number' || nowMs() - saved.at > OAUTH_TTL_MS) {
         return { kind: 'error', message: 'Por seguridad, empieza otra vez «Continuar con Google» en este dispositivo.' };
       }
       if (!code || code.length > MAX_TOKEN_LENGTH) return { kind: 'error', message: authErrorMessage('invalid_response') };
       const reply = await request('POST', '/auth/v1/token', { query: { grant_type: 'pkce' }, body: { auth_code: code, code_verifier: saved.verifier } });
-      if (!reply.ok) return { kind: 'error', message: reply.error.message };
+      if (!reply.ok) return { kind: 'error', message: reply.error.message, ...(reply.error.code === 'google_sin_cuenta' ? { signup: true } : {}) };
       const adopted = adoptSession(reply);
       return adopted.ok ? { kind: 'signed-in' } : { kind: 'error', message: adopted.error.message };
     },

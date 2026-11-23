@@ -34,12 +34,13 @@ const LEAVE_MS = 260;
  * @param {string} [options.googleReturn]   0.18.7: adónde vuelve «Continuar con Google» ('' = sin el botón).
  * @param {string} [options.googleClientId] 0.20.1: con él (solo en el navegador), Google directo, sin pasar por la
  *                                          dirección de Supabase. Vacío = como antes.
+ * @param {string} [options.email]          0.20.2: correo ya escrito al abrir (el de Google, si no tenía cuenta).
  * @returns {Promise<AuthUser>}
  */
-export function runAuthGate({ auth, root, start = 'signin', notice = null, onDraw, googleReturn = '', googleClientId = '' }) {
+export function runAuthGate({ auth, root, start = 'signin', notice = null, onDraw, googleReturn = '', googleClientId = '', email = '' }) {
   return new Promise((resolve) => {
     /** @type {AuthViewState} */
-    let state = { mode: start, email: '', displayName: '', notice, busy: false, canResend: true, google: googleReturn ? 'checking' : 'none' };
+    let state = { mode: start, email, displayName: '', notice, busy: false, canResend: true, google: googleReturn ? 'checking' : 'none' };
     const controller = new AbortController();
     const { signal } = controller;
     /** @type {ReturnType<typeof setTimeout> | null} */
