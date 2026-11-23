@@ -137,17 +137,99 @@ function openPasswordForm(account) {
   });
 }
 
-/** @param {AccountApi} account */
+/** Segundos antes de poder pedir otro código (como al crear la cuenta). */
+const RESEND_WAIT_MS = 60_000;
+
+/**
+ * Eliminar la cuenta (0.20.3, pedido de la persona): 1) aviso donde hay que escribir «ELIMINAR»; 2) ACCONTROL manda
+ * un código al correo de la cuenta; 3) al escribirlo se borra. Sin acceso a ese correo no se puede borrar (el servidor
+ * también lo exige: supabase/migrations/20261127000100_borrar_cuenta_con_correo.sql).
+ * @param {AccountApi} account
+ */
 async function deleteAccount(account) {
   const ok = await confirmDialog({
     title: '¿Eliminar tu cuenta?',
-    message: `Se borrará la cuenta ${account.email} y todo lo que tenga en el servidor, y no podrás volver a entrar con ella. Los datos guardados en este dispositivo no se borran. No se puede deshacer.`,
-    confirmLabel: 'Eliminar mi cuenta',
+    message: `Se borrará la cuenta ${account.email} y todo lo que tenga en el servidor, y no podrás volver a entrar con ella. Los datos guardados en este dispositivo no se borran. No se puede deshacer. Para confirmar, te enviaremos un código a tu correo.`,
+    confirmLabel: 'Enviarme el código',
     danger: true,
     requireText: 'ELIMINAR',
   });
   if (!ok) return;
+  const sent = await account.requestDeletionCode();
+  if (!sent.ok) {
+    toast(sent.error, 'error');
+    return;
+  }
+  openDeletionCodeSheet(account);
+}
+
+/**
+ * Lo que pasa al escribir el código (sin tocar la pantalla, para poder probarlo): primero se comprueba el código y
+ * solo si vale se borra la cuenta.
+ * @param {AccountApi} account
+ * @param {string} code
+ * @returns {Promise<{ ok: true } | { ok: false, errors: Record<string, string> }>}
+ */
+export async function submitDeletionCode(account, code) {
+  const confirmed = await account.confirmDeletionCode(code);
+  if (!confirmed.ok) return { ok: false, errors: { code: confirmed.error } };
   const result = await account.deleteAccount();
-  // Al borrarse la cuenta la sesión se cierra y la página se recarga sola; solo se avisa si algo falló.
-  if (!result.ok) toast(result.error, 'error');
+  return result.ok ? result : { ok: false, errors: { form: result.error } };
+}
+
+/** Formulario «Confirma en tu correo» (0.20.3). @param {string} email */
+export function deletionCodeForm(email) {
+  return html`<form class="stack" data-form="delete-code" novalidate>
+      <p>Te enviamos un correo a <strong>${email}</strong> con un <strong>código de 6 dígitos</strong> para confirmar que quieres <strong>eliminar tu cuenta</strong>. Si no lo ves, mira en spam.</p>
+      <div class="field" data-field="code">
+        <label for="del-code">Código del correo</label>
+        <input id="del-code" name="code" class="input otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000-000" autocapitalize="none" spellcheck="false" aria-describedby="del-code-hint del-code-error" autofocus />
+        <p class="hint" id="del-code-hint">El código vale unos minutos. Si tú no pediste eliminar tu cuenta, cierra esto y cambia tu contraseña.</p>
+        <p class="field__error" id="del-code-error" data-error-for="code" hidden></p>
+      </div>
+      <p class="field__error field__error--form" data-error-for="form" role="alert" hidden></p>
+      <div class="actions">
+        <button type="button" class="btn btn--ghost" data-resend-code disabled>Reenviar código</button>
+        <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
+        <button type="submit" class="btn btn--danger">Eliminar mi cuenta</button>
+      </div>
+    </form>`;
+}
+
+/** @param {AccountApi} account */
+function openDeletionCodeSheet(account) {
+  openSheet({
+    title: 'Confirma en tu correo',
+    content: deletionCodeForm(account.email),
+    onMount: (sheet) => {
+      const form = sheet.querySelector('form');
+      const resend = sheet.querySelector('[data-resend-code]');
+      if (!(form instanceof HTMLFormElement) || !(resend instanceof HTMLButtonElement)) return;
+      const waitThenAllow = () => {
+        resend.disabled = true;
+        setTimeout(() => { resend.disabled = false; }, RESEND_WAIT_MS);
+      };
+      waitThenAllow();
+      resend.addEventListener('click', async () => {
+        waitThenAllow();
+        const again = await account.requestDeletionCode();
+        toast(again.ok ? 'Te enviamos otro código.' : again.error, again.ok ? undefined : 'error');
+      });
+      let working = false;
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (working) return;
+        clearErrors(form);
+        working = true;
+        setBusy(form, true);
+        const result = await submitDeletionCode(account, readForm(form).code ?? '');
+        working = false;
+        // Al borrarse la cuenta la sesión se cierra y la página se recarga sola; solo se avisa si algo falló.
+        if (!result.ok) {
+          setBusy(form, false);
+          showErrors(form, result.errors);
+        }
+      });
+    },
+  });
 }

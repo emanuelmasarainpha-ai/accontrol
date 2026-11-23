@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { accountDangerPanel, accountPanel, passwordForm, runAccountAction, submitPasswordChange } from '../src/views/account.js';
+import {
+  accountDangerPanel, accountPanel, deletionCodeForm, passwordForm, runAccountAction, submitDeletionCode, submitPasswordChange,
+} from '../src/views/account.js';
 import { AUTH_TITLES, renderAuth } from '../src/views/auth.js';
 
 const base = { mode: 'signin', email: '', displayName: '', notice: null, busy: false, canResend: true };
@@ -142,6 +144,39 @@ describe('Ajustes → Cuenta', () => {
     assert.equal(runAccountAction(spy, undefined), false);
     assert.equal(runAccountAction(spy, 'account-otra'), false);
     assert.equal(runAccountAction(null, 'account-signout'), false);
+  });
+});
+
+describe('Ajustes → Eliminar mi cuenta con el código del correo (0.20.3)', () => {
+  /** Una cuenta de mentira que anota lo que se le pide. */
+  function fakeAccount(confirmReply) {
+    const calls = [];
+    return {
+      calls, email: 'ana@correo.com', signOut: async () => {}, changePassword: async () => ({ ok: true }),
+      requestDeletionCode: async () => { calls.push('pedir'); return { ok: true }; },
+      confirmDeletionCode: async (code) => { calls.push(`código ${code}`); return confirmReply; },
+      deleteAccount: async () => { calls.push('borrar'); return { ok: true }; },
+    };
+  }
+  it('con el código correcto, primero lo comprueba y después borra', async () => {
+    const account = fakeAccount({ ok: true });
+    assert.deepEqual(await submitDeletionCode(/** @type {any} */ (account), '123-456'), { ok: true });
+    assert.deepEqual(account.calls, ['código 123-456', 'borrar']);
+  });
+  it('con un código que no vale NO borra y muestra el error en el campo del código', async () => {
+    const account = fakeAccount({ ok: false, error: 'El código no es correcto, venció o ya se usó.' });
+    const result = await submitDeletionCode(/** @type {any} */ (account), '000000');
+    assert.deepEqual(result, { ok: false, errors: { code: 'El código no es correcto, venció o ya se usó.' } });
+    assert.deepEqual(account.calls, ['código 000000'], 'no llegó a borrar');
+  });
+  it('el formulario dice a qué correo se mandó, que es para ELIMINAR la cuenta, y trae el campo del código', () => {
+    const form = String(deletionCodeForm('ana@correo.com'));
+    assert.match(form, /ana@correo\.com/);
+    assert.match(form, /eliminar tu cuenta/);
+    assert.match(form, /name="code"[^>]*autocomplete="one-time-code"/);
+    assert.match(form, /data-error-for="code"/);
+    assert.match(form, /class="btn btn--danger">Eliminar mi cuenta/);
+    assert.match(form, /data-resend-code disabled/, '«Reenviar» empieza esperando');
   });
 });
 

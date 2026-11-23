@@ -189,7 +189,10 @@ function userFromBody(user) {
 function errorCodeOf(body, status) {
   if (body && typeof body === 'object') {
     // 0.20.2: el gancho del servidor que no deja crear cuentas nuevas con Google (lo reconoce por su marca).
-    if (`${body.msg ?? ''} ${body.error_description ?? ''} ${body.message ?? ''}`.includes(GOOGLE_NO_ACCOUNT_MARK)) return 'google_sin_cuenta';
+    const said = `${body.msg ?? ''} ${body.error_description ?? ''} ${body.message ?? ''}`;
+    if (said.includes(GOOGLE_NO_ACCOUNT_MARK)) return 'google_sin_cuenta';
+    // 0.20.3: borrar la cuenta sin haber confirmado por correo.
+    if (said.includes('confirmar_por_correo')) return 'confirmar_correo';
     if (typeof body.error_code === 'string' && body.error_code) return body.error_code;
     const text = `${body.msg ?? ''} ${body.error_description ?? ''} ${body.message ?? ''}`.toLowerCase();
     if (text.includes('invalid login credentials')) return 'invalid_credentials';
@@ -652,7 +655,41 @@ export function createAuthClient(options) {
     },
 
     /**
+     * 0.20.3: para eliminar la cuenta, primero se manda un código de 6 dígitos al correo de la cuenta (Supabase lo
+     * envía con su plantilla «Magic Link», que en ACCONTROL dice que es para confirmar la eliminación). No crea
+     * cuentas nuevas (`create_user: false`).
+     * @returns {Promise<{ ok: true, email: string } | Failure>}
+     */
+    async requestDeletionCode() {
+      const email = session?.user.email ?? '';
+      if (!session || !email) return failure('session_not_found', 401);
+      const reply = await request('POST', '/auth/v1/otp', { body: { email, create_user: false } });
+      return reply.ok ? { ok: true, email } : reply;
+    },
+
+    /**
+     * 0.20.3: comprueba el código del correo. Si vale, Supabase abre una sesión nueva marcada como «confirmada por
+     * correo hace un momento» (claim `amr` con «otp»), que es lo que el servidor exige para borrar la cuenta. Solo se
+     * acepta si es la MISMA cuenta que está abierta.
+     * @param {string} rawCode
+     * @returns {Promise<{ ok: true } | Failure>}
+     */
+    async confirmDeletionCode(rawCode) {
+      const email = session?.user.email ?? '';
+      const userId = session?.user.id ?? '';
+      if (!session || !email) return failure('session_not_found', 401);
+      const code = parseOtp(rawCode);
+      if (!code.ok) return invalid(code.error, 'code');
+      const reply = await request('POST', '/auth/v1/verify', { body: { type: 'email', email, token: code.code } });
+      if (!reply.ok) return reply;
+      if (reply.body?.user?.id !== userId) return failure('invalid_response', 0);
+      return adoptSession(reply);
+    },
+
+    /**
      * Borra la cuenta y todo lo que tiene en la nube. No borra lo guardado en este dispositivo. Irreversible.
+     * 0.20.3: el servidor solo lo hace si la sesión se confirmó por correo hace 15 minutos o menos
+     * (`confirmDeletionCode`); si no, responde `confirmar_correo`.
      * @returns {Promise<{ ok: true } | Failure>}
      */
     async deleteAccount() {

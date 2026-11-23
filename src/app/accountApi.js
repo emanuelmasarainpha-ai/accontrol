@@ -25,6 +25,15 @@ export function createAccountApi(auth, user) {
       const result = await auth.changePassword(input);
       return result.ok ? result : toFailure(result);
     },
+    // 0.20.3: eliminar la cuenta = pedir el código al correo → escribirlo → borrar.
+    async requestDeletionCode() {
+      const result = await auth.requestDeletionCode();
+      return result.ok ? result : { ok: false, error: result.error.message };
+    },
+    async confirmDeletionCode(code) {
+      const result = await auth.confirmDeletionCode(code);
+      return result.ok ? result : { ok: false, error: result.error.message };
+    },
     async deleteAccount() {
       const result = await auth.deleteAccount();
       return result.ok ? result : { ok: false, error: result.error.message };

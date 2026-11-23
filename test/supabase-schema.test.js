@@ -19,8 +19,8 @@ const allLower = all.toLowerCase();
 const tables = [...all.matchAll(/create table public\.(\w+)/gi)].map((m) => m[1]);
 
 describe('migraciones de Supabase: orden y contenido', () => {
-  it('hay dieciséis migraciones numeradas en orden y sin repetirse (5.ª facturas 0.14.5; 6.ª no revivir 0.15.1; 7.ª invitaciones 0.16.0; 8.ª roles a medida 0.16.1; 9.ª productos para la caja 0.17.0; 10.ª oferta por cantidad 0.17.5; 11.ª monedas 0.18.3; 12.ª «sobre ti» 0.18.4; 13.ª pagos en otra moneda 0.18.5; 14.ª tasas de referencia 0.18.6; 15.ª planes 0.20.0; 16.ª Google solo con cuenta 0.20.2)', () => {
-    assert.equal(files.length, 16);
+  it('hay diecisiete migraciones numeradas en orden y sin repetirse (5.ª facturas 0.14.5; 6.ª no revivir 0.15.1; 7.ª invitaciones 0.16.0; 8.ª roles a medida 0.16.1; 9.ª productos para la caja 0.17.0; 10.ª oferta por cantidad 0.17.5; 11.ª monedas 0.18.3; 12.ª «sobre ti» 0.18.4; 13.ª pagos en otra moneda 0.18.5; 14.ª tasas de referencia 0.18.6; 15.ª planes 0.20.0; 16.ª Google solo con cuenta 0.20.2; 17.ª borrar la cuenta con correo 0.20.3)', () => {
+    assert.equal(files.length, 17);
     const versions = files.map((name) => name.split('_')[0]);
     assert.deepEqual(versions, [...versions].sort());
     assert.equal(new Set(versions).size, versions.length);
@@ -217,6 +217,27 @@ describe('migración de invitaciones (0.16.0): compartir un espacio con segurida
     const start = flat.indexOf('create or replace function public.delete_my_account()');
     assert.ok(start >= 0);
     assert.ok(flat.slice(start).includes('other.user_id <> uid'));
+  });
+});
+
+describe('eliminar la cuenta pide confirmar por correo (0.20.3)', () => {
+  const del = sql('20261127000100_borrar_cuenta_con_correo.sql').toLowerCase().replace(/\s+/g, ' ');
+  it('la función exige una confirmación «otp» de hace 15 minutos o menos, ANTES de borrar', () => {
+    const check = del.indexOf("a.item ->> 'method' in ('otp', 'magiclink')");
+    assert.ok(check > 0);
+    assert.ok(del.includes('>= extract(epoch from now())::bigint - 900'));
+    assert.ok(del.includes("raise exception 'confirmar_por_correo:"));
+    assert.ok(check < del.indexOf('delete from auth.users where id = uid'), 'comprueba antes de borrar');
+  });
+  it('conserva lo de antes: exige sesión, la regla del dueño y search_path vacío', () => {
+    assert.ok(del.includes("if uid is null then raise exception 'necesitas iniciar sesión.'"));
+    assert.ok(del.includes('other.user_id <> uid'));
+    assert.ok(del.includes("security definer set search_path = ''"));
+  });
+  it('la versión para deshacer vuelve a la de la 0.16.0', () => {
+    const back = readFileSync(new URL('../supabase/rollback/20261127000100_borrar_cuenta_con_correo_deshacer.sql', import.meta.url), 'utf8');
+    assert.ok(back.includes('create or replace function public.delete_my_account()'));
+    assert.ok(!back.includes('confirmar_por_correo'));
   });
 });
 

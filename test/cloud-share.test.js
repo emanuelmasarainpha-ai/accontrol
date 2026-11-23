@@ -204,7 +204,9 @@ describe('compartir: miembros y roles', () => {
   it('eliminar la cuenta se niega si eres dueño de un espacio con otros miembros', async () => {
     const { mock, ana, beto, shop } = await setup();
     await join(ana, beto, shop, 'accountant');
-    const token = (await mock.handle({ method: 'POST', url: `${URL_}/auth/v1/token?grant_type=password`, headers: { apikey: 'k' }, body: JSON.stringify({ email: 'ana@correo.com', password: 'Vela9Lima!' }) })).body.access_token;
+    // 0.20.3: para borrar hay que confirmar con el código del correo (sesión «otp»); así se llega a la regla del dueño.
+    await mock.handle({ method: 'POST', url: `${URL_}/auth/v1/otp`, headers: { apikey: 'k' }, body: JSON.stringify({ email: 'ana@correo.com', create_user: false }) });
+    const token = (await mock.handle({ method: 'POST', url: `${URL_}/auth/v1/verify`, headers: { apikey: 'k' }, body: JSON.stringify({ type: 'email', email: 'ana@correo.com', token: mock.lastCode('ana@correo.com', 'confirm') }) })).body.access_token;
     const r = await mock.handle({ method: 'POST', url: `${URL_}/rest/v1/rpc/delete_my_account`, headers: { apikey: 'k', authorization: `Bearer ${token}` }, body: '{}' });
     assert.equal(r.status, 400);
     assert.match(r.body.message, /Eres dueño de un espacio que tiene otros miembros/);

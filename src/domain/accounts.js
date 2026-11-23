@@ -109,6 +109,8 @@ const ERROR_TEXTS = {
   // 0.20.2: el servidor no deja crear cuentas nuevas con Google (gancho «Before User Created»).
   google_sin_cuenta: 'Esa cuenta de Google todavía no está registrada en ACCONTROL. Primero crea tu cuenta con tu correo y una contraseña (puede ser el mismo correo de Google); después podrás entrar con Google.',
   email_exists: 'Ese correo ya tiene una cuenta. Entra con tu contraseña o recupérala.',
+  // 0.20.3: borrar la cuenta pide confirmar con el código del correo (de hace 15 minutos o menos).
+  confirmar_correo: 'Para eliminar tu cuenta, confirma primero con el código que te enviamos al correo (vale 15 minutos). Empieza otra vez «Eliminar mi cuenta».',
   weak_password: 'Esa contraseña no cumple las reglas: al menos 8 caracteres con una minúscula, una mayúscula, un número y un símbolo.',
   same_password: 'La contraseña nueva debe ser distinta de la actual.',
   current_password_required: 'Escribe tu contraseña actual.',

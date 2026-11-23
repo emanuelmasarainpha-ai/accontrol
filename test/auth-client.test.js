@@ -830,10 +830,17 @@ describe('contraseña nueva desde el enlace de «Olvidé mi contraseña» (NO pi
 });
 
 describe('borrar la cuenta', () => {
-  it('llama a la función del servidor con la sesión, borra la cuenta y cierra la sesión', async () => {
+  /** 0.20.3: pide el código al correo y lo escribe (lo que haría la persona). */
+  async function confirmByEmail(ctx, email = 'ana@correo.com') {
+    assert.deepEqual(await ctx.auth.requestDeletionCode(), { ok: true, email });
+    return ctx.auth.confirmDeletionCode(/** @type {string} */ (ctx.server.lastCode(email, 'confirm')));
+  }
+
+  it('con el código del correo: llama a la función del servidor con esa sesión, borra la cuenta y cierra la sesión', async () => {
     const server = mockServer();
     const ctx = setup({ server });
     await signedUp(ctx);
+    assert.deepEqual(await confirmByEmail(ctx), { ok: true });
     const token = ctx.auth.getSession()?.accessToken;
     assert.deepEqual(await ctx.auth.deleteAccount(), { ok: true });
     const call = server.calls.at(-1);
@@ -842,7 +849,87 @@ describe('borrar la cuenta', () => {
     assert.equal(server.users.size, 0);
     assert.equal(ctx.auth.getSession(), null);
     assert.equal(ctx.storage.map.has(SESSION_KEY), false);
-    assert.deepEqual(ctx.events, ['signed-in', 'signed-out']);
+    assert.equal(ctx.events.at(-1), 'signed-out');
+  });
+
+  it('0.20.3: pedir el código manda un correo a la cuenta abierta, sin crear cuentas nuevas', async () => {
+    const server = mockServer();
+    const ctx = setup({ server });
+    await signedUp(ctx);
+    await ctx.auth.requestDeletionCode();
+    const call = server.calls.at(-1);
+    assert.equal(`${call.method} ${call.path}`, 'POST /auth/v1/otp');
+    assert.deepEqual(call.body, { email: 'ana@correo.com', create_user: false });
+    assert.equal(server.emails.at(-1)?.to, 'ana@correo.com');
+  });
+
+  it('0.20.3: SIN el código del correo el servidor no borra nada (aunque la sesión esté abierta)', async () => {
+    const server = mockServer();
+    const ctx = setup({ server });
+    await signedUp(ctx);
+    const result = await ctx.auth.deleteAccount();
+    assert.equal(result.ok === false && result.error.code, 'confirmar_correo');
+    assert.match(result.ok === false ? result.error.message : '', /confirma primero con el código/);
+    assert.equal(server.users.size, 1);
+    assert.ok(ctx.auth.getSession(), 'la sesión sigue');
+  });
+
+  it('0.20.3: un código equivocado no sirve y no cambia la sesión', async () => {
+    const server = mockServer();
+    const ctx = setup({ server });
+    await signedUp(ctx);
+    const before = ctx.auth.getSession()?.accessToken;
+    await ctx.auth.requestDeletionCode();
+    const real = /** @type {string} */ (server.lastCode('ana@correo.com', 'confirm'));
+    const wrong = real === '000000' ? '111111' : '000000';
+    const result = await ctx.auth.confirmDeletionCode(wrong);
+    assert.equal(result.ok === false && result.error.code, 'otp_expired');
+    assert.equal(ctx.auth.getSession()?.accessToken, before);
+    assert.equal((await ctx.auth.deleteAccount()).ok, false, 'sigue sin poder borrar');
+    assert.equal(server.users.size, 1);
+  });
+
+  it('0.20.3: la confirmación vale 15 minutos; después hay que pedir otro código', async () => {
+    const server = mockServer();
+    const ctx = setup({ server });
+    await signedUp(ctx);
+    await confirmByEmail(ctx);
+    clockMs += 16 * 60 * 1000;
+    const result = await ctx.auth.deleteAccount();
+    assert.equal(result.ok === false && result.error.code, 'confirmar_correo');
+    assert.equal(server.users.size, 1);
+  });
+
+  it('0.20.3: el código solo se acepta si abre la MISMA cuenta', async () => {
+    const server = mockServer();
+    // Un servidor que, al comprobar el código, respondiera con OTRA cuenta: la app no debe cambiar de cuenta.
+    const realFetch = server.fetch;
+    const tampered = /** @type {any} */ ({
+      ...server,
+      fetch: async (url, init) => {
+        const res = await realFetch(url, init);
+        if (!String(url).includes('/auth/v1/verify') || !res.ok) return res;
+        const body = await res.json();
+        return new Response(JSON.stringify({ ...body, user: { ...body.user, id: UID } }), { status: 200 });
+      },
+    });
+    const ctx = setup({ server: tampered });
+    await signedUp(ctx);
+    const anaId = ctx.auth.getUser()?.id;
+    assert.notEqual(anaId, UID);
+    const before = ctx.auth.getSession()?.accessToken;
+    await ctx.auth.requestDeletionCode();
+    const result = await ctx.auth.confirmDeletionCode(/** @type {string} */ (server.lastCode('ana@correo.com', 'confirm')));
+    assert.equal(result.ok === false && result.error.code, 'invalid_response');
+    assert.equal(ctx.auth.getUser()?.id, anaId, 'sigue abierta la cuenta de Ana');
+    assert.equal(ctx.auth.getSession()?.accessToken, before, 'y con la misma sesión');
+  });
+
+  it('0.20.3: sin sesión no pide código', async () => {
+    const ctx = setup();
+    const result = await ctx.auth.requestDeletionCode();
+    assert.equal(result.ok === false && result.error.code, 'session_not_found');
+    assert.equal(ctx.server.calls.length, 0);
   });
 
   it('si falla (sin red), la sesión y la cuenta siguen como estaban', async () => {

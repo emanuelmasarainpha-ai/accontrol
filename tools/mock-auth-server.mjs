@@ -32,9 +32,10 @@ export function createMockAuthServer(options = {}) {
   /** @type {Map<string, { id: string, email: string, password: string, confirmed: boolean, metadata: Record<string, any> }>} */
   const users = new Map();
   /** recovery: la sesión nació del enlace de recuperación (y lo sigue siendo al renovarse). */
-  /** @type {Map<string, { userId: string, expiresAt: number, recovery: boolean }>} */
+  /** otpAt (0.20.3): segundo en que la sesión se confirmó con un código del correo (claim «amr» con «otp»); se conserva al renovar. */
+  /** @type {Map<string, { userId: string, expiresAt: number, recovery: boolean, otpAt: number | null }>} */
   const accessTokens = new Map();
-  /** @type {Map<string, { userId: string, used: boolean, recovery: boolean }>} */
+  /** @type {Map<string, { userId: string, used: boolean, recovery: boolean, otpAt: number | null }>} */
   const refreshTokens = new Map();
   /** Códigos de 6 dígitos vigentes (0.14.6): uno por correo y tipo; pedir otro anula el anterior. */
   /** @type {Map<string, { code: string, expiresAt: number, used: boolean }>} */
@@ -148,6 +149,7 @@ export function createMockAuthServer(options = {}) {
         case 'POST /auth/v1/recover': return recover(body);
         case 'POST /auth/v1/resend': return resend(body);
         case 'POST /auth/v1/verify': return verify(body);
+        case 'POST /auth/v1/otp': return otp(body);
         case 'GET /auth/v1/user': return getUser(token);
         case 'PUT /auth/v1/user': return putUser(token, body);
         case 'POST /rest/v1/rpc/delete_my_account': return deleteAccount(token);
@@ -195,13 +197,13 @@ export function createMockAuthServer(options = {}) {
    * @param {{ id: string, email: string, confirmed: boolean, metadata: Record<string, any> }} user
    * @param {boolean} [recovery]  true = sesión del enlace de recuperación
    */
-  function issue(user, recovery = false) {
+  function issue(user, recovery = false, otpAt = null) {
     counter += 1;
     const access = `access-${counter}-${randomUUID()}`;
     const refreshToken = `refresh-${counter}-${randomUUID()}`;
     const expiresAt = Math.floor(nowMs() / 1000) + expiresIn;
-    accessTokens.set(access, { userId: user.id, expiresAt, recovery });
-    refreshTokens.set(refreshToken, { userId: user.id, used: false, recovery });
+    accessTokens.set(access, { userId: user.id, expiresAt, recovery, otpAt });
+    refreshTokens.set(refreshToken, { userId: user.id, used: false, recovery, otpAt });
     return {
       access_token: access, token_type: 'bearer', expires_in: expiresIn, expires_at: expiresAt, refresh_token: refreshToken,
       user: userJson(user),
@@ -256,7 +258,7 @@ export function createMockAuthServer(options = {}) {
     record.used = true;
     const user = [...users.values()].find((u) => u.id === record.userId);
     if (!user) return reply(400, { code: 400, error_code: 'user_not_found', msg: 'User from sub claim in JWT does not exist' });
-    return reply(200, issue(user, record.recovery));
+    return reply(200, issue(user, record.recovery, record.otpAt));
   }
 
   /** @param {string | null} token */
@@ -276,6 +278,21 @@ export function createMockAuthServer(options = {}) {
   function resend(body) {
     const email = String(body?.email ?? '').toLowerCase();
     if (users.has(email)) sendCode('confirm', email);
+    return reply(200, {});
+  }
+
+  /**
+   * 0.20.3: entrar con un código del correo (signInWithOtp). Con `create_user: false` no crea cuentas: si el correo no
+   * tiene cuenta, Supabase responde 422 «Signups not allowed for otp». El código se comprueba con verify type 'email'.
+   * @param {any} body
+   */
+  function otp(body) {
+    const email = String(body?.email ?? '').toLowerCase();
+    if (!users.has(email)) {
+      if (body?.create_user === false) return reply(422, { code: 422, error_code: 'otp_disabled', msg: 'Signups not allowed for otp' });
+      return reply(400, { code: 400, error_code: 'validation_failed', msg: 'el simulador no crea cuentas por código' });
+    }
+    sendCode('confirm', email);
     return reply(200, {});
   }
 
@@ -306,7 +323,8 @@ export function createMockAuthServer(options = {}) {
     if (!record || !user || record.used || record.expiresAt <= Math.floor(nowMs() / 1000) || record.code !== token) return EXPIRED;
     record.used = true;
     if (kind === 'confirm') user.confirmed = true;
-    return reply(200, issue(user, kind === 'recovery'));
+    // Sesión abierta con un código del correo: Supabase la marca con «otp» y la hora (claim amr).
+    return reply(200, issue(user, kind === 'recovery', type === 'email' ? Math.floor(nowMs() / 1000) : null));
   }
 
   /** @param {string | null} token */
@@ -337,6 +355,11 @@ export function createMockAuthServer(options = {}) {
   function deleteAccount(token) {
     const user = userFor(token);
     if (!user) return reply(401, { code: 'PGRST301', message: 'JWT expired' });
+    // 0.20.3 (como supabase/migrations/20261127000100_borrar_cuenta_con_correo.sql): confirmación por correo de 15 min o menos.
+    const otpAt = accessTokens.get(/** @type {string} */ (token))?.otpAt ?? null;
+    if (otpAt === null || otpAt < Math.floor(nowMs() / 1000) - 900) {
+      return reply(400, { code: 'P0001', message: 'confirmar_por_correo: para eliminar tu cuenta, confirma primero con el código que te enviamos al correo.' });
+    }
     if (data.ownsSharedWorkspace(user.id)) {
       return reply(400, { code: 'P0001', message: 'Eres dueño de un espacio que tiene otros miembros. Quítalos (o borra ese espacio) antes de eliminar tu cuenta.' });
     }
