@@ -8,7 +8,7 @@
 // =============================================================================
 
 /**
- * @typedef {'plan' | 'account' | 'profile' | 'currency' | 'aboutYou' | 'device' | 'tour' | 'categories' | 'workspaces' | 'details' | 'members' | 'cloud'
+ * @typedef {'plan' | 'account' | 'profile' | 'currency' | 'aboutYou' | 'install' | 'device' | 'tour' | 'categories' | 'workspaces' | 'details' | 'members' | 'cloud'
  *   | 'backup' | 'autoBackup' | 'demo' | 'danger' | 'accountDanger' | 'privacy' | 'next'} SettingsBlock
  */
 
@@ -27,7 +27,7 @@ const ACCOUNT_ONLY_BLOCKS = ['aboutYou'];
 
 /** @type {SettingsSection[]} */
 export const SETTINGS_SECTIONS = [
-  { id: 'general', title: 'General', summary: 'Tu nombre, saldo inicial, moneda, modo oscuro, vibración, categorías y recorrido guiado.', icon: 'sliders', blocks: ['profile', 'currency', 'device', 'categories', 'tour'] },
+  { id: 'general', title: 'General', summary: 'Instalar la app, tu nombre, saldo inicial, moneda, modo oscuro, vibración, categorías y recorrido guiado.', icon: 'sliders', blocks: ['install', 'profile', 'currency', 'device', 'categories', 'tour'] },
   { id: 'plan', title: 'Tu plan', summary: 'Gratis, Premium o Negocio: qué trae cada uno y cuál tienes.', icon: 'spark', blocks: ['plan'], needsAccount: true },
   { id: 'cuenta', title: 'Cuenta', summary: 'Tu correo, tu contraseña, cerrar sesión y eliminar la cuenta.', icon: 'user', blocks: ['account', 'accountDanger'], needsAccount: true },
   { id: 'espacios', title: 'Espacios y equipo', summary: 'Tus espacios de trabajo, los datos del negocio y quién más los usa.', icon: 'briefcase', blocks: ['workspaces', 'details', 'members'] },

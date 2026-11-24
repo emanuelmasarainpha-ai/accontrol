@@ -15,6 +15,7 @@ import { createAccountApi } from './app/accountApi.js';
 import { startApp } from './app/app.js';
 import { createTourMemory, LOCAL_ACCOUNT } from './app/tourMemory.js';
 import { emailReturnAddress, isNativeApp } from './app/platform.js';
+import { listenForInstall } from './app/install.js';
 import { installBackButton, listenLoginReturn, NATIVE_LOGIN_RETURN } from './app/nativeShell.js';
 import { browserTarget, createAutoBackup, nativeTarget } from './app/autoBackup.js';
 import { runAuthGate } from './app/authGate.js';
@@ -242,6 +243,8 @@ async function main() {
   installPasswordToggles();
   // App de Android: el botón «atrás» cierra ventanas y vuelve atrás en vez de cerrar la app de golpe.
   if (isNativeApp()) installBackButton(/** @type {any} */ (window).Capacitor);
+  // Navegador: escuchar desde el principio el aviso de «se puede instalar» (botón en Ajustes → General, 0.20.4).
+  else listenForInstall();
   const view = /** @type {HTMLElement} */ (document.getElementById('view'));
   // Intro del logo (0.18.5): corre mientras la app se prepara; el login o Inicio se dibujan cuando termina.
   const intro = playIntro();

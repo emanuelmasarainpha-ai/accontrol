@@ -3321,3 +3321,11 @@ html[data-pos] .view {
 .panel--locked > * + * {
   margin-top: var(--space-3);
 }
+
+/* Instalar ACCONTROL (Ajustes → General, 0.20.4) */
+.install-steps {
+  margin: var(--space-3) 0 0;
+  padding-left: 1.4em;
+  display: grid;
+  gap: var(--space-2);
+}

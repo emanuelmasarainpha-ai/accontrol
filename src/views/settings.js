@@ -33,6 +33,8 @@ import { currencyPanel, watchCurrency } from './currencyPanel.js';
 import { aboutYouPanel, watchAboutYou } from './aboutYouPanel.js';
 import { planPanel } from './plans.js';
 import { currentPlan, currentPlanRow } from '../app/plan.js';
+import { currentInstallKind, onInstallChange, promptInstall } from '../app/install.js';
+import { isNativeApp } from '../app/platform.js';
 
 /** @typedef {ReturnType<typeof import('../app/store.js').createStore>} Store */
 
@@ -45,7 +47,7 @@ const ROADMAP = [
   { stage: 'Etapa 5', text: 'IA Financiera: coach, evaluación de riesgo y asistente conversacional (el diagnóstico y la viabilidad de metas con reglas fijas ya existen, ver Ampliación).' },
   { stage: 'Etapa 6', text: 'Aplicaciones de Android, iOS y escritorio, notificaciones inteligentes (los logros, rachas y niveles ya existen, ver Ampliación).' },
   { stage: 'Etapa 7', text: 'Módulos para freelancers y emprendedores (hechos en la ampliación).' },
-  { stage: 'Etapa 8', text: 'Planes Gratis, Premium y Negocio (hechos; durante la prueba abierta todas las cuentas tienen Negocio gratis). Faltan: pagar con Google Play y en la web, panel administrativo y conexión bancaria.', current: true },
+  { stage: 'Etapa 8', text: 'Planes Gratis, Premium y Negocio (hechos; las cuentas nuevas empiezan en Gratis y las de la prueba abierta conservan Negocio gratis). Faltan: pagar con Google Play y en la web, panel administrativo y conexión bancaria.', current: true },
 ];
 
 /**
@@ -73,6 +75,45 @@ export function devicePanel({ vibration, canVibrate, theme = 'light' }) {
 }
 
 /**
+ * Panel «Instalar ACCONTROL» (0.20.4): botón del navegador, o los pasos donde el navegador no lo tiene.
+ * En la app de Android no se muestra.
+ * @param {import('../app/install.js').InstallKind} kind
+ */
+export function installPanel(kind) {
+  if (kind === 'native') return '';
+  const title = html`<h2 class="panel__title" id="set-install">Instalar ACCONTROL</h2>`;
+  if (kind === 'installed') {
+    return html`<section class="panel" aria-labelledby="set-install">${title}
+      <p class="plan-note">${icon('check', 16)}<span>ACCONTROL ya está instalada en este dispositivo. Ábrela desde su ícono.</span></p>
+    </section>`;
+  }
+  const intro = html`<p>Instálala como una app más: queda con su ícono, abre en su propia ventana, funciona sin conexión y se actualiza sola.</p>`;
+  if (kind === 'prompt') {
+    return html`<section class="panel" aria-labelledby="set-install">${title}${intro}
+      <div class="actions actions--start">
+        <button type="button" class="btn btn--primary" data-action="install-app">${icon('download', 18)}Instalar ACCONTROL</button>
+      </div>
+    </section>`;
+  }
+  if (kind === 'ios') {
+    return html`<section class="panel" aria-labelledby="set-install">${title}${intro}
+      <ol class="install-steps">
+        <li>Abre ACCONTROL en <strong>Safari</strong>.</li>
+        <li>Toca el botón <strong>Compartir</strong> (el cuadrado con la flecha hacia arriba).</li>
+        <li>Elige <strong>«Añadir a pantalla de inicio»</strong> y toca <strong>«Añadir»</strong>.</li>
+      </ol>
+    </section>`;
+  }
+  return html`<section class="panel" aria-labelledby="set-install">${title}${intro}
+    <ol class="install-steps">
+      <li>En <strong>Chrome o Edge</strong>: pulsa el ícono de instalar en la barra de direcciones, o abre el menú (⋮ o ···) y elige <strong>«Instalar ACCONTROL»</strong> o <strong>«Instalar aplicación»</strong>.</li>
+      <li>En <strong>Safari de Mac</strong>: menú <strong>Archivo → «Añadir al Dock»</strong>.</li>
+      <li><strong>Firefox</strong> no instala apps: abre ACCONTROL en Chrome o Edge.</li>
+    </ol>
+  </section>`;
+}
+
+/**
  * Panel «Recorrido guiado»: volver a ver el paseo por las funciones del espacio abierto.
  * @param {import('../domain/types.js').Workspace | null} workspace
  * @param {boolean} available  ¿Este tipo de espacio ya tiene recorrido?
@@ -92,7 +133,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Planes Gratis, Premium y Negocio (todavía sin pagos)';
+const VERSION_NOTE = 'Botón para instalar la app y planes Gratis, Premium y Negocio (todavía sin pagos)';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.
@@ -254,6 +295,7 @@ export function renderSettings(store, ctx) {
     account: accountPanel(account),
     profile: profileBlock,
     currency: currencyPanel(store),
+    install: installPanel(currentInstallKind(isNativeApp())),
     device: devicePanel({ vibration: vibrationEnabled(), canVibrate: canVibrate(), theme: currentTheme() }),
     tour: tourPanel(workspace, ctx?.tour.available() ?? false),
     categories: categoriesBlock,
@@ -344,6 +386,12 @@ export function renderSettings(store, ctx) {
       // ---- miembros del espacio abierto (0.16.0) -----------------------------
       watchMembers(root, store, sync, signal);
 
+      // ---- instalar (0.20.4): el aviso del navegador puede llegar después de dibujar ----
+      if (section?.blocks.includes('install')) {
+        const stopInstall = onInstallChange(() => ctx?.rerender());
+        signal.addEventListener('abort', () => { stopInstall(); }, { once: true });
+      }
+
       // ---- preferencias de este dispositivo ---------------------------------
       const vibrationBox = root.querySelector('[data-pref="vibration"]');
       if (vibrationBox instanceof HTMLInputElement) {
@@ -371,6 +419,12 @@ export function renderSettings(store, ctx) {
           switch (el.dataset.action) {
             case 'tour-replay':
               ctx?.tour.start();
+              break;
+            case 'install-app':
+              void promptInstall().then((outcome) => {
+                if (outcome === 'accepted') toast('Listo: ACCONTROL se está instalando.', 'success');
+                else if (outcome === 'unavailable') toast('El navegador no dejó instalarla ahora. Prueba desde su menú: «Instalar ACCONTROL».', 'info');
+              });
               break;
             case 'cat-new':
               openCategoryForm(store, {});

@@ -1,5 +1,5 @@
 {
-  "version": "0833c6b536d6",
+  "version": "6899461619fd",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -16,6 +16,7 @@
     "src/app/authGate.js",
     "src/app/autoBackup.js",
     "src/app/celebrations.js",
+    "src/app/install.js",
     "src/app/nativeFiles.js",
     "src/app/nativeShell.js",
     "src/app/plan.js",
