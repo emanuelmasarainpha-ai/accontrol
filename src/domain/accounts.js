@@ -48,6 +48,59 @@ const COMMON_PASSWORDS = new Set([
 ]);
 
 /**
+ * @typedef {'empty' | 'weak' | 'fair' | 'good' | 'strong'} PasswordLevel
+ * @typedef {{ length: boolean, lower: boolean, upper: boolean, number: boolean, symbol: boolean }} PasswordChecks
+ */
+
+/** Nombre de cada nivel de fuerza, para la barra de «Crea tu contraseña nueva». @type {Readonly<Record<PasswordLevel, string>>} */
+export const PASSWORD_LEVEL_LABELS = Object.freeze({ empty: '', weak: 'Débil', fair: 'Regular', good: 'Buena', strong: 'Fuerte' });
+
+/**
+ * Qué tan fuerte es una contraseña nueva (0.20.5): qué reglas cumple (las mismas que exige el servidor) y cuántas de
+ * las 4 rayitas de la barra se llenan. 0–2 reglas = Débil (1), 3 = Regular (2), 4 = Buena (3), las 5 = Fuerte (4).
+ * Una de las contraseñas que todos prueban primero se queda en Débil aunque cumpla las reglas.
+ * @param {unknown} raw
+ * @returns {{ checks: PasswordChecks, met: number, bars: 0 | 1 | 2 | 3 | 4, level: PasswordLevel, label: string }}
+ */
+export function passwordStrength(raw) {
+  const text = typeof raw === 'string' ? raw : '';
+  /** @type {PasswordChecks} */
+  const checks = {
+    length: [...text].length >= PASSWORD_MIN,
+    lower: /[a-z]/.test(text),
+    upper: /[A-Z]/.test(text),
+    number: /[0-9]/.test(text),
+    symbol: [...text].some((c) => PASSWORD_SYMBOLS.includes(c)),
+  };
+  const met = Object.values(checks).filter(Boolean).length;
+  if (text === '') return { checks, met, bars: 0, level: 'empty', label: '' };
+  const bars = /** @type {1 | 2 | 3 | 4} */ (COMMON_PASSWORDS.has(text.toLowerCase()) || met <= 2 ? 1 : met - 1);
+  /** @type {PasswordLevel} */
+  const level = /** @type {const} */ (['empty', 'weak', 'fair', 'good', 'strong'])[bars];
+  return { checks, met, bars, level, label: PASSWORD_LEVEL_LABELS[level] };
+}
+
+/**
+ * El correo con parte del nombre tapado, para decir a dónde llegó el código sin mostrarlo entero (0.20.5):
+ * «dailyflutterui@gmail.com» → «d••••••i@gmail.com». El dominio se deja a la vista.
+ * @param {unknown} raw
+ */
+export function maskEmail(raw) {
+  const email = normalizeEmail(raw);
+  const at = email.lastIndexOf('@');
+  if (at < 1) return email;
+  const name = [...email.slice(0, at)];
+  const domain = email.slice(at);
+  if (name.length <= 2) return `${name[0]}•${domain}`;
+  return `${name[0]}${'•'.repeat(Math.min(6, name.length - 2))}${name.at(-1)}${domain}`;
+}
+
+/** ¿Es un correo de Gmail? (para decir «Revisa tu Gmail»). @param {unknown} raw */
+export function isGmail(raw) {
+  return /@(gmail|googlemail)\.com$/.test(normalizeEmail(raw));
+}
+
+/**
  * Deja el correo listo para enviarlo: sin espacios en los bordes y en minúsculas (el servidor lo guarda así).
  * @param {unknown} raw
  */

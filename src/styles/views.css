@@ -3329,3 +3329,482 @@ html[data-pos] .view {
   display: grid;
   gap: var(--space-2);
 }
+
+/* =============================================================================
+   «OLVIDÉ MI CONTRASEÑA» (0.20.5): pantallas de celular con barra de pasos, campo resaltado, sobre que sube,
+   barra de fuerza, casillas verdes y «Contraseña actualizada». Solo se animan transform y opacity.
+   ============================================================================= */
+.auth--recover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+/* En el celular ocupa la pantalla entera: el botón principal queda abajo, al alcance del pulgar.
+   El sol y la luna van en la misma fila que «volver» y los pasos (a la derecha), sin fila propia. */
+@media (max-width: 899px) {
+  .auth--recover {
+    padding-top: var(--space-3);
+  }
+  .auth--recover .auth__theme {
+    position: absolute;
+    top: var(--space-3);
+    right: 0;
+    margin: 0;
+  }
+  .auth--recover .recover__bar {
+    min-height: 44px;
+  }
+}
+@media (max-width: 639px) {
+  .auth--recover {
+    min-height: calc(100svh - var(--space-3) - var(--space-6));
+  }
+}
+
+/* Arriba: volver + los 3 pasos */
+.recover__bar {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+}
+.recover__back {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+}
+@media (hover: hover) and (pointer: fine) {
+  .recover__back:hover {
+    background: var(--kind-soft);
+  }
+}
+.recover__steps {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.recover__steps li {
+  width: 8px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+.recover__steps li.is-done {
+  background: color-mix(in srgb, var(--kind) 45%, transparent);
+}
+.recover__steps li.is-on {
+  width: 24px;
+  background: var(--kind);
+}
+
+/* Título grande a la izquierda (en «Revisa tu correo», centrado bajo el sobre) */
+.recover__head {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  text-align: left;
+}
+.recover__head--center {
+  justify-items: center;
+  text-align: center;
+}
+.recover__badge {
+  display: flex;
+  margin-bottom: var(--space-2);
+  color: var(--kind-ink);
+}
+.recover__title {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.75rem, 7vw, 2.125rem);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.recover__sub {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--text-muted);
+}
+.recover__email {
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* El formulario estira para que el botón quede al fondo */
+.recover__form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.recover__foot {
+  margin-top: auto;
+  padding-top: var(--space-3);
+}
+.recover__cta {
+  min-height: 52px;
+  border-radius: 14px;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+/* Todavía no está listo: se ve apagado, pero se puede pulsar (y dice qué falta). */
+.recover__cta.is-waiting {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+/* Campo con ícono a la izquierda; se resalta con el color de ACCONTROL al escribir y marca ✓ si el correo es válido */
+.rfield {
+  position: relative;
+}
+.rfield::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border: 1.5px solid var(--kind);
+  border-radius: 14px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kind) 24%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+.rfield:focus-within::after {
+  opacity: 1;
+}
+.rfield .input {
+  width: 100%;
+  min-height: 52px;
+  padding-left: 46px;
+  border-radius: 14px;
+}
+.rfield:not(.rfield--pass) .input {
+  padding-right: 46px;
+}
+.rfield__icon {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 15px;
+  display: flex;
+  translate: 0 -50%;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.rfield:focus-within .input {
+  outline: none;
+  border-color: var(--kind);
+  background: color-mix(in srgb, var(--kind) 5%, var(--surface));
+}
+.rfield:focus-within .rfield__icon {
+  color: var(--kind-ink);
+}
+.rfield__ok {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  display: flex;
+  color: var(--green-600);
+  opacity: 0;
+  transform: translateY(-50%) scale(0.6);
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-pop);
+}
+.rfield.is-valid .rfield__ok {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+.rfield .input[aria-invalid='true'] {
+  border-color: var(--red-600);
+}
+.rfield:has(.input[aria-invalid='true'])::after {
+  border-color: var(--red-600);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-600) 20%, transparent);
+}
+
+/* Pantalla 2: consejos, código grande y «Reenviar código en 0:42» */
+.recover__tips {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  list-style: none;
+  border-radius: 14px;
+  background: var(--kind-soft);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.recover__tips li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+.recover__tips svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--kind-ink);
+}
+.otp-input--big {
+  min-height: 56px;
+  border-radius: 14px;
+  font-size: 1.625rem;
+}
+.otp-input--big:focus-visible {
+  outline: none;
+  border-color: var(--kind);
+  background: color-mix(in srgb, var(--kind) 5%, var(--surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kind) 24%, transparent);
+}
+.recover__resend {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.recover__resend .link-btn:disabled {
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+/* El sobre (colores de ACCONTROL; la carta siempre blanca) */
+.recover-mail {
+  display: block;
+  margin: var(--space-2) auto var(--space-2);
+}
+.recover-mail svg {
+  display: block;
+  overflow: visible;
+}
+.recover-mail__flap {
+  fill: color-mix(in srgb, var(--kind) 65%, var(--kind-deep));
+}
+.recover-mail__back {
+  fill: var(--kind-deep);
+}
+.recover-mail__paper {
+  fill: #fff;
+}
+.recover-mail__line {
+  fill: #cdd3de;
+}
+.recover-mail__line--soft {
+  fill: #e4e8ee;
+}
+.recover-mail__pill {
+  fill: var(--kind);
+}
+.recover-mail__front {
+  fill: var(--kind);
+}
+
+/* Pantalla 3: barra de fuerza (4 rayitas), casillas y si coinciden */
+.pw-meter {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: var(--space-3);
+}
+.pw-meter i {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--border);
+}
+.pw-meter i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--pw-color, var(--green-600));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-enter) var(--ease-out);
+}
+.pw-meter i:nth-child(2)::after { transition-delay: 40ms; }
+.pw-meter i:nth-child(3)::after { transition-delay: 80ms; }
+.pw-meter i:nth-child(4)::after { transition-delay: 120ms; }
+.pw-meter[data-bars='1'] i:nth-child(-n + 1)::after,
+.pw-meter[data-bars='2'] i:nth-child(-n + 2)::after,
+.pw-meter[data-bars='3'] i:nth-child(-n + 3)::after,
+.pw-meter[data-bars='4'] i:nth-child(-n + 4)::after {
+  transform: scaleX(1);
+}
+.pw-meter[data-level='weak'] { --pw-color: var(--red-600); }
+.pw-meter[data-level='fair'] { --pw-color: var(--warn-600); }
+.pw-meter[data-level='good'] { --pw-color: var(--green-500); }
+.pw-meter[data-level='strong'] { --pw-color: var(--green-600); }
+.pw-meter__label {
+  min-height: 1.3em;
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: right;
+}
+.pw-meter__label[data-level='weak'] { color: var(--red-600); }
+.pw-meter__label[data-level='fair'] { color: var(--warn-700); }
+.pw-meter__label[data-level='good'],
+.pw-meter__label[data-level='strong'] { color: var(--green-600); }
+.pw-checks {
+  display: grid;
+  gap: 8px;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.pw-checks li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pw-checks__dot {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 50%;
+  color: #fff;
+}
+.pw-checks__dot::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 50%;
+  background: var(--green-600);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-pop);
+}
+.pw-checks__dot svg {
+  position: relative;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-pop);
+}
+.pw-checks li.is-met {
+  color: var(--text);
+}
+.pw-checks li.is-met .pw-checks__dot {
+  border-color: var(--green-600);
+}
+.pw-checks li.is-met .pw-checks__dot::before {
+  opacity: 1;
+  transform: scale(1);
+}
+.pw-checks li.is-met .pw-checks__dot svg {
+  opacity: 1;
+  transform: scale(1);
+}
+.pw-match {
+  min-height: 1.3em;
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.pw-match.is-ok { color: var(--green-600); }
+.pw-match.is-bad { color: var(--red-600); }
+
+/* Pantalla 4: círculo verde con la palomita */
+.recover__done {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-6);
+  text-align: center;
+}
+.recover-done {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+.recover-done svg {
+  display: block;
+  overflow: visible;
+}
+.recover-done__disc,
+.recover-done__ring {
+  fill: var(--green-600);
+}
+.recover-done__ring {
+  opacity: 0;
+}
+.recover-done__check {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* El sobre aparece y la carta sube desde adentro (una vez, al llegar). */
+  .recover-mail svg {
+    transform-origin: 50% 100%;
+    animation: recover-mail-in 320ms var(--ease-out) backwards;
+  }
+  .recover-mail__letter {
+    animation: recover-letter-rise 640ms var(--ease-out) 200ms backwards;
+  }
+  /* El círculo entra, la palomita se dibuja y un aro se abre y se desvanece. */
+  .recover-done__disc {
+    transform-origin: 48px 48px;
+    animation: recover-done-pop 420ms var(--ease-pop) backwards;
+  }
+  .recover-done__check {
+    transform-origin: 48px 48px;
+    animation: recover-done-check 320ms var(--ease-pop) 240ms backwards;
+  }
+  .recover-done__ring {
+    transform-origin: 48px 48px;
+    animation: recover-done-ring 700ms var(--ease-out) 220ms;
+  }
+}
+@keyframes recover-mail-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+@keyframes recover-letter-rise {
+  from {
+    transform: translateY(30px);
+  }
+}
+@keyframes recover-done-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+@keyframes recover-done-check {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-12deg);
+  }
+}
+@keyframes recover-done-ring {
+  from {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}

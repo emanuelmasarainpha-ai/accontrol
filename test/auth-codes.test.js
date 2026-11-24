@@ -144,10 +144,11 @@ describe('las pantallas del código', () => {
     it(`«${mode}» pide el código con un campo 000-000, botón Pegar y Reenviar`, () => {
       const out = renderAuth({ ...base, mode: /** @type {any} */ (mode) }).toString();
       assert.match(out, new RegExp(`data-auth-form="${form}"`));
-      assert.match(out, /<input id="auth-code" name="code" class="input otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000-000"/);
+      // 0.20.5: en «Olvidé mi contraseña» el campo es más grande (otp-input--big) y el correo se ve con partes tapadas.
+      assert.match(out, /<input id="auth-code" name="code" class="input otp-input( otp-input--big)?" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000-000"/);
       assert.match(out, /data-otp-paste/);
       assert.match(out, /data-auth-resend/);
-      assert.match(out, /ana@correo\.com/);
+      assert.match(out, mode === 'reset-sent' ? /a•a@correo\.com/ : /ana@correo\.com/);
       assert.doesNotMatch(out, /\bIA\b/);
     });
   }

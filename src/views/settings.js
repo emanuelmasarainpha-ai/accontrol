@@ -133,7 +133,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Botón para instalar la app y planes Gratis, Premium y Negocio (todavía sin pagos)';
+const VERSION_NOTE = '«Olvidé mi contraseña» renovado, botón para instalar la app y planes Gratis, Premium y Negocio (todavía sin pagos)';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.

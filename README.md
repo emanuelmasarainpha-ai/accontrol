@@ -1,4 +1,6 @@
-# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.4)
+# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.5)
+
+**Novedad de la 0.20.5.** **«Olvidé mi contraseña» renovado para el celular:** cuatro pantallas con pasos: el correo marca ✓ cuando está bien escrito; «Revisa tu Gmail» con un sobre animado y el correo con partes tapadas; la contraseña nueva con barra de fuerza y casillas que se ponen verdes; y «Contraseña actualizada» con la palomita. Ver la fila 0.20.5 de `docs/ROADMAP.md`.
 
 **Novedad de la 0.20.4.** **Botón «Instalar ACCONTROL»** en *Ajustes → General*. En Chrome, Edge y Android abre la ventana de instalar del navegador; en iPhone y iPad explica los pasos de Safari (Compartir → «Añadir a pantalla de inicio»); en otros navegadores, los pasos desde el menú. Si ya está instalada, solo lo dice; en la app de Android no aparece. Desde el 24/11/2026 la prueba abierta está apagada (`beta_open = false`): las cuentas nuevas empiezan en el plan **Gratis**; las que ya existían conservan Negocio beta.
 

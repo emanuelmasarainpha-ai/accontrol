@@ -7,7 +7,7 @@
 // Mientras tanto la app de verdad (menús, datos) ni siquiera se ha creado: nada de lo financiero está a la vista.
 // =============================================================================
 
-import { formatOtpInput, parseOtp } from '../domain/accounts.js';
+import { formatOtpInput, parseOtp, passwordStrength, validateEmail, validateNewPassword } from '../domain/accounts.js';
 import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
 import { setHtml } from '../ui/html.js';
 import { paintBrowserBar } from '../ui/theme.js';
@@ -45,6 +45,10 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
     const { signal } = controller;
     /** @type {ReturnType<typeof setTimeout> | null} */
     let resendTimer = null;
+    /** 0.20.5: cuándo se puede volver a pedir el código (cuenta regresiva «Reenviar código en 0:42»). */
+    let resendReadyAt = 0;
+    /** @type {ReturnType<typeof setInterval> | null} */
+    let resendTicker = null;
     let working = false;
     let intro = true;
     let leaving = false;
@@ -56,6 +60,7 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
     function finish(user) {
       controller.abort();
       if (resendTimer !== null) clearTimeout(resendTimer);
+      if (resendTicker !== null) clearInterval(resendTicker);
       const done = () => {
         document.body.classList.remove('is-auth');
         paintBrowserBar();
@@ -84,6 +89,8 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
         else root.querySelector('#auth-title')?.setAttribute('tabindex', '-1');
       }
       showGoogle();
+      syncRecover();
+      paintResend();
       onDraw?.();
     }
 
@@ -124,8 +131,84 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
       draw(true);
     }
 
+    /**
+     * 0.20.5: «Reenviar código en 0:42» mientras no se puede pedir otro (solo el botón con data-resend-label).
+     * Se cambia el texto en su sitio, sin redibujar: no se borra el código que se esté escribiendo.
+     */
+    function paintResend() {
+      const left = Math.max(0, Math.ceil((resendReadyAt - Date.now()) / 1000));
+      const button = root.querySelector('[data-resend-label]');
+      if (button instanceof HTMLButtonElement) {
+        const label = button.dataset.resendLabel ?? '';
+        button.textContent = left > 0 ? `${label} en ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : label;
+      }
+      if (left === 0 && resendTicker !== null) {
+        clearInterval(resendTicker);
+        resendTicker = null;
+      }
+    }
+
+    /**
+     * 0.20.5: lo que cambia en vivo en «Olvidé mi contraseña» sin volver a dibujar: el ✓ del correo, la barra de fuerza,
+     * las casillas, si las dos contraseñas coinciden y si el botón principal se ve listo.
+     */
+    function syncRecover() {
+      const form = root.querySelector('form[data-auth-form]');
+      if (!(form instanceof HTMLFormElement)) return;
+      const cta = form.querySelector('[data-recover-cta]');
+      if (!cta) return;
+      /** @param {string} name */
+      const valueOf = (name) => {
+        const input = form.querySelector(`input[name="${name}"]`);
+        return input instanceof HTMLInputElement ? input.value : '';
+      };
+      let ready = false;
+      const kind = form.dataset.authForm;
+      if (kind === 'forgot') {
+        ready = validateEmail(valueOf('email')).ok;
+        form.querySelector('[data-rfield]')?.classList.toggle('is-valid', ready);
+        const say = form.querySelector('[data-email-ok]');
+        if (say) say.textContent = ready ? 'El correo está bien escrito.' : '';
+      } else if (kind === 'verify-recovery') {
+        ready = parseOtp(valueOf('code')).ok;
+      } else if (kind === 'recovery') {
+        const password = valueOf('password');
+        const again = valueOf('password2');
+        const strength = passwordStrength(password);
+        const meter = form.querySelector('[data-pw-meter]');
+        if (meter instanceof HTMLElement) {
+          meter.dataset.level = strength.level;
+          meter.dataset.bars = String(strength.bars);
+        }
+        const label = form.querySelector('[data-pw-label]');
+        if (label instanceof HTMLElement) {
+          label.textContent = strength.label ? `Seguridad: ${strength.label}` : '';
+          label.dataset.level = strength.level;
+        }
+        for (const item of form.querySelectorAll('[data-pw-check]')) {
+          if (!(item instanceof HTMLElement)) continue;
+          const met = strength.checks[/** @type {keyof typeof strength.checks} */ (item.dataset.pwCheck)] === true;
+          item.classList.toggle('is-met', met);
+          const say = item.querySelector('[data-pw-state]');
+          if (say) say.textContent = met ? ': listo' : ': falta';
+        }
+        const match = form.querySelector('[data-pw-match]');
+        const same = again !== '' && again === password;
+        const differs = again !== '' && again !== password && again.length >= password.length;
+        if (match instanceof HTMLElement) {
+          match.textContent = same ? 'Las contraseñas coinciden.' : differs ? 'Todavía no coinciden.' : '';
+          match.classList.toggle('is-ok', same);
+          match.classList.toggle('is-bad', differs);
+        }
+        ready = validateNewPassword(password, state.email).ok && same;
+      }
+      cta.classList.toggle('is-waiting', !ready);
+    }
+
     function startResendCooldown() {
       state = { ...state, canResend: false };
+      resendReadyAt = Date.now() + RESEND_COOLDOWN_MS;
+      if (resendTicker === null) resendTicker = setInterval(paintResend, 1000);
       if (resendTimer !== null) clearTimeout(resendTimer);
       resendTimer = setTimeout(() => {
         state = { ...state, canResend: true };
@@ -207,7 +290,7 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
           fail(form, result.error.code === 'otp_expired' ? { ...result.error, field: 'code' } : result.error);
           return;
         }
-        go('recovery', { kind: 'success', text: 'Código correcto. Ahora elige tu contraseña nueva.' });
+        go('recovery');
       },
 
       async recovery(form, values) {
@@ -224,8 +307,8 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
           }
           return;
         }
-        const user = auth.getUser();
-        if (user) finish(user);
+        // 0.20.5: antes de entrar, la pantalla «Contraseña actualizada» (la sesión ya está abierta).
+        go('recovery-done');
       },
     };
 
@@ -269,6 +352,7 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
               button.classList.remove('is-loading');
               button.textContent = label;
             }
+            syncRecover();
           }
         }
       },
@@ -303,6 +387,14 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
           return;
         }
 
+        // 0.20.5: «Entrar a ACCONTROL» después de «Contraseña actualizada».
+        if (target.closest('[data-auth-continue]')) {
+          const user = auth.getUser();
+          if (user) finish(user);
+          else go('signin', { kind: 'info', text: 'Tu contraseña se cambió. Entra con ella.' });
+          return;
+        }
+
         // El ojo de mostrar u ocultar la contraseña lo atiende ui/passwordToggle.js (en toda la app).
         if (target.closest('[data-password-toggle]')) return;
 
@@ -321,6 +413,7 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
           const parsed = parseOtp(text);
           if (parsed.ok) {
             input.value = formatOtpInput(parsed.code);
+            syncRecover();
             /** @type {HTMLButtonElement | null} */ (form.querySelector('button[type="submit"]'))?.focus();
           } else {
             showErrors(form, { code: text ? parsed.error : 'Tu navegador no deja pegar con este botón: mantén pulsado el campo (o pulsa Ctrl+V) y elige «Pegar».' });
@@ -351,10 +444,13 @@ export function runAuthGate({ auth, root, start = 'signin', notice = null, onDra
       'input',
       (event) => {
         const input = event.target;
-        if (!(input instanceof HTMLInputElement) || input.dataset.otpInput === undefined) return;
-        const pasted = parseOtp(input.value);
-        const next = formatOtpInput(pasted.ok ? pasted.code : input.value);
-        if (next !== input.value) input.value = next;
+        if (!(input instanceof HTMLInputElement)) return;
+        if (input.dataset.otpInput !== undefined) {
+          const pasted = parseOtp(input.value);
+          const next = formatOtpInput(pasted.ok ? pasted.code : input.value);
+          if (next !== input.value) input.value = next;
+        }
+        syncRecover();
       },
       { signal },
     );

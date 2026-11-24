@@ -11,12 +11,13 @@ const base = { mode: 'signin', email: '', displayName: '', notice: null, busy: f
 const page = (patch) => renderAuth({ ...base, ...patch }).toString();
 
 describe('pantallas de acceso', () => {
-  const modes = ['signin', 'signup', 'forgot', 'recovery', 'check-email', 'reset-sent'];
+  const modes = ['signin', 'signup', 'forgot', 'recovery', 'check-email', 'reset-sent', 'recovery-done'];
 
   it('cada pantalla tiene su título principal y un título de pestaña', () => {
     for (const mode of modes) {
       const out = page({ mode, email: 'ana@correo.com' });
-      assert.match(out, /<h1 class="welcome__title" id="auth-title">/, mode);
+      // 0.20.5: las pantallas de «Olvidé mi contraseña» usan su propio título (recover__title).
+      assert.match(out, /<h1 class="(welcome|recover)__title" id="auth-title">/, mode);
       assert.match(out, new RegExp(`data-auth-mode="${mode}"`), mode);
       assert.ok(AUTH_TITLES[mode], mode);
     }
@@ -79,7 +80,7 @@ describe('pantallas de acceso', () => {
   });
 
   it('la pantalla de revisar el correo no promete que la cuenta exista (no revela quién tiene cuenta)', () => {
-    assert.match(page({ mode: 'reset-sent', email: 'a@b.co' }), /Si a@b\.co tiene una cuenta/);
+    assert.match(page({ mode: 'reset-sent', email: 'a@b.co' }), /Si tienes una cuenta, te enviamos/);
     assert.match(page({ mode: 'check-email', email: 'a@b.co' }), /Si ya tenías una cuenta/);
   });
 
