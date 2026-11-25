@@ -1,4 +1,6 @@
-# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.7)
+# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.8)
+
+**Novedad de la 0.20.8.** **El cielo del saludo:** en Inicio, junto a «Buenos días», «Buenas tardes» o «Buenas noches», una ventanita con el cielo de esa hora que se mueve sola: el sol que sale con un pajarito, el sol de la tarde con nubes o la luna con estrellas. Ver la fila 0.20.8 de `docs/ROADMAP.md`.
 
 **Novedad de la 0.20.7.** **Pantallas vacías con escenas animadas:** cuando todavía no tienes metas, movimientos, clientes, productos o facturas, sale una escena dibujada del tema y en el color de tu espacio, con partes que se mueven (la flecha en la diana, las monedas que caen en la cartera, las ventanas que se encienden…). Ver la fila 0.20.7 de `docs/ROADMAP.md`.
 

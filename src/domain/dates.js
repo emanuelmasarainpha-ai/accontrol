@@ -189,9 +189,20 @@ export function plural(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+/** @typedef {'morning' | 'afternoon' | 'night'} DayPhase */
+
+/**
+ * Momento del día (0-23): mañana de 5 a 11, tarde de 12 a 18, noche el resto. Lo usan el saludo y su dibujo del
+ * cielo (0.20.8), así que nunca se contradicen.
+ * @param {number} hour @returns {DayPhase}
+ */
+export function dayPhase(hour) {
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 19) return 'afternoon';
+  return 'night';
+}
+
 /** Saludo según la hora (0-23). @param {number} hour */
 export function greetingFor(hour) {
-  if (hour >= 5 && hour < 12) return 'Buenos días';
-  if (hour >= 12 && hour < 19) return 'Buenas tardes';
-  return 'Buenas noches';
+  return { morning: 'Buenos días', afternoon: 'Buenas tardes', night: 'Buenas noches' }[dayPhase(hour)];
 }

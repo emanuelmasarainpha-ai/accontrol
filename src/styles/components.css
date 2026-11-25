@@ -2777,3 +2777,78 @@ form[data-movement] > .field[data-field='amount'] .hint:empty {
   60% { opacity: 0; transform: translateX(40px); }
   100% { opacity: 0; transform: translateX(40px); }
 }
+
+/* =============================================================================
+   EL CIELO DEL SALUDO DE INICIO (0.20.8, ui/skyArt.js): una ventanita con el cielo de esa hora.
+   Mismas reglas que los demás dibujos: solo transform y opacity, quieto con «reducir movimiento» o con
+   «Imágenes en movimiento» apagado.
+   ============================================================================= */
+.page-header--sky {
+  align-items: center;
+}
+.sky {
+  display: block;
+  flex: none;
+  width: 112px;
+  height: 84px;
+  overflow: hidden;
+  border-radius: 22px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kind) 14%, transparent);
+}
+.sky svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.sky--morning { background: linear-gradient(180deg, #ffe2b8 0%, #fff3e2 100%); }
+.sky--afternoon { background: linear-gradient(180deg, #bfe0ff 0%, #e8f4ff 100%); }
+.sky--night { background: linear-gradient(180deg, #1f1b45 0%, #3a2d6a 100%); }
+:root[data-theme='dark'] .sky--morning { background: linear-gradient(180deg, #6b4a2a 0%, #3a2b22 100%); }
+:root[data-theme='dark'] .sky--afternoon { background: linear-gradient(180deg, #24476e 0%, #1b2d44 100%); }
+:root[data-theme='dark'] .sky--night { background: linear-gradient(180deg, #120f2b 0%, #241c45 100%); }
+.sky g {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.sky .sk-sun { fill: #ffb627; }
+.sky .sk-ray { fill: none; stroke: #ffc94d; stroke-width: 4; stroke-linecap: round; }
+.sky .sk-hill { fill: color-mix(in srgb, #3fa34d 78%, var(--kind)); }
+.sky .sk-hill--back { fill: color-mix(in srgb, #8fd19e 82%, var(--kind)); }
+.sky .sk-bird { fill: none; stroke: #4a3b2a; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.sky .sk-cloud { fill: #fff; }
+:root[data-theme='dark'] .sky .sk-cloud { fill: #cfd6e8; }
+.sky--night .sk-cloud { fill: #6f63a8; }
+.sky .sk-moon { fill: #f7e8ad; }
+.sky .sk-crater { fill: #e7d083; }
+.sky .sk-star { fill: #ffe07a; }
+
+@media (max-width: 380px) {
+  .sky {
+    width: 88px;
+    height: 66px;
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .view[data-enter] .sky {
+    animation: pop-in var(--dur-enter) var(--ease-pop) 120ms backwards;
+  }
+  :root:not([data-art-motion='off']) .sky .sk-spin { animation: ca-spin 24000ms linear infinite; }
+  :root:not([data-art-motion='off']) .sky .sk-blink { animation: ca-blink 2400ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .sky .sk-bob { animation: ca-bob 3200ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .sky .sk-drift { animation: sk-drift 7000ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .sky .sk-drift--slow { animation-duration: 9500ms; }
+  :root:not([data-art-motion='off']) .sky .sk-fly { animation: sk-fly 4200ms var(--ease-in-out) infinite; }
+  .sky .sk-d2 { --sk-step: 700ms; }
+  .sky .sk-d3 { --sk-step: 1400ms; }
+  :root:not([data-art-motion='off']) .sky g[class].sk-blink { animation-delay: var(--sk-step, 0ms); }
+}
+@keyframes sk-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(16px); }
+}
+@keyframes sk-fly {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-10px, 4px); }
+}

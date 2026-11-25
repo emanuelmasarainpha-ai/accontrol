@@ -1,3 +1,3 @@
 // @ts-check
 // Versión de la aplicación. Cámbiala cuando publiques una nueva.
-export const APP_VERSION = '0.20.7';
+export const APP_VERSION = '0.20.8';

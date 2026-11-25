@@ -142,7 +142,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Pantallas vacías con escenas animadas y dibujos animados para cada categoría';
+const VERSION_NOTE = 'El cielo del saludo, pantallas vacías con escenas animadas y dibujos para cada categoría';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.

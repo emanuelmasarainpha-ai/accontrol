@@ -1,5 +1,5 @@
 {
-  "version": "f46101da34fe",
+  "version": "4e7725bb9fc5",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -138,6 +138,7 @@
     "src/ui/intro.js",
     "src/ui/passwordToggle.js",
     "src/ui/saveFile.js",
+    "src/ui/skyArt.js",
     "src/ui/theme.js",
     "src/ui/ticket.js",
     "src/ui/toast.js",

@@ -16,7 +16,8 @@ import { inventorySummary } from '../domain/inventory.js';
 import { invoiceReceivables } from '../domain/invoices.js';
 import { healthSummaryText } from '../domain/companyCards.js';
 import { clientRanking, clientSummaries, freelancerFlow, receivables, topServices } from '../domain/freelance.js';
-import { addMonths, currentMonthKey, formatDate, formatDateLong, greetingFor, monthLabel, monthName, monthShortLabel, plural } from '../domain/dates.js';
+import { addMonths, currentMonthKey, dayPhase, formatDate, formatDateLong, greetingFor, monthLabel, monthName, monthShortLabel, plural } from '../domain/dates.js';
+import { skyArt } from '../ui/skyArt.js';
 import { buildBudget } from '../domain/budget.js';
 import { netWorthSummary } from '../domain/netWorth.js';
 import { debtPortfolio } from '../domain/debts.js';
@@ -74,7 +75,8 @@ export function renderHome(store) {
 
   const workspace = store.activeWorkspace();
   const name = data.settings.displayName;
-  const greeting = `${greetingFor(store.now().getHours())}${name ? `, ${name}` : ''}`;
+  const hour = store.now().getHours();
+  const greeting = `${greetingFor(hour)}${name ? `, ${name}` : ''}`;
 
   // ---- Reparto del mes: ¿a dónde fue lo que ingresó? ------------------------
   const savedPositive = Math.max(0, monthSaved);
@@ -139,11 +141,12 @@ export function renderHome(store) {
   const hasTrend = series.some((s) => s.incomeCents > 0 || s.expenseCents > 0);
 
   const page = html`
-    <header class="page-header">
+    <header class="page-header page-header--sky">
       <div>
         <h1 class="page-title">${greeting}</h1>
         <p class="page-subtitle">${workspace ? `${workspace.name} · ` : ''}${formatDateLong(today)}</p>
       </div>
+      ${skyArt(dayPhase(hour))}
     </header>
 
     <section class="hero${totals.availableCents < 0 ? ' hero--negative' : ''}" aria-labelledby="hero-label" data-tour="home-available">
