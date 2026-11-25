@@ -18,6 +18,8 @@ import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
 import { html } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { canVibrate, haptic, setVibration, vibrationEnabled } from '../ui/haptics.js';
+import { artMotionEnabled, setArtMotion } from '../ui/artMotion.js';
+import { categoryArt } from '../ui/categoryArt.js';
 import { currentTheme, dayNightButton } from '../ui/theme.js';
 import { toast } from '../ui/toast.js';
 import { accountDangerPanel, accountPanel, runAccountAction } from './account.js';
@@ -52,9 +54,9 @@ const ROADMAP = [
 
 /**
  * Panel «Este dispositivo»: preferencias que se guardan solo en este navegador (no son datos financieros).
- * @param {{ vibration: boolean, canVibrate: boolean, theme?: import('../ui/theme.js').Theme }} prefs
+ * @param {{ vibration: boolean, canVibrate: boolean, theme?: import('../ui/theme.js').Theme, artMotion?: boolean }} prefs
  */
-export function devicePanel({ vibration, canVibrate, theme = 'light' }) {
+export function devicePanel({ vibration, canVibrate, theme = 'light', artMotion = true }) {
   return html`<section class="panel" aria-labelledby="set-device">
     <h2 class="panel__title" id="set-device">Este dispositivo</h2>
     <div class="switch-row theme-row">
@@ -70,6 +72,13 @@ export function devicePanel({ vibration, canVibrate, theme = 'light' }) {
         <small>Una vibración corta al guardar dinero, confirmar algo importante o cumplir una meta.${canVibrate ? '' : ' Este navegador no permite vibrar (por ejemplo, en iPhone o en la computadora), así que aquí no tendrá efecto.'}</small>
       </span>
       <input type="checkbox" class="switch" id="pref-vibration" data-pref="vibration" ${vibration ? 'checked' : ''} />
+    </label>
+    <label class="switch-row" for="pref-art-motion">
+      <span class="switch-row__text">
+        <strong>Imágenes en movimiento</strong>
+        <small>Los dibujos de las categorías se mueven solos: la moneda flota, el vapor sube, el rayo parpadea. Apágalo si prefieres verlos quietos. Si tu teléfono tiene «reducir movimiento» activado, ya están quietos.</small>
+      </span>
+      <input type="checkbox" class="switch" id="pref-art-motion" data-pref="art-motion" ${artMotion ? 'checked' : ''} />
     </label>
   </section>`;
 }
@@ -133,7 +142,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = '«Olvidé mi contraseña» renovado, botón para instalar la app y planes Gratis, Premium y Negocio (todavía sin pagos)';
+const VERSION_NOTE = 'Dibujos animados para cada categoría, «Olvidé mi contraseña» renovado y botón para instalar la app';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.
@@ -181,6 +190,7 @@ export function renderSettings(store, ctx) {
     return html`<ul class="cat-list">${list.map((c) => {
       const uses = data.movements.filter((m) => m.categoryId === c.id).length;
       return html`<li class="cat">
+        ${categoryArt(c, c.kind, { size: 'sm' })}
         <span class="cat__name">${c.name}</span>
         <span class="cat__meta">${uses} ${uses === 1 ? 'uso' : 'usos'}</span>
         ${c.builtIn
@@ -296,7 +306,7 @@ export function renderSettings(store, ctx) {
     profile: profileBlock,
     currency: currencyPanel(store),
     install: installPanel(currentInstallKind(isNativeApp())),
-    device: devicePanel({ vibration: vibrationEnabled(), canVibrate: canVibrate(), theme: currentTheme() }),
+    device: devicePanel({ vibration: vibrationEnabled(), canVibrate: canVibrate(), theme: currentTheme(), artMotion: artMotionEnabled() }),
     tour: tourPanel(workspace, ctx?.tour.available() ?? false),
     categories: categoriesBlock,
     workspaces: workspacesPanel(store, { canShare: Boolean(sync) }),
@@ -401,6 +411,19 @@ export function renderSettings(store, ctx) {
             const saved = setVibration(vibrationBox.checked);
             if (vibrationBox.checked) haptic('confirm');
             toast(saved ? (vibrationBox.checked ? 'Vibración encendida.' : 'Vibración apagada.') : 'Este navegador no deja guardar la preferencia.', saved ? 'success' : 'error');
+          },
+          { signal },
+        );
+      }
+
+      // ---- imágenes en movimiento (0.20.6) --------------------------------------
+      const artBox = root.querySelector('[data-pref="art-motion"]');
+      if (artBox instanceof HTMLInputElement) {
+        artBox.addEventListener(
+          'change',
+          () => {
+            const saved = setArtMotion(artBox.checked);
+            toast(saved ? (artBox.checked ? 'Las imágenes se mueven.' : 'Las imágenes quedan quietas.') : 'Este navegador no deja guardar la preferencia.', saved ? 'success' : 'error');
           },
           { signal },
         );

@@ -9,6 +9,7 @@ import { formatMoney, formatMoneyIn, formatPercent, moneyParts } from '../domain
 import { formatExchangeRate, hasForeign } from '../domain/exchange.js';
 import { GRANULARITIES, GRANULARITY_LABELS } from '../domain/summaries.js';
 import { CLASSIFICATION_LABELS, TYPE_LABELS } from '../domain/types.js';
+import { categoryArt } from './categoryArt.js';
 import { guillocheRosette } from './guilloche.js';
 import { html } from './html.js';
 import { icon } from './icons.js';
@@ -222,6 +223,7 @@ export function movementRow(m, category, linkText = '') {
   const isIncome = m.type === 'income';
   return html`<li class="row-item">
     <button type="button" class="row" data-action="edit-movement" data-id="${m.id}" aria-label="${TYPE_LABELS[m.type]}: ${m.description}, ${formatMoney(m.amountCents)}. Editar">
+      ${categoryArt(category, m.type)}
       <span class="row__main">
         <span class="row__top">
           <span class="tag tag--${m.type}">${TYPE_LABELS[m.type]}</span>

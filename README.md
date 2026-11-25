@@ -1,4 +1,6 @@
-# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.5)
+# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.6)
+
+**Novedad de la 0.20.6.** **Dibujos animados para cada categoría:** salario, comida, luz, agua, transporte, restaurantes… cada categoría tiene su dibujo de colores con una parte que se mueve sola. Las categorías que crees también reciben uno según su nombre («Gasolina», «Netflix», «Colmado»…). Se pueden dejar quietos en Ajustes → General → «Imágenes en movimiento». Ver la fila 0.20.6 de `docs/ROADMAP.md`.
 
 **Novedad de la 0.20.5.** **«Olvidé mi contraseña» renovado para el celular:** cuatro pantallas con pasos: el correo marca ✓ cuando está bien escrito; «Revisa tu Gmail» con un sobre animado y el correo con partes tapadas; la contraseña nueva con barra de fuerza y casillas que se ponen verdes; y «Contraseña actualizada» con la palomita. Ver la fila 0.20.5 de `docs/ROADMAP.md`.
 

@@ -1,5 +1,5 @@
 {
-  "version": "e5f0bb9bbdfa",
+  "version": "d207d7083d22",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -51,6 +51,7 @@
     "src/domain/business.js",
     "src/domain/calculators.js",
     "src/domain/categories.js",
+    "src/domain/categoryArt.js",
     "src/domain/clients.js",
     "src/domain/company.js",
     "src/domain/companyCards.js",
@@ -116,7 +117,9 @@
     "src/sync/syncEngine.js",
     "src/sync/trackedStore.js",
     "src/theme-boot.js",
+    "src/ui/artMotion.js",
     "src/ui/camera-scan.js",
+    "src/ui/categoryArt.js",
     "src/ui/celebrate.js",
     "src/ui/chart-math.js",
     "src/ui/charts.js",

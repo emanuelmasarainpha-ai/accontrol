@@ -24,6 +24,7 @@ import { choiceDialog, confirmDialog, openSheet } from '../ui/dialog.js';
 import { clearErrors, readForm, setBusy, showErrors } from '../ui/forms.js';
 import { html, setHtml } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
+import { categoryArt } from '../ui/categoryArt.js';
 import { haptic } from '../ui/haptics.js';
 import { toast } from '../ui/toast.js';
 import { ACTION_MODULE, canEditData, permissionsOf } from '../domain/roles.js';
@@ -286,11 +287,14 @@ export function openMovementForm(store, { type, movement = null, clientId = null
 
       <div class="field" data-field="category">
         <label for="mv-category">Categoría</label>
+        <div class="cat-preview">
+        <span data-cat-art>${categoryArt(data.categories.find((c) => c.id === initialCategory), kind)}</span>
         <select id="mv-category" name="categoryId" class="input" aria-describedby="category-error">
           <option value="" ${initialCategory ? '' : 'selected'} disabled>Elige una categoría</option>
           ${categories.map((c) => html`<option value="${c.id}" ${c.id === initialCategory ? 'selected' : ''}>${c.name}</option>`)}
           <option value="__new__">＋ Nueva categoría…</option>
         </select>
+        </div>
         <input id="mv-new-category" name="newCategoryName" class="input input--spaced" type="text" maxlength="${LIMITS.categoryName}" autocomplete="off" placeholder="Nombre de la nueva categoría" aria-label="Nombre de la nueva categoría" hidden />
         ${fieldError('category')}
       </div>
@@ -354,6 +358,16 @@ export function openMovementForm(store, { type, movement = null, clientId = null
           updateHint();
         });
       }
+
+      // 0.20.6: el dibujo de la categoría cambia al elegirla (y, con una nueva, según el nombre que se escribe).
+      const artSlot = $('[data-cat-art]', sheet);
+      const showArt = () => {
+        if (!artSlot) return;
+        const picked = select.value === '__new__' ? { name: newName.value, kind } : data.categories.find((c) => c.id === select.value);
+        setHtml(artSlot, categoryArt(picked, kind));
+      };
+      newName.addEventListener('input', showArt);
+      select.addEventListener('change', showArt);
 
       select.addEventListener('change', () => {
         const isNew = select.value === '__new__';

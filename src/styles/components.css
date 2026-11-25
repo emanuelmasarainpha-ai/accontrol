@@ -2486,3 +2486,192 @@ form[data-movement='income'] > .field[data-field='amount'] .input--money {
 form[data-movement] > .field[data-field='amount'] .hint:empty {
   display: none;
 }
+
+/* =============================================================================
+   DIBUJOS DE LAS CATEGORÍAS (0.20.6): un cuadrito de color con su dibujo (ui/categoryArt.js).
+   Una parte de cada dibujo se mueve sola y sin parar (solo transform y opacity). Se detiene con «reducir
+   movimiento» (base.css) o con Ajustes → General → «Imágenes en movimiento» (data-art-motion="off").
+   ============================================================================= */
+.ca {
+  --ca: #7a5fc0;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ca) 16%, var(--surface));
+  transition: transform var(--dur-base) var(--ease-pop);
+}
+.ca--sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+}
+.ca--lg {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+}
+.ca svg {
+  width: 80%;
+  height: 80%;
+  overflow: visible;
+}
+.ca g {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ca .ca-swing {
+  transform-origin: 50% 0%;
+}
+.ca .k { fill: var(--ca); }
+.ca .d { fill: color-mix(in srgb, var(--ca) 62%, #0b0f19); }
+.ca .s { fill: color-mix(in srgb, var(--ca) 38%, #fff); }
+.ca .w { fill: #fff; }
+.ca .w--glint { opacity: 0.4; }
+.ca .y { fill: #ffc94d; }
+.ca .yl { fill: none; stroke: #c98a06; stroke-width: 1.6; }
+.ca .r { fill: #ef5350; }
+.ca .g { fill: #3fa34d; }
+.ca .ln,
+.ca .lw {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ca .ln { stroke: color-mix(in srgb, var(--ca) 62%, #0b0f19); }
+.ca .ln--k { stroke: var(--ca); }
+.ca .ln--s { stroke: color-mix(in srgb, var(--ca) 38%, #fff); }
+.ca .ln--d { stroke: color-mix(in srgb, var(--ca) 62%, #0b0f19); }
+.ca .ln--y { stroke: #ffc94d; }
+.ca .lw { stroke: #fff; stroke-width: 2.6; }
+/* El vapor y el humo, un poco más oscuros que el fondo del cuadrito para que se vean. */
+.ca .ca-rise .ln--s { stroke: color-mix(in srgb, var(--ca) 70%, #fff); }
+
+/* El color de cada dibujo */
+.ca--salary { --ca: #1f9d6a; }
+.ca--pension { --ca: #12998e; }
+.ca--rentIn { --ca: #4f63d2; }
+.ca--commission { --ca: #e07b1f; }
+.ca--sales { --ca: #2f74d0; }
+.ca--tips { --ca: #c9860c; }
+.ca--bonus { --ca: #d63d78; }
+.ca--gift { --ca: #8b4fd0; }
+.ca--incomeOther { --ca: #1f9d6a; }
+.ca--rent { --ca: #4f63d2; }
+.ca--electricity { --ca: #f08c00; }
+.ca--water { --ca: #2f8fdc; }
+.ca--internet { --ca: #12a2b8; }
+.ca--transport { --ca: #e0533f; }
+.ca--food { --ca: #3fa34d; }
+.ca--fuel { --ca: #d9621c; }
+.ca--health { --ca: #e04b68; }
+.ca--clothes { --ca: #9a50c8; }
+.ca--restaurant { --ca: #e27a1c; }
+.ca--entertainment { --ca: #c93c8a; }
+.ca--debt { --ca: #55697c; }
+.ca--expenseOther { --ca: #7a5fc0; }
+.ca--services { --ca: #3b5a7a; }
+.ca--merchandise { --ca: #b0763a; }
+.ca--marketing { --ca: #e4572e; }
+.ca--payroll { --ca: #13958a; }
+.ca--taxes { --ca: #5a6f8c; }
+.ca--software { --ca: #3f51c5; }
+.ca--professional { --ca: #2b6cb0; }
+.ca--bank { --ca: #2f7d5e; }
+.ca--equipment { --ca: #6b7b8c; }
+.ca--education { --ca: #4361ee; }
+.ca--phone { --ca: #0f9d94; }
+.ca--pets { --ca: #b8692e; }
+.ca--gym { --ca: #e2546e; }
+.ca--travel { --ca: #2196e6; }
+.ca--savings { --ca: #e5638f; }
+.ca--coffee { --ca: #8a5a2b; }
+
+/* En las filas de movimientos: el dibujo a la izquierda; al pasar el ratón se inclina un poco. */
+.row > .ca + .row__main {
+  flex: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover > .ca {
+    transform: rotate(-5deg) scale(1.06);
+  }
+}
+.cat > .ca {
+  margin-right: 2px;
+}
+.cat-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cat-preview .input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-art-motion='off']) .ca .ca-bob { animation: ca-bob 2400ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-spin { animation: ca-spin 6000ms linear infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-swing { animation: ca-swing 2800ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-drop { animation: ca-drop 2200ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-pulse { animation: ca-pulse 1800ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-blink { animation: ca-blink 2200ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-rise { animation: ca-rise 2600ms var(--ease-out) infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-shine { animation: ca-shine 3200ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-wiggle { animation: ca-wiggle 2600ms var(--ease-in-out) infinite; }
+  :root:not([data-art-motion='off']) .ca .ca-fly { animation: ca-fly 3000ms var(--ease-in-out) infinite; }
+  .ca .ca-d1 { animation-delay: 0ms; }
+  .ca .ca-d2 { animation-delay: 240ms; }
+  .ca .ca-d3 { animation-delay: 480ms; }
+  /* Que dos filas seguidas con el mismo dibujo no se muevan a la vez. */
+  .rows > :nth-child(2n) .ca g { animation-delay: -700ms; }
+  .rows > :nth-child(3n) .ca g { animation-delay: -1300ms; }
+}
+@keyframes ca-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes ca-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ca-swing {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+@keyframes ca-drop {
+  0% { opacity: 0; transform: translateY(-4px); }
+  25% { opacity: 1; }
+  70% { opacity: 1; transform: translateY(6px); }
+  100% { opacity: 0; transform: translateY(8px); }
+}
+@keyframes ca-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+@keyframes ca-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes ca-rise {
+  0% { opacity: 0; transform: translateY(3px); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-5px); }
+}
+@keyframes ca-shine {
+  0% { opacity: 0; transform: translateX(-22px); }
+  25% { opacity: 1; }
+  60% { opacity: 0; transform: translateX(14px); }
+  100% { opacity: 0; transform: translateX(14px); }
+}
+@keyframes ca-wiggle {
+  0%, 50%, 100% { transform: rotate(0); }
+  15% { transform: rotate(-10deg); }
+  30% { transform: rotate(8deg); }
+}
+@keyframes ca-fly {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(2px, -3px); }
+}
