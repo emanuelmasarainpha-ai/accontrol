@@ -264,18 +264,22 @@ describe('celebración: solo lo que logras mientras usas la app', () => {
 });
 
 describe('estados vacíos: dibujo propio y decorativo', () => {
+  // 0.20.7 (pedido de la persona: una app más creativa): los temas con escena usan su dibujo animado
+  // (test/empty-scenes.test.js); el medallón de guilloché queda para los íconos sin escena.
   it('el dibujo es SVG propio, oculto para el lector de pantalla, con el ícono de la sección', () => {
-    const art = emptyArt('target').toString();
+    const art = emptyArt('info').toString();
     assert.match(art, /^<span class="empty__art" aria-hidden="true">/);
-    assert.match(art, /<svg class="empty__rosette"[^>]*aria-hidden="true"/, 'fragmento de guilloché del mundo, no confeti');
-    assert.doesNotMatch(art, /empty__dot|empty__spark/);
+    assert.match(art, /<svg class="empty__rosette"[^>]*aria-hidden="true"/);
     assert.match(art, /class="empty__glyph"/);
-    assert.doesNotMatch(art, /<img|https?:\/\/(?!www\.w3\.org)/, 'sin imágenes ni nada de afuera');
+    for (const name of ['info', 'target', 'swap', 'box']) {
+      assert.doesNotMatch(emptyArt(name).toString(), /<img|https?:\/\/(?!www\.w3\.org)/, `${name}: sin imágenes ni nada de afuera`);
+      assert.match(emptyArt(name).toString(), /aria-hidden="true"/, name);
+    }
   });
 
   it('el estado vacío lleva el dibujo, el título y el texto', () => {
     const empty = emptyState({ icon: 'swap', title: 'Tu primer movimiento te está esperando', text: 'Registra uno.' }).toString();
-    assert.match(empty, /empty__art/);
+    assert.match(empty, /class="scene" data-scene="swap"/);
     assert.match(empty, /Tu primer movimiento te está esperando/);
   });
 

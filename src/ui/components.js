@@ -10,6 +10,7 @@ import { formatExchangeRate, hasForeign } from '../domain/exchange.js';
 import { GRANULARITIES, GRANULARITY_LABELS } from '../domain/summaries.js';
 import { CLASSIFICATION_LABELS, TYPE_LABELS } from '../domain/types.js';
 import { categoryArt } from './categoryArt.js';
+import { emptyScene } from './emptyScenes.js';
 import { guillocheRosette } from './guilloche.js';
 import { html } from './html.js';
 import { icon } from './icons.js';
@@ -77,6 +78,9 @@ export function emptyState({ icon: iconName = 'info', title, text, actions = '' 
  * @param {string} iconName
  */
 export function emptyArt(iconName) {
+  // 0.20.7: los temas con escena dibujada y animada la usan (ui/emptyScenes.js); los demás, el medallón.
+  const scene = emptyScene(iconName);
+  if (scene) return scene;
   return html`<span class="empty__art" aria-hidden="true">
     ${guillocheRosette('empty__rosette')}
     <span class="empty__glyph">${icon(iconName, 26)}</span>

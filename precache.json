@@ -1,5 +1,5 @@
 {
-  "version": "d207d7083d22",
+  "version": "f46101da34fe",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -127,6 +127,7 @@
     "src/ui/countUp.js",
     "src/ui/dialog.js",
     "src/ui/dom.js",
+    "src/ui/emptyScenes.js",
     "src/ui/forms.js",
     "src/ui/guide.js",
     "src/ui/guilloche.js",

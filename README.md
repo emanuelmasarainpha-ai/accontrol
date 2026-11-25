@@ -1,4 +1,6 @@
-# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.6)
+# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.7)
+
+**Novedad de la 0.20.7.** **Pantallas vacías con escenas animadas:** cuando todavía no tienes metas, movimientos, clientes, productos o facturas, sale una escena dibujada del tema y en el color de tu espacio, con partes que se mueven (la flecha en la diana, las monedas que caen en la cartera, las ventanas que se encienden…). Ver la fila 0.20.7 de `docs/ROADMAP.md`.
 
 **Novedad de la 0.20.6.** **Dibujos animados para cada categoría:** salario, comida, luz, agua, transporte, restaurantes… cada categoría tiene su dibujo de colores con una parte que se mueve sola. Las categorías que crees también reciben uno según su nombre («Gasolina», «Netflix», «Colmado»…). Se pueden dejar quietos en Ajustes → General → «Imágenes en movimiento». Ver la fila 0.20.6 de `docs/ROADMAP.md`.
 
