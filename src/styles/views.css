@@ -3753,13 +3753,16 @@ html[data-pos] .view {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* El sobre aparece y la carta sube desde adentro (una vez, al llegar). */
+  /* El sobre aparece y la carta sube desde adentro; después sigue saliendo hacia arriba una y otra vez
+     (sube, vuelve a entrar y descansa un momento), como si el correo acabara de llegar (pedido de la persona). */
   .recover-mail svg {
     transform-origin: 50% 100%;
     animation: recover-mail-in 320ms var(--ease-out) backwards;
   }
   .recover-mail__letter {
-    animation: recover-letter-rise 640ms var(--ease-out) 200ms backwards;
+    animation:
+      recover-letter-rise 640ms var(--ease-out) 200ms backwards,
+      recover-letter-pop 1800ms var(--ease-in-out) 900ms infinite;
   }
   /* El círculo entra, la palomita se dibuja y un aro se abre y se desvanece. */
   .recover-done__disc {
@@ -3784,6 +3787,19 @@ html[data-pos] .view {
 @keyframes recover-letter-rise {
   from {
     transform: translateY(30px);
+  }
+}
+@keyframes recover-letter-pop {
+  0%,
+  55%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-16px);
+  }
+  42% {
+    transform: translateY(2px);
   }
 }
 @keyframes recover-done-pop {
