@@ -15,7 +15,8 @@
  *   | 'rent' | 'electricity' | 'water' | 'internet' | 'transport' | 'food' | 'fuel' | 'health' | 'clothes'
  *   | 'restaurant' | 'entertainment' | 'debt' | 'expenseOther' | 'services' | 'merchandise' | 'marketing'
  *   | 'payroll' | 'taxes' | 'software' | 'professional' | 'bank' | 'equipment' | 'education' | 'phone' | 'pets'
- *   | 'gym' | 'travel' | 'savings' | 'coffee'} ArtKey
+ *   | 'gym' | 'travel' | 'savings' | 'coffee' | 'car' | 'emergency' | 'wedding' | 'baby' | 'shop'
+ *   | 'wsPersonal' | 'wsFreelancer' | 'wsEntrepreneur' | 'wsCompany'} ArtKey
  */
 
 /** Las de fábrica (domain/categories.js). @type {Readonly<Record<string, ArtKey>>} */
@@ -106,4 +107,51 @@ export function categoryArtKey(category, fallbackKind = 'expense') {
     for (const [pattern, key] of BY_WORDS) if (pattern.test(name)) return key;
   }
   return (category?.kind ?? fallbackKind) === 'income' ? 'incomeOther' : 'expenseOther';
+}
+
+// =============================================================================
+// METAS Y ESPACIOS (0.20.10, paso 4 de «una app más creativa»)
+// =============================================================================
+
+/**
+ * Palabras del nombre (o la descripción) de una meta → dibujo. En orden; sin tildes. Si nada encaja: la alcancía.
+ * @type {ReadonlyArray<readonly [RegExp, ArtKey]>}
+ */
+const GOAL_WORDS = Object.freeze([
+  [/emergencia|imprevist|colchon|reserva|por si acaso/, 'emergency'],
+  [/boda|matrimonio|anillo|compromiso|casarnos|casarme/, 'wedding'],
+  [/bebe|hijo|hija|nacimiento|embarazo|parto/, 'baby'],
+  [/carro|auto|vehiculo|moto|yipeta|camioneta|guagua/, 'car'],
+  [/casa|vivienda|apartamento|\bapto\b|hogar|terreno|solar|inicial|hipoteca|mudanza/, 'rent'],
+  [/viaje|vacacion|punta cana|playa|pasaje|europa|crucero|disney|turismo|luna de miel/, 'travel'],
+  [/estudio|universidad|maestria|curso|colegio|escuela|educaci|beca|diplomado|idioma/, 'education'],
+  [/negocio|emprend|tienda|colmado|local|mercancia|franquicia/, 'shop'],
+  [/celular|telefono|iphone|samsung/, 'phone'],
+  [/laptop|computadora|\bpc\b|tablet|ipad|consola|playstation|xbox/, 'software'],
+  [/salud|cirugia|dentista|operacion|tratamiento|medic/, 'health'],
+  [/deuda|prestamo|tarjeta|credito/, 'debt'],
+  [/regalo|navidad|cumple|fiesta|quinceanero/, 'gift'],
+  [/mascota|perro|gato/, 'pets'],
+  [/gimnasio|\bgym\b|bicicleta|deporte/, 'gym'],
+  [/ropa|zapato|vestido/, 'clothes'],
+  [/retiro|jubila|pension|vejez/, 'pension'],
+]);
+
+/**
+ * El dibujo de una meta, por palabras de su nombre o descripción.
+ * @param {{ name?: string, description?: string } | null | undefined} goal
+ * @returns {ArtKey}
+ */
+export function goalArtKey(goal) {
+  const text = foldText(`${goal?.name ?? ''} ${goal?.description ?? ''}`);
+  for (const [pattern, key] of GOAL_WORDS) if (pattern.test(text)) return key;
+  return 'savings';
+}
+
+/** El dibujo de cada tipo de espacio. @type {Readonly<Record<string, ArtKey>>} */
+const BY_KIND = Object.freeze({ personal: 'wsPersonal', freelancer: 'wsFreelancer', entrepreneur: 'wsEntrepreneur', company: 'wsCompany' });
+
+/** @param {string} kind @returns {ArtKey} */
+export function workspaceArtKey(kind) {
+  return Object.hasOwn(BY_KIND, kind) ? BY_KIND[kind] : 'wsPersonal';
 }

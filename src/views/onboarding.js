@@ -14,7 +14,7 @@ import { html } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { toast } from '../ui/toast.js';
 import { currencySelect } from './currencyPanel.js';
-import { kindIcon } from './workspaces.js';
+import { workspaceArt } from '../ui/categoryArt.js';
 import { canCreateWorkspaceKind } from '../domain/plans.js';
 import { currentPlan } from '../app/plan.js';
 import { openUpgrade } from './plans.js';
@@ -138,7 +138,7 @@ function kindCard(kind) {
   const info = KIND_INFO[kind];
   const locked = !canCreateWorkspaceKind(currentPlan(), kind);
   return html`<button type="button" class="kind-card${locked ? ' kind-card--locked' : ''}" data-kind="${kind}">
-    <span class="kind-card__icon">${kindIcon(kind, 26)}</span>
+    ${workspaceArt(kind, { size: 'lg' })}
     <span class="kind-card__title">${info.label}${locked ? html`<span class="badge badge--plan">${icon('lock', 12)}Plan Negocio</span>` : ''}</span>
     <span class="kind-card__tagline">${info.tagline}</span>
     <span class="kind-card__label">Incluye hoy</span>
@@ -155,7 +155,7 @@ function nameStep(kind, currency) {
   return html`<section class="welcome welcome--form" aria-labelledby="welcome-title">
     <button type="button" class="btn btn--ghost btn--small" data-step="back">${icon('back', 16)}Cambiar modalidad</button>
     <header class="welcome__head">
-      <span class="kind-card__icon">${kindIcon(kind, 26)}</span>
+      ${workspaceArt(kind, { size: 'lg' })}
       <h1 class="welcome__title" id="welcome-title">Ponle nombre a tu espacio</h1>
       <p class="welcome__sub">Modalidad: <strong>${info.label}</strong>. ${info.tagline}.</p>
     </header>

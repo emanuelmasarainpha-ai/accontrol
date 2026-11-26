@@ -18,6 +18,7 @@ import { healthSummaryText } from '../domain/companyCards.js';
 import { clientRanking, clientSummaries, freelancerFlow, receivables, topServices } from '../domain/freelance.js';
 import { addMonths, currentMonthKey, dayPhase, formatDate, formatDateLong, greetingFor, monthLabel, monthName, monthShortLabel, plural } from '../domain/dates.js';
 import { skyArt } from '../ui/skyArt.js';
+import { goalArt } from '../ui/categoryArt.js';
 import { buildBudget } from '../domain/budget.js';
 import { netWorthSummary } from '../domain/netWorth.js';
 import { debtPortfolio } from '../domain/debts.js';
@@ -246,7 +247,7 @@ export function renderHome(store) {
         </div>
         ${goal && goalInfo
           ? html`<div class="main-goal">
-              <p class="main-goal__name">${goal.name}</p>
+              <p class="main-goal__name">${goalArt(goal, { size: 'sm' })}<span>${goal.name}</span></p>
               ${progress(goalInfo.percent, `Progreso de ${goal.name}`)}
               <p class="main-goal__figures"><strong>${formatMoney(goalInfo.savedCents, { decimals: false })}</strong> de ${formatMoney(goal.targetCents, { decimals: false })} (${formatPercent(goalInfo.percent)})</p>
               <p class="muted">${goalInfo.timeLeftText}.${goalInfo.monthlyNeededCents > 0 ? ` Para llegar a tiempo necesitas aportar unos ${formatMoney(goalInfo.monthlyNeededCents, { decimals: false })} al mes.` : ''}</p>

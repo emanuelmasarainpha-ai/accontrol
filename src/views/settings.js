@@ -142,7 +142,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'Fiesta al cumplir metas y logros, el cielo del saludo y dibujos animados en toda la app';
+const VERSION_NOTE = 'Dibujos animados en categorías, metas y espacios, fiesta al cumplir metas y el cielo del saludo';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.

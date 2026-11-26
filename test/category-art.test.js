@@ -51,7 +51,8 @@ describe('los dibujos', () => {
   it('cada dibujo tiene su nombre, su color en el CSS y algo que se mueve', () => {
     for (const key of Object.keys(ART)) {
       assert.ok(ART_LABELS[/** @type {keyof typeof ART_LABELS} */ (key)], key);
-      assert.match(css, new RegExp(`\\.ca--${key} \\{ --ca: #[0-9a-f]{6}; \\}`), `${key} sin color`);
+      // Color propio (#hex) o, en los tipos de espacio (0.20.10), el color de ese tipo (var(--personal)…).
+      assert.match(css, new RegExp(`\\.ca--${key} \\{ --ca: (#[0-9a-f]{6}|var\\(--[a-z]+\\)); \\}`), `${key} sin color`);
       assert.match(ART[/** @type {keyof typeof ART} */ (key)], /class="ca-(bob|spin|swing|drop|pulse|blink|rise|shine|wiggle|fly)/, `${key} sin movimiento`);
     }
   });

@@ -11,13 +11,17 @@
 // Decorativo: lleva aria-hidden; el nombre de la categoría siempre está escrito al lado.
 // =============================================================================
 
-import { categoryArtKey } from '../domain/categoryArt.js';
+import { categoryArtKey, goalArtKey, workspaceArtKey } from '../domain/categoryArt.js';
 import { html, raw } from './html.js';
 
 /** @typedef {import('../domain/categoryArt.js').ArtKey} ArtKey */
 
 /** Moneda dorada (se reutiliza). @param {number} cx @param {number} cy @param {number} r */
 const coin = (cx, cy, r) => `<circle class="y" cx="${cx}" cy="${cy}" r="${r}"/><circle class="yl" cx="${cx}" cy="${cy}" r="${(r * 0.62).toFixed(1)}"/>`;
+
+/** La tienda con su toldo (meta de negocio y espacio Emprendedor). */
+const SHOP = `<rect class="s" x="9" y="20" width="30" height="20" rx="2"/><rect class="d" x="27" y="27" width="8" height="13" rx="1"/><rect class="w" x="13" y="26" width="10" height="8" rx="1.5"/><rect class="d" x="5" y="7" width="38" height="4" rx="2"/>
+    <g class="ca-swing"><path class="k" d="M6 11h36l-1.5 8a4.5 4.5 0 0 1-8.5.6 4.5 4.5 0 0 1-8 0 4.5 4.5 0 0 1-8 0 4.5 4.5 0 0 1-8.5-.6z"/><path class="w w--stripe" d="M15 11h6v9.6a4.5 4.5 0 0 1-4-.9zM27 11h6l-2 8.7a4.5 4.5 0 0 1-4 .9z"/></g>`;
 
 /** El dibujo de cada clave (dentro de un viewBox de 48 × 48). @type {Readonly<Record<ArtKey, string>>} */
 export const ART = Object.freeze({
@@ -85,6 +89,25 @@ export const ART = Object.freeze({
     <g class="ca-drop">${coin(23.5, 7, 4)}</g>`,
   coffee: `<path class="k" d="M10 19h22v11a9 9 0 0 1-9 9h-4a9 9 0 0 1-9-9z"/><path class="ln ln--k" d="M32 22h2.5a4.5 4.5 0 0 1 0 9H31"/><rect class="d" x="7" y="40" width="28" height="3" rx="1.5"/>
     <g class="ca-rise"><path class="ln ln--s" d="M16 15c-2-2 2-3.5 0-6"/><path class="ln ln--s" d="M22 15c-2-2 2-3.5 0-6"/><path class="ln ln--s" d="M28 15c-2-2 2-3.5 0-6"/></g>`,
+  // ---- 0.20.10: metas y espacios ----
+  car: `<g class="ca-bob"><path class="k" d="M5 31v-6l5-9.5a4 4 0 0 1 3.6-2.3h20.8a4 4 0 0 1 3.6 2.3l5 9.5v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path class="w" d="M12.5 23 16 16.5h7V23zm13.5 0v-6.5h6.5L36 23z"/><rect class="y" x="6.5" y="25" width="4.5" height="3" rx="1.2"/><rect class="y" x="37" y="25" width="4.5" height="3" rx="1.2"/></g>
+    <g class="ca-spin"><circle class="d" cx="15" cy="34" r="5.5"/><path class="lw" d="M15 30.5v7M11.5 34h7"/></g><g class="ca-spin"><circle class="d" cx="33" cy="34" r="5.5"/><path class="lw" d="M33 30.5v7M29.5 34h7"/></g>`,
+  emergency: `<g class="ca-drop"><path class="s" d="M10 5c1.5 2 2.6 3.4 2.6 4.8a2.6 2.6 0 0 1-5.2 0C7.4 8.4 8.5 7 10 5z"/></g><g class="ca-drop ca-d3"><path class="s" d="M39 3c1.5 2 2.6 3.4 2.6 4.8a2.6 2.6 0 0 1-5.2 0C36.4 6.4 37.5 5 39 3z"/></g>
+    <g class="ca-swing"><path class="ln ln--d" d="M24 9V7"/><path class="k" d="M6 27a18 18 0 0 1 36 0c-2-2.2-4-2.2-6 0-2-2.2-4-2.2-6 0-2-2.2-4-2.2-6 0-2-2.2-4-2.2-6 0-2-2.2-4-2.2-6 0z"/><path class="w" d="M24 9c-4 3-6 9-6 18 2-2.2 4-2.2 6 0 2-2.2 4-2.2 6 0 0-9-2-15-6-18z"/><path class="ln ln--d" d="M24 27v10a3.5 3.5 0 0 1-7 0"/></g>`,
+  wedding: `<circle class="ln ln--y ln--fat" cx="18" cy="30" r="9.5"/><circle class="ln ln--y ln--fat" cx="29" cy="30" r="9.5"/><g class="ca-blink"><path class="s" d="m18 15-4 4 4 4.5 4-4.5z"/></g>
+    <g class="ca-pulse"><path class="k" d="M36 16s-6.5-3.8-6.5-8a3.4 3.4 0 0 1 6.5-1.3A3.4 3.4 0 0 1 42.5 8c0 4.2-6.5 8-6.5 8z"/></g>`,
+  baby: `<g class="ca-swing"><path class="k" d="M21 5h6l1.2 7h-8.4z"/><rect class="d" x="16.5" y="12" width="15" height="5" rx="2"/><rect class="k" x="15.5" y="17" width="17" height="24" rx="5.5"/><path class="w" d="M15.5 28h17v7.5a5.5 5.5 0 0 1-5.5 5.5h-6a5.5 5.5 0 0 1-5.5-5.5z"/><path class="lw" d="M20 22h4"/><path class="ln ln--k" d="M20 32h4"/></g>
+    <g class="ca-blink">${coin(38, 12, 3.4)}</g>`,
+  shop: SHOP,
+  wsPersonal: `<circle class="k" cx="19" cy="17" r="7.5"/><path class="k" d="M5 41a14 14 0 0 1 28 0z"/>
+    <g class="ca-pulse"><path class="r" d="M37 25s-7.5-4.3-7.5-9.2a3.9 3.9 0 0 1 7.5-1.5 3.9 3.9 0 0 1 7.5 1.5c0 4.9-7.5 9.2-7.5 9.2z"/></g><g class="ca-bob">${coin(38, 37, 5)}</g>`,
+  wsFreelancer: `<rect class="k" x="4" y="11" width="29" height="20" rx="2.5"/><rect class="w" x="7" y="14" width="23" height="14" rx="1.2"/><path class="d" d="M1 33h35l-2 4H3z"/>
+    <g class="ca-blink"><path class="ln ln--k" d="M11 19h9M11 24h13"/></g><path class="s" d="M35 26h9v8.5a4.5 4.5 0 0 1-4.5 4.5 4.5 4.5 0 0 1-4.5-4.5z"/>
+    <g class="ca-rise"><path class="ln ln--s" d="M37.5 22c-1.5-1.5 1.5-2.6 0-4.5"/><path class="ln ln--s" d="M41.5 22c-1.5-1.5 1.5-2.6 0-4.5"/></g>`,
+  wsEntrepreneur: SHOP,
+  wsCompany: `<rect class="s" x="4" y="20" width="13" height="21" rx="1.5"/><rect class="k" x="17" y="7" width="17" height="34" rx="1.5"/><rect class="d" x="34" y="16" width="11" height="25" rx="1.5"/>
+    <g class="ca-blink"><rect class="y" x="20" y="11" width="4.5" height="4.5" rx=".8"/><rect class="y" x="26.5" y="19" width="4.5" height="4.5" rx=".8"/><rect class="y" x="37" y="21" width="4.5" height="4.5" rx=".8"/></g>
+    <g class="ca-blink ca-d3"><rect class="y" x="26.5" y="11" width="4.5" height="4.5" rx=".8"/><rect class="y" x="20" y="27" width="4.5" height="4.5" rx=".8"/><rect class="y" x="8" y="25" width="4.5" height="4.5" rx=".8"/></g>`,
 });
 
 /** Nombre corto de cada dibujo (para pruebas y para la galería de muestra). @type {Readonly<Record<ArtKey, string>>} */
@@ -96,6 +119,8 @@ export const ART_LABELS = Object.freeze({
   merchandise: 'Mercancía', marketing: 'Marketing', payroll: 'Nómina', taxes: 'Impuestos', software: 'Software',
   professional: 'Servicios profesionales', bank: 'Banco', equipment: 'Equipos', education: 'Educación', phone: 'Teléfono',
   pets: 'Mascotas', gym: 'Gimnasio', travel: 'Viajes', savings: 'Ahorro', coffee: 'Café',
+  car: 'Carro', emergency: 'Fondo de emergencia', wedding: 'Boda', baby: 'Bebé', shop: 'Negocio',
+  wsPersonal: 'Personal', wsFreelancer: 'Freelancer', wsEntrepreneur: 'Emprendedor', wsCompany: 'Empresa',
 });
 
 /**
@@ -113,4 +138,14 @@ export function artTile(key, { size = 'md' } = {}) {
  */
 export function categoryArt(category, fallbackKind = 'expense', options = {}) {
   return artTile(categoryArtKey(category, fallbackKind), options);
+}
+
+/** El cuadrito con el dibujo de una meta (0.20.10). @param {{ name?: string, description?: string }} goal @param {{ size?: 'sm' | 'md' | 'lg' }} [options] */
+export function goalArt(goal, options = {}) {
+  return artTile(goalArtKey(goal), options);
+}
+
+/** El cuadrito con el dibujo de un tipo de espacio (0.20.10). @param {string} kind @param {{ size?: 'sm' | 'md' | 'lg' }} [options] */
+export function workspaceArt(kind, options = {}) {
+  return artTile(workspaceArtKey(kind), options);
 }

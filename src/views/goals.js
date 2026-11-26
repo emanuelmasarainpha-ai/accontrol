@@ -15,6 +15,7 @@ import { goalPace, goalProgress, HORIZON_LABELS } from '../domain/goals.js';
 import { formatMoney, formatPercent } from '../domain/money.js';
 import { contributionRow, demoBadge, demoBanner, emptyState, feasibilityBlock, goalPaceBlock, money, progress } from '../ui/components.js';
 import { actionTarget } from '../ui/dom.js';
+import { goalArt } from '../ui/categoryArt.js';
 import { html } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
 import { openContributionForm, openGoalForm } from './forms.js';
@@ -53,7 +54,8 @@ export function renderGoals(store, ctx) {
 
     return html`<article class="goal${info.completed ? ' goal--done' : ''}" aria-labelledby="goal-name-${goal.id}">
       <header class="goal__head">
-        <div>
+        ${goalArt(goal)}
+        <div class="goal__title">
           <h3 class="goal__name" id="goal-name-${goal.id}">${goal.name}</h3>
           ${goal.description ? html`<p class="goal__desc">${goal.description}</p>` : ''}
         </div>

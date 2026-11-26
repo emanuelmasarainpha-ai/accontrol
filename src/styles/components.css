@@ -2589,6 +2589,18 @@ form[data-movement] > .field[data-field='amount'] .hint:empty {
 .ca--travel { --ca: #2196e6; }
 .ca--savings { --ca: #e5638f; }
 .ca--coffee { --ca: #8a5a2b; }
+/* 0.20.10: metas y espacios (los espacios usan el color de su tipo) */
+.ca--car { --ca: #e0533f; }
+.ca--emergency { --ca: #3a7bd5; }
+.ca--wedding { --ca: #d63d78; }
+.ca--baby { --ca: #ef6f9f; }
+.ca--shop { --ca: #1f8a7a; }
+.ca--wsPersonal { --ca: var(--personal); }
+.ca--wsFreelancer { --ca: var(--freelancer); }
+.ca--wsEntrepreneur { --ca: var(--entrepreneur); }
+.ca--wsCompany { --ca: var(--company); }
+.ca .ln--fat { stroke-width: 3.6; }
+.ca .w--stripe { opacity: 0.85; }
 
 /* En las filas de movimientos: el dibujo a la izquierda; al pasar el ratón se inclina un poco. */
 .row > .ca + .row__main {
@@ -2851,4 +2863,30 @@ form[data-movement] > .field[data-field='amount'] .hint:empty {
 @keyframes sk-fly {
   0%, 100% { transform: translate(0, 0); }
   50% { transform: translate(-10px, 4px); }
+}
+
+/* ---- Dibujos de metas y espacios (0.20.10) ---- */
+.goal__head > .ca {
+  margin-top: 2px;
+}
+.goal__title {
+  flex: 1;
+  min-width: 0;
+}
+.main-goal__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.kind-card > .ca--lg,
+.welcome__head > .ca--lg {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .kind-card:hover > .ca,
+  .goal:hover .goal__head > .ca {
+    transform: rotate(-5deg) scale(1.06);
+  }
 }

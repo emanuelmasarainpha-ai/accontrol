@@ -1,4 +1,6 @@
-# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.9)
+# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.10)
+
+**Novedad de la 0.20.10.** **Dibujos para las metas y los espacios:** cada meta lleva su dibujo animado según su nombre (casa, carro, viaje, estudios, boda, fondo de emergencia…), y al elegir cómo usar ACCONTROL cada tipo de espacio tiene el suyo. Ver la fila 0.20.10 de `docs/ROADMAP.md`.
 
 **Novedad de la 0.20.9.** **Fiesta al cumplir una meta o ganar un logro:** cae confeti, gira un resplandor dorado y entra un trofeo (meta) o una medalla (logro) dando una vuelta, con el nombre de lo que lograste. Se va sola o con un toque. Ver la fila 0.20.9 de `docs/ROADMAP.md`.
 
