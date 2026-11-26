@@ -221,3 +221,173 @@
     transform: translate(var(--dx, 0px), var(--dy, 0px)) rotate(var(--rot, 0deg)) scale(1);
   }
 }
+
+/* ---- Momento de fiesta: meta cumplida o logro conseguido (0.20.9, ui/celebrate.js → celebrateMoment) ----------
+   Solo existe sin «reducir movimiento». Solo transform y opacity. */
+.party {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgb(10 12 22 / 50%);
+  cursor: pointer;
+}
+.party__rain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.party__bit {
+  position: absolute;
+  top: -24px;
+  left: var(--x, 50%);
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--kind);
+  opacity: 0;
+}
+.party__bit--gold { background: #ffc94d; }
+.party__bit--pink { background: #f06292; }
+.party__bit--green { background: #4caf50; }
+.party__bit--blue { background: #42a5f5; }
+.party__bit--round {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.party__card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: min(320px, 86vw);
+  padding: 28px 22px 20px;
+  border-radius: 28px;
+  background: var(--surface);
+  text-align: center;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
+}
+.party__glow {
+  position: absolute;
+  z-index: 0;
+  top: -16px;
+  left: 50%;
+  width: 240px;
+  height: 240px;
+  margin-left: -120px;
+  pointer-events: none;
+  /* Se desvanece hacia afuera: no tapa el texto. */
+  -webkit-mask-image: radial-gradient(circle, #000 22%, transparent 62%);
+  mask-image: radial-gradient(circle, #000 22%, transparent 62%);
+}
+.party__card > :not(.party__glow) {
+  position: relative;
+  z-index: 1;
+}
+.party__glow svg {
+  width: 100%;
+  height: 100%;
+  fill: #ffc94d;
+  opacity: 0.45;
+}
+.party__medal {
+  position: relative;
+  display: block;
+  width: 132px;
+  height: 132px;
+  margin-top: -6px;
+}
+.party__spin,
+.party__spin svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.party__gold { fill: #ffc22e; }
+.party__gold-d { fill: #e0a100; }
+.party__base { fill: var(--kind-deep); }
+.party__star { fill: #fff6d6; }
+.party__ribbon { fill: var(--kind); }
+.party__ribbon--b { fill: #ef5350; }
+.party__shine {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+.party__kicker {
+  margin: 4px 0 0;
+  color: var(--kind-ink);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.party__title {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-value);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.party__hint {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .party {
+    animation: party-in var(--dur-base) var(--ease-out) backwards;
+  }
+  .party.party--leaving {
+    animation: party-out 240ms var(--ease-in-out) forwards;
+  }
+  .party__bit {
+    animation: party-fall var(--fall, 2000ms) linear var(--delay, 0ms) forwards;
+  }
+  .party__card {
+    animation: pop-in 420ms var(--ease-pop) 60ms backwards;
+  }
+  .party__glow {
+    animation: party-glow 14000ms linear infinite;
+  }
+  .party__spin {
+    animation: party-spin 900ms var(--ease-out) 160ms backwards;
+  }
+  .party__medal {
+    animation: ca-bob 2200ms var(--ease-in-out) 1100ms infinite;
+  }
+  .party__shine {
+    animation: party-shine 1600ms var(--ease-in-out) 1000ms infinite;
+  }
+}
+@keyframes party-in {
+  from { opacity: 0; }
+}
+@keyframes party-out {
+  to { opacity: 0; }
+}
+@keyframes party-fall {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, 0px), 105vh) rotate(var(--rot, 0deg)); }
+}
+@keyframes party-glow {
+  to { transform: rotate(360deg); }
+}
+@keyframes party-spin {
+  0% { opacity: 0; transform: perspective(500px) rotateY(-360deg) scale(0.6); }
+  40% { opacity: 1; }
+  100% { opacity: 1; transform: perspective(500px) rotateY(0deg) scale(1); }
+}
+@keyframes party-shine {
+  0% { opacity: 0; transform: translateX(-40px); }
+  20% { opacity: 1; }
+  60% { opacity: 0; transform: translateX(80px); }
+  100% { opacity: 0; transform: translateX(80px); }
+}

@@ -142,7 +142,7 @@ export function tourPanel(workspace, available) {
 }
 
 /** Lo que trae esta versión (pie de «Acerca de» y de la lista de secciones). */
-const VERSION_NOTE = 'El cielo del saludo, pantallas vacías con escenas animadas y dibujos para cada categoría';
+const VERSION_NOTE = 'Fiesta al cumplir metas y logros, el cielo del saludo y dibujos animados en toda la app';
 
 /**
  * La lista de secciones de Ajustes (0.18.1), como los ajustes del teléfono.

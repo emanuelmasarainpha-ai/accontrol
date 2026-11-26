@@ -12,7 +12,7 @@
 // =============================================================================
 
 import { goalProgress } from '../domain/goals.js';
-import { celebrate } from '../ui/celebrate.js';
+import { celebrateMoment } from '../ui/celebrate.js';
 import { haptic } from '../ui/haptics.js';
 import { toast } from '../ui/toast.js';
 import { gamificationFor } from '../views/achievements.js';
@@ -111,7 +111,8 @@ export function watchCelebrations(store) {
     const found = celebrationsBetween(last, now);
     last = now;
     if (found.goals.length + found.achievements.length === 0) return;
-    celebrate();
+    // 0.20.9: el momento de fiesta con trofeo (meta) o medalla (logro); la meta va primero si hay las dos.
+    celebrateMoment(found.goals.length > 0 ? { kind: 'goal', title: found.goals[0] } : { kind: 'achievement', title: found.achievements[0] });
     haptic('success');
     for (const message of celebrationMessages(found)) toast(message);
   });

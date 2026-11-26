@@ -1,4 +1,6 @@
-# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.8)
+# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.9)
+
+**Novedad de la 0.20.9.** **Fiesta al cumplir una meta o ganar un logro:** cae confeti, gira un resplandor dorado y entra un trofeo (meta) o una medalla (logro) dando una vuelta, con el nombre de lo que lograste. Se va sola o con un toque. Ver la fila 0.20.9 de `docs/ROADMAP.md`.
 
 **Novedad de la 0.20.8.** **El cielo del saludo:** en Inicio, junto a «Buenos días», «Buenas tardes» o «Buenas noches», una ventanita con el cielo de esa hora que se mueve sola: el sol que sale con un pajarito, el sol de la tarde con nubes o la luna con estrellas. Ver la fila 0.20.8 de `docs/ROADMAP.md`.
 
