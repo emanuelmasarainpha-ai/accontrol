@@ -189,7 +189,7 @@ export function startApp(store, { account = null, tourMemory = createTourMemory(
     const rendered = onboarding
       ? renderOnboarding(store, context)
       : lockedFeature && !canUse(currentPlan(), lockedFeature, activeWs?.kind ?? null)
-        ? lockedScreen(lockedFeature, route.label)
+        ? lockedScreen(lockedFeature, route.label, route.parent ? routeById(route.parent) ?? null : null)
         : VIEWS[routeId](store, context);
     setHtml(view, readOnly && activeWs ? html`${roleBanner(activeWs)}${rendered.html}` : rendered.html);
     cleanup = rendered.mount?.(view, controller.signal);

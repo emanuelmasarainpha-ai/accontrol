@@ -1,4 +1,8 @@
-# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.10)
+# ACCONTROL 2.0 — App de Android, Ajustes por secciones, copia automática, moneda real, «Sobre ti», pagos en otra moneda y planes (versión 0.20.12)
+
+**Novedad de la 0.20.12.** **Listas, hora y fecha con vida:** al tocar una lista (categoría, moneda…), la hora o la fecha ya no sale la ventanita gris del celular: sube una hoja de ACCONTROL con los dibujos de cada categoría, el símbolo de cada moneda, un reloj con el cielo de la hora que eliges y un calendario con «Hoy» y «Ayer». Ver la fila 0.20.12 de `docs/ROADMAP.md`.
+
+**Novedad de la 0.20.11.** **Volver desde una pantalla con candado:** si tu plan no trae Patrimonio (o Diagnóstico, o Calculadoras), la pantalla del candado tiene arriba la flecha «← Finanzas» (o «← Estadísticas») para volver. Ver la fila 0.20.11 de `docs/ROADMAP.md`.
 
 **Novedad de la 0.20.10.** **Dibujos para las metas y los espacios:** cada meta lleva su dibujo animado según su nombre (casa, carro, viaje, estudios, boda, fondo de emergencia…), y al elegir cómo usar ACCONTROL cada tipo de espacio tiene el suyo. Ver la fila 0.20.10 de `docs/ROADMAP.md`.
 

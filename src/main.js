@@ -32,6 +32,7 @@ import { createIndexedDbStore } from './data/indexedDbStore.js';
 import { centsToInputValue } from './domain/money.js';
 import { playIntro } from './ui/intro.js';
 import { installPasswordToggles } from './ui/passwordToggle.js';
+import { installPickers } from './ui/picker.js';
 import { installThemeToggle } from './ui/theme.js';
 import { toast } from './ui/toast.js';
 import { createSyncController } from './sync/syncController.js';
@@ -242,6 +243,7 @@ async function main() {
   // Modo claro / oscuro: desde el primer momento (también en las pantallas de acceso).
   installThemeToggle();
   installPasswordToggles();
+  installPickers(); // 0.20.12: listas, hora y fecha con los selectores propios de ACCONTROL (no los grises del sistema)
   applyArtMotion(); // 0.20.6: los dibujos de las categorías, quietos si así lo eligió la persona
 
   // App de Android: el botón «atrás» cierra ventanas y vuelve atrás en vez de cerrar la app de golpe.

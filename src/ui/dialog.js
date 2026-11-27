@@ -32,11 +32,12 @@ export function prefersReducedMotion() {
  * @param {(sheet: HTMLDialogElement, close: () => void) => void} [options.onMount]
  *        Se llama cuando la hoja ya está en pantalla: aquí se conectan los eventos del formulario.
  * @param {() => void} [options.onClose]
+ * @param {string} [options.className] clase extra de la hoja (los selectores propios usan «sheet--picker», 0.20.12)
  * @returns {{ element: HTMLDialogElement, close: () => void }}
  */
-export function openSheet({ title, content, onMount, onClose }) {
+export function openSheet({ title, content, onMount, onClose, className = '' }) {
   const dialog = document.createElement('dialog');
-  dialog.className = 'sheet';
+  dialog.className = className ? `sheet ${className}` : 'sheet';
   const titleId = `sheet-title-${(dialogCounter += 1)}`;
   dialog.setAttribute('aria-labelledby', titleId);
 

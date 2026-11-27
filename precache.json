@@ -1,5 +1,5 @@
 {
-  "version": "8f6e0a6951b8",
+  "version": "f09d9e73d49c",
   "files": [
     "./",
     "icons/apple-touch-icon.png",
@@ -78,6 +78,7 @@
     "src/domain/notices.js",
     "src/domain/organization.js",
     "src/domain/permissions.js",
+    "src/domain/pickers.js",
     "src/domain/plans.js",
     "src/domain/pos.js",
     "src/domain/roles.js",
@@ -137,6 +138,7 @@
     "src/ui/image.js",
     "src/ui/intro.js",
     "src/ui/passwordToggle.js",
+    "src/ui/picker.js",
     "src/ui/saveFile.js",
     "src/ui/skyArt.js",
     "src/ui/theme.js",

@@ -70,14 +70,18 @@ export function planPanel(current, row) {
 
 /**
  * Pantalla con candado (en lugar de una pantalla que tu plan no trae).
+ * 0.20.11 (pedido de la persona): arriba, la flecha para volver a la sección de donde cuelga (Patrimonio → Finanzas,
+ * Diagnóstico y Calculadoras → Estadísticas); sin ella había que volver a tocar el módulo en el menú.
  * @param {Feature} feature @param {string} title
+ * @param {{ id: string, label: string } | null} [back] la sección a la que vuelve la flecha
  * @returns {import('../app/app.js').RenderedView}
  */
-export function lockedScreen(feature, title) {
+export function lockedScreen(feature, title, back = null) {
   const plan = FEATURE_PLAN[feature];
   return {
     html: html`<header class="page-header">
         <div>
+          ${back ? html`<a class="back-link" href="#/${back.id}" data-locked-back>${icon('back', 16)}${back.label}</a>` : ''}
           <h1 class="page-title">${title}</h1>
           <p class="page-subtitle">${featureMessage(feature)}</p>
         </div>
